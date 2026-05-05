@@ -70,7 +70,7 @@
 #define SIGIGNORE	0x800
 #define SIGPAUSE	0x1000
 
-#if (__STDC__ - 0 == 0) || defined(_POSIX_SOURCE)
+#if defined(_KERNEL) || (__STDC__ - 0 == 0) || defined(_POSIX_SOURCE)
 typedef struct {		/* signal set type */
 	unsigned long	sigbits[4];
 } sigset_t;
@@ -86,7 +86,7 @@ struct sigaction {
 #define SA_NOCLDSTOP	0x00020000	/* don't send job control SIGCLD's */
 #endif
 
-#if (__STDC__ - 0 == 0) && !defined(_POSIX_SOURCE)
+#if (defined(_KERNEL) || (__STDC__ - 0 == 0)) && !defined(_POSIX_SOURCE)
 			/* non-comformant ANSI compilation	*/
 
 /* definitions for the sa_flags field */

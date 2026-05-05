@@ -42,18 +42,18 @@
 
 #if defined(__STDC__)
 
-dev_t makedev(const major_t, const minor_t);
-major_t major(const dev_t);
-minor_t minor(const dev_t);
+static dev_t makedev(const major_t, const minor_t);
+static major_t major(const dev_t);
+static minor_t minor(const dev_t);
 dev_t __makedev(const int, const major_t, const minor_t);
 major_t __major(const int, const dev_t);
 minor_t __minor(const int, const dev_t);
 
 #else
 
-dev_t makedev();
-major_t major();
-minor_t minor();
+static dev_t makedev();
+static major_t major();
+static minor_t minor();
 dev_t __makedev();
 major_t __major();
 minor_t __minor();

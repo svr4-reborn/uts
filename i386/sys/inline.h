@@ -12,7 +12,7 @@
 
 #ident	"@(#)head.sys:sys/inline.h	11.9.5.1"
 
-#if !defined(lint)
+#if !defined(lint) && !defined(__GNUC__)
 
 asm	void flushtlb()	
 {
@@ -353,7 +353,73 @@ asm void copy_bytes(from, to, count)
 	popl	%edi
 	popl	%esi
 }
-#else	/* !defined(lint) */
+#elif defined(__GNUC__)
+
+#if defined(__STDC__)
+
+extern	void flushtlb(void);
+extern	int _cr0(void);
+extern	int _cr2(void);
+extern	int _cr3(void);
+extern	void _wdr0(ulong);
+extern	void _wdr1(ulong);
+extern	void _wdr2(ulong);
+extern	void _wdr3(ulong);
+extern	void _wdr6(ulong);
+extern	void _wdr7(ulong);
+extern	int _dr0(void);
+extern	int _dr1(void);
+extern	int _dr2(void);
+extern	int _dr3(void);
+extern	int _dr6(void);
+extern	int _dr7(void);
+extern	void loadtr(ulong);
+extern	void outl(unsigned, ulong);
+extern	void outw(unsigned, ulong);
+extern	void outb(unsigned, ulong);
+extern	int inl(unsigned);
+extern	int inw(unsigned);
+extern	int inb(unsigned);
+extern	void intr_disable(void);
+extern	void intr_restore(void);
+extern	void intr_enable(void);
+extern	int struct_zero(caddr_t, int);
+extern	void copy_bytes(caddr_t, caddr_t, int);
+
+#else	/* __STDC__ */
+
+extern	void flushtlb();
+extern	int _cr0();
+extern	int _cr2();
+extern	int _cr3();
+extern	void _wdr0();
+extern	void _wdr1();
+extern	void _wdr2();
+extern	void _wdr3();
+extern	void _wdr6();
+extern	void _wdr7();
+extern	int _dr0();
+extern	int _dr1();
+extern	int _dr2();
+extern	int _dr3();
+extern	int _dr6();
+extern	int _dr7();
+extern	void loadtr();
+extern	void outl();
+extern	void outw();
+extern	void outb();
+extern	int inl();
+extern	int inw();
+extern	int inb();
+extern	void intr_disable();
+extern	void intr_restore();
+extern	void intr_enable();
+extern	int struct_zero();
+extern	void copy_bytes();
+
+#endif	/* __STDC__ */
+
+#else	/* lint */
 /*
  *	Very fast byte-at-a-time copy, as opposed to bcopy, which is
  *	longword-at-a-time. For controler boards which can't handle 32 bit accesses.
@@ -428,7 +494,7 @@ extern  int struct_zero();
 
 #endif	/* __STDC__ */
 
-#endif	/* !defined(lint) */
+#endif	/* !defined(lint) && !defined(__GNUC__) */
 
 #endif	/* _SYS_INLINE_H */
 

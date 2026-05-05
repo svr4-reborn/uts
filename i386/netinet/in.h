@@ -13,6 +13,10 @@
 
 #ident	"@(#)kern-inet:in.h	1.3"
 
+#ifdef	_KERNEL
+#include "sys/protosw.h"
+#endif
+
 /*
  *  		PROPRIETARY NOTICE (Combined)
  *  

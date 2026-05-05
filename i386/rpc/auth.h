@@ -65,6 +65,8 @@ enum auth_stat {
 
 #if (mc68000 || sparc || vax || i386 || u3b2)
 typedef u_long u_int32;	/* 32-bit unsigned integers */
+#else
+typedef unsigned int u_int32;	/* modern host fallback */
 #endif
 
 union des_block {
