@@ -176,7 +176,7 @@ paddr_t	loadaddr;
 				BL_file_read (&bkiinfo, ourDS, 2, &actual, &status);
 				if ((actual != 2) | (status != E_OK))
 					return (ERROR("cannot read BKI section", path));
-				debug(printf("BKI found version %ld\n", bkiinfo);getchar());
+				debug(printf("BKI found version %ld\n", bkiinfo));
 				if (bkiinfo < BKIVERSION) 
 					return (ERROR("BKI too old", path));
 				if (bkiinfo > BKIVERSION)
@@ -246,6 +246,8 @@ paddr_t	loadaddr;
 	CHECK_KBD;
 
 	/* return start physical address for the binary */
+	debug(printf("LOAD returning start=0x%lx enforce=%d foundload=%d foundbki=%d\n",
+		kstart, enforce, foundload, foundbki));
 
 	return(kstart);
 }
