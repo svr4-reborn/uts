@@ -886,7 +886,7 @@ read_fp_text:
 	 */
 	if (fp_kind == FP_SW) {
 		idte = (struct gdscr *)idt + NOEXTFLT;
-		idte->gd_off0015 = (ushort)em_data.ux_entloc;
+		idte->gd_off0015 = (ushort)(u_int)em_data.ux_entloc;
 		idte->gd_off1631 = ((u_int)em_data.ux_entloc >> 16) & 0x0000FFFF;
 		idte->gd_selector = FPESEL;
 		idte->gd_acc0007 = GATE_UACC | GATE_386TRP;

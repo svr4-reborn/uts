@@ -42,7 +42,7 @@ int mapping;
 	if (size == 0)
 		return(-1);
 	rslt = 0;
-	addr1 = phystokv(addr1);
+	addr1 = (paddr_t)phystokv(addr1);
 	if ( mapping == U_RKD )
 		bcopy((caddr_t)addr1, addr2, size);
 	else if ( mapping == U_WKD )
@@ -112,7 +112,7 @@ mapphys(physaddr, nbytes)
 char *physaddr;
 int nbytes;
 {
-	return( phystokv((int)physaddr) );
+	return( (paddr_t)phystokv((int)physaddr) );
 }
 
 /*

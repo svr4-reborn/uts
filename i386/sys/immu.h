@@ -105,7 +105,7 @@ typedef struct ptbl {
 
 #define ptnum(X)	((uint)(X) >> PTNUMSHFT)
 
-#define pgndx(x)	(((x) >> PNUMSHFT) & PNDXMASK)
+#define pgndx(x)	((((size_t)x) >> PNUMSHFT) & PNDXMASK)
 
 /* Round up page table address */
 
@@ -267,7 +267,7 @@ extern paddr_t	svirtophys(/* va */);
 **	kernel text.
 */
 
-#define xphystokv(paddr) (((unsigned long)(paddr) & XMEM_BIT) ? \
+#define xphystokv(paddr) (addr_t)(((unsigned long)(paddr) & XMEM_BIT) ? \
 		(paddr) + (KVXBASE - XMEM_BIT) : (paddr) + KVBASE)
 
 /*	Between kernel virtual address and physical page frame number.

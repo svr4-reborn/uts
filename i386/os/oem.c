@@ -151,7 +151,7 @@ forever:
 
 softreset()
 {
-	int io_rom;
+	addr_t io_rom;
 
 	/* do soft reboot; only do memory check after power-on */
 	io_rom = phystokv( 0x467 );

@@ -386,7 +386,8 @@ shmctl(uap, rvp)
 			xds.shm_perm.seq = (ushort) sp->shm_perm.seq;
 			xds.shm_perm.key = sp->shm_perm.key;
 			xds.shm_segsz = sp->shm_segsz;
-			xds.shm_ptbl = (ushort)sp->shm_amp;
+			/* TODO (porting;accuracy): what in the hell is this structure, and why is this done like this */
+			xds.shm_ptbl = (ushort)(uint)sp->shm_amp;
 			xds.shm_lpid = sp->shm_lpid;
 			xds.shm_cpid = sp->shm_cpid;
 			xds.shm_nattch = sp->shm_amp->refcnt;

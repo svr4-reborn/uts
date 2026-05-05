@@ -123,7 +123,7 @@ brk(uap, rvp)
 		if ((ab <= nva && nva < ae) ||
 		    (nva <= ab && ab < ova) || (nva <= ae && ae < ova))
 				return EBUSY;
-#endif ASYNCIO
+#endif /* ASYNCIO */
 
 		(void) as_unmap(p->p_as, nva, (u_int)(ova - nva));
 	}

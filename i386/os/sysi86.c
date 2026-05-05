@@ -811,11 +811,11 @@ char *fun;
 	 * we ignore the type of segment: text, data, ....
 	 */
 	else if ((as_segat(u.u_procp->p_as, fun)) != NULL) {
-		idte->gd_off0015 = (ushort) fun;
+		idte->gd_off0015 = (ushort)(size_t)fun;
 		idte->gd_selector = (short) USER_CS;
 		idte->gd_unused = 0;
 		idte->gd_acc0007 = GATE_UACC|GATE_386TRP;
-		idte->gd_off1631 = ((int) fun >> 16) & 0xFFFF;
+		idte->gd_off1631 = (ushort)((((size_t)fun >> 16) & 0xFFFF));
 	}
 	else {
 		return(EFAULT);

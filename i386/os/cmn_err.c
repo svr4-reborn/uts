@@ -941,11 +941,11 @@ querytlb()
 	asm("andl	$0xfffff01c,%eax");
 	asm("andl	$0x00000fa1,%edx");
 	asm("orl	%edx,%eax");
-	asm("jmp	tlbvalid");
+	asm("jmp	1f");
 
-	asm("tlbinvalid:");
+	asm("0:");
 	asm("subl	%eax,%eax");
-	asm("tlbvalid:");
+	asm("1:");
 }
 #endif
 

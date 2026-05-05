@@ -626,7 +626,7 @@ int    *r0ptr;         /* pointer to registers on stack */
 				}
 			} else
 				errcode = r0ptr[ERR];
-			if (usrxmemflt(errcode, _cr2(), &info)) {
+			if (usrxmemflt(errcode, (addr_t)_cr2(), &info)) {
 				if (info.si_signo == SIGSEGV)
 					fault = FLTBOUNDS;
 				else if (info.si_signo == SIGBUS) 

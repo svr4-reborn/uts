@@ -45,7 +45,8 @@ extern void (*cdebugger)();
 #define ICS_PARITY	0x43
 #endif
 
-extern int	(*nmi_hook)();
+/* Defined in ttrap.s */
+extern int	(*nmi_hook)(int *);
 
 #define PORT_B		0x61	/* System Port B */
 #define IOCHK_DISABLE	0x08	/* Disable I/O CH CK */
@@ -66,29 +67,32 @@ extern int eisa_bus, sanity_clk;
 extern unsigned int eisa_brd_id;
 
 
+static void scan_block(caddr_t addr, unsigned long length);
+static int _nmi_catch(int *r0ptr);
+int _nmi_hook(int *r0ptr);
+
 paddr_t	nmi_addr;
 
-asm void scan_block(addr, length)
+static void
+scan_block(caddr_t addr, unsigned long length)
 {
-%mem addr,length;
-	pushl	%esi
-	movl	addr, %esi
-	movl	length, %ecx
-	rep
-	lodsb
-	popl	%esi
+	volatile unsigned char *cursor;
+
+	cursor = (volatile unsigned char *)addr;
+	while (length-- != 0)
+		(void)*cursor++;
 }
 
-int _nmi_catch(r0ptr)
-	int	*r0ptr;
+static int
+_nmi_catch(int *r0ptr)
 {
 	nmi_addr = kvtophys(r0ptr[ESI]);
 	return 1;
 }
 
 
-int _nmi_hook(r0ptr)
-	int	*r0ptr;
+int
+_nmi_hook(int *r0ptr)
 #if defined (MB1) || defined (MB2)
 #ifdef MB1
 {
@@ -184,7 +188,7 @@ int _nmi_hook(r0ptr)
 				u.u_fault_catch.fc_flags = 0;
 				u.u_fault_catch.fc_errno = EFAULT;
 				r0ptr[EIP] = (int)u.u_fault_catch.fc_func;
-				return;
+				return 1;
 			}
 			else {
 				cmn_err(CE_PANIC, "Accessing past equipped memory") ;

@@ -12,496 +12,242 @@
 
 #ident	"@(#)head.sys:sys/inline.h	11.9.5.1"
 
-#if !defined(lint) && !defined(__GNUC__)
-
-asm	void flushtlb()	
+static __inline__ void
+flushtlb(void)
 {
-	movl	%cr3, %eax
-	movl	%eax, %cr3
+	__asm__ __volatile__(
+		"movl %%cr3, %%eax\n\t"
+		"movl %%eax, %%cr3"
+		:
+		:
+		: "eax", "memory");
 }
 
-asm	int _cr0()
+static __inline__ unsigned long
+_cr0(void)
 {
-	movl	%cr0, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%cr0, %0" : "=r"(value));
+	return value;
 }
 
-asm	int _cr2()
+static __inline__ unsigned long
+_cr2(void)
 {
-	movl	%cr2, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%cr2, %0" : "=r"(value));
+	return value;
 }
 
-asm	int _cr3()
+static __inline__ unsigned long
+_cr3(void)
 {
-	movl	%cr3, %eax
-	andl	$0x7FFFFFFF, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%cr3, %0" : "=r"(value));
+	return value & 0x7fffffffUL;
 }
 
-asm	void _wdr0(x)
+static __inline__ void
+_wdr0(unsigned long value)
 {
-%reg	x;
-	movl    x, %db0
-%ureg	x;
-	movl    x, %db0
-%con	x;
-	movl	x,%eax	
-	movl    %eax, %db0
-%mem	x;
-	movl	x,%eax
-	movl    %eax, %db0
+	__asm__ __volatile__("movl %0, %%db0" : : "r"(value));
 }
 
-asm	void _wdr1(x)
+static __inline__ void
+_wdr1(unsigned long value)
 {
-%reg	x;
-	movl    x, %db1
-%ureg	x;
-	movl    x, %db1
-%con	x;
-	movl	x,%eax
-	movl    %eax, %db1
-%mem	x;
-	movl	x,%eax
-	movl    %eax, %db1
+	__asm__ __volatile__("movl %0, %%db1" : : "r"(value));
 }
 
-asm	void _wdr2(x)
+static __inline__ void
+_wdr2(unsigned long value)
 {
-%reg	x;
-	movl    x, %db2
-%ureg	x;
-	movl    x, %db2
-%con	x;
-	movl	x,%eax
-	movl    %eax, %db2
-%mem	x;
-	movl	x,%eax
-	movl    %eax, %db2
+	__asm__ __volatile__("movl %0, %%db2" : : "r"(value));
 }
 
-asm	void _wdr3(x)
+static __inline__ void
+_wdr3(unsigned long value)
 {
-%reg	x;
-	movl    x, %db3
-%ureg	x;
-	movl    x, %db3
-%con	x;
-	movl	x,%eax
-	movl    %eax, %db3
-%mem	x;
-	movl	x,%eax
-	movl    %eax, %db3
+	__asm__ __volatile__("movl %0, %%db3" : : "r"(value));
 }
 
-asm	void _wdr6(x)
+static __inline__ void
+_wdr6(unsigned long value)
 {
-%reg	x;
-	movl    x, %db6
-%ureg	x;
-	movl    x, %db6
-%con	x;
-	movl	x,%eax
-	movl    %eax, %db6
-%mem	x;
-	movl	x,%eax
-	movl    %eax, %db6
+	__asm__ __volatile__("movl %0, %%db6" : : "r"(value));
 }
 
-asm	void _wdr7(x)
+static __inline__ void
+_wdr7(unsigned long value)
 {
-%reg	x;
-	movl    x, %db7
-%ureg	x;
-	movl    x, %db7
-%con	x;
-	movl	x,%eax
-	movl    %eax, %db7
-%mem	x;
-	movl	x,%eax
-	movl    %eax, %db7
+	__asm__ __volatile__("movl %0, %%db7" : : "r"(value));
 }
 
-asm	int _dr0()
+static __inline__ unsigned long
+_dr0(void)
 {
-	movl	%dr0, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%dr0, %0" : "=r"(value));
+	return value;
 }
 
-asm	int _dr1()
+static __inline__ unsigned long
+_dr1(void)
 {
-	movl	%dr1, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%dr1, %0" : "=r"(value));
+	return value;
 }
 
-asm	int _dr2()
+static __inline__ unsigned long
+_dr2(void)
 {
-	movl	%dr2, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%dr2, %0" : "=r"(value));
+	return value;
 }
 
-asm	int _dr3()
+static __inline__ unsigned long
+_dr3(void)
 {
-	movl	%dr3, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%dr3, %0" : "=r"(value));
+	return value;
 }
 
-asm	int _dr6()
+static __inline__ unsigned long
+_dr6(void)
 {
-	movl	%dr6, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%dr6, %0" : "=r"(value));
+	return value;
 }
 
-asm	int _dr7()
+static __inline__ unsigned long
+_dr7(void)
 {
-	movl	%dr7, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%dr7, %0" : "=r"(value));
+	return value;
 }
 
-asm	void loadtr(x)
+static __inline__ void
+loadtr(unsigned short selector)
 {
-%reg	x;
-	movl    x,%eax
-	ltr	%ax
-%ureg	x;
-	movl    x,%eax
-	ltr	%ax
-%con	x;
-	movl	x,%eax
-	ltr	%ax
-%mem	x;
-	movl	x,%eax
-	ltr	%ax
+	__asm__ __volatile__("ltr %w0" : : "r"(selector) : "memory");
 }
 
-asm     void outl(port,val)
+static __inline__ void
+outl(unsigned short port, unsigned long value)
 {
-%reg	port,val;
-	movl	port, %edx
-	movl	val, %eax
-	outl	(%dx)
-%reg	port; mem	val;
-	movl	port, %edx
-	movl    val, %eax
-	outl	(%dx)
-%mem	port; reg	val;
-	movw	port, %dx
-	movl	val, %eax
-	outl	(%dx)
-%mem	port,val;
-	movw	port, %dx
-	movl    val, %eax
-	outl	(%dx)
+	__asm__ __volatile__("outl %0, %w1" : : "a"(value), "Nd"(port) : "memory");
 }
 
-asm	void outw(port,val)
+static __inline__ void
+outw(unsigned short port, unsigned short value)
 {
-%reg	port,val;
-	movl	port, %edx
-	movl	val, %eax
-	data16
-	outl	(%dx)
-%reg	port; mem	val;
-	movl	port, %edx
-	movw	val, %ax
-	data16
-	outl	(%dx)
-%mem	port; reg	val;
-	movw	port, %dx
-	movl	val, %eax
-	data16
-	outl	(%dx)
-%mem	port,val;
-	movw	port, %dx
-	movw	val, %ax
-	data16
-	outl	(%dx)
+	__asm__ __volatile__("outw %0, %w1" : : "a"(value), "Nd"(port) : "memory");
 }
 
-asm	void outb(port,val)
+static __inline__ void
+outb(unsigned short port, unsigned char value)
 {
-%reg	port,val;
-	movl	port, %edx
-	movl	val, %eax
-	outb	(%dx)
-%reg	port; mem	val;
-	movl	port, %edx
-	movb	val, %al
-	outb	(%dx)
-%mem	port; reg	val;
-	movw	port, %dx
-	movl	val, %eax
-	outb	(%dx)
-%mem	port,val;
-	movw	port, %dx
-	movb	val, %al
-	outb	(%dx)
+	__asm__ __volatile__("outb %0, %w1" : : "a"(value), "Nd"(port) : "memory");
 }
 
-asm     int inl(port)
+static __inline__ unsigned long
+inl(unsigned short port)
 {
-%reg	port;
-	movl	port, %edx
-	inl	(%dx)
-%mem	port;
-	movw	port, %dx
-	inl	(%dx)
+	unsigned long value;
+
+	__asm__ __volatile__("inl %w1, %0" : "=a"(value) : "Nd"(port) : "memory");
+	return value;
 }
 
-asm	int inw(port)
+static __inline__ unsigned short
+inw(unsigned short port)
 {
-%reg	port;
-	subl    %eax, %eax
-	movl	port, %edx
-	data16
-	inl	(%dx)
-%mem	port;
-	subl    %eax, %eax
-	movw	port, %dx
-	data16
-	inl	(%dx)
+	unsigned short value;
+
+	__asm__ __volatile__("inw %w1, %0" : "=a"(value) : "Nd"(port) : "memory");
+	return value;
 }
 
-asm	int inb(port)
+static __inline__ unsigned char
+inb(unsigned short port)
 {
-%reg	port;
-	subl    %eax, %eax
-	movl	port, %edx
-	inb	(%dx)
-%mem	port;
-	subl    %eax, %eax
-	movw	port, %dx
-	inb	(%dx)
+	unsigned char value;
+
+	__asm__ __volatile__("inb %w1, %0" : "=a"(value) : "Nd"(port) : "memory");
+	return value;
 }
 
-asm     void intr_disable()
+static __inline__ void
+intr_disable(void)
 {
-	pushfl
-	cli
+	__asm__ __volatile__("pushfl\n\tcli" : : : "memory");
 }
 
-asm     void intr_restore()
+static __inline__ void
+intr_restore(void)
 {
-	popfl
+	__asm__ __volatile__("popfl" : : : "memory", "cc");
 }
 
-asm     void intr_enable()
+static __inline__ void
+intr_enable(void)
 {
-	popfl
-	sti
+	__asm__ __volatile__("popfl\n\tsti" : : : "memory", "cc");
 }
 
-asm int struct_zero(addr, len)
+static __inline__ int
+struct_zero(void *addr, unsigned int len)
 {
-%mem	addr; con	len;
-	pushl	%edi
-	pushl	addr
-	movl	len, %ecx
-	popl	%edi
-	movl	$0, %eax
-	rep
-	sstob
-	popl	%edi
-%mem	addr; reg	len;
-	pushl	%edi
-	pushl	addr
-	movl	len, %ecx
-	popl	%edi
-	movl	$0, %eax
-	rep
-	sstob
-	popl	%edi
-%mem	addr, len;
-	pushl	%edi
-	pushl	addr
-	movl	len, %ecx
-	popl	%edi
-	movl	$0, %eax
-	rep
-	sstob
-	popl	%edi
+	unsigned char *cursor;
+	unsigned int remaining;
+
+	cursor = (unsigned char *)addr;
+	for (remaining = 0; remaining < len; ++remaining)
+		cursor[remaining] = 0;
+
+	return 0;
 }
 
-asm void copy_bytes(from, to, count)
-{
-%mem	from,to; con	count;
-	pushl	%esi
-	pushl	%edi
-	pushl	from
-	pushl	to
-	movl	count, %ecx
-	popl	%edi
-	popl	%esi
-	rep
-	smovb
-	popl	%edi
-	popl	%esi
-%mem	from,to; reg	count;
-	pushl	%esi
-	pushl	%edi
-	pushl	from
-	pushl	to
-	movl	count, %ecx
-	popl	%edi
-	popl	%esi
-	rep
-	smovb
-	popl	%edi
-	popl	%esi
-%mem	from,to,count;
-	pushl	%esi
-	pushl	%edi
-	pushl	from
-	pushl	to
-	movl	count, %ecx
-	popl	%edi
-	popl	%esi
-	rep
-	smovb
-	popl	%edi
-	popl	%esi
-}
-#elif defined(__GNUC__)
-
-#if defined(__STDC__)
-
-extern	void flushtlb(void);
-extern	int _cr0(void);
-extern	int _cr2(void);
-extern	int _cr3(void);
-extern	void _wdr0(ulong);
-extern	void _wdr1(ulong);
-extern	void _wdr2(ulong);
-extern	void _wdr3(ulong);
-extern	void _wdr6(ulong);
-extern	void _wdr7(ulong);
-extern	int _dr0(void);
-extern	int _dr1(void);
-extern	int _dr2(void);
-extern	int _dr3(void);
-extern	int _dr6(void);
-extern	int _dr7(void);
-extern	void loadtr(ulong);
-extern	void outl(unsigned, ulong);
-extern	void outw(unsigned, ulong);
-extern	void outb(unsigned, ulong);
-extern	int inl(unsigned);
-extern	int inw(unsigned);
-extern	int inb(unsigned);
-extern	void intr_disable(void);
-extern	void intr_restore(void);
-extern	void intr_enable(void);
-extern	int struct_zero(caddr_t, int);
-extern	void copy_bytes(caddr_t, caddr_t, int);
-
-#else	/* __STDC__ */
-
-extern	void flushtlb();
-extern	int _cr0();
-extern	int _cr2();
-extern	int _cr3();
-extern	void _wdr0();
-extern	void _wdr1();
-extern	void _wdr2();
-extern	void _wdr3();
-extern	void _wdr6();
-extern	void _wdr7();
-extern	int _dr0();
-extern	int _dr1();
-extern	int _dr2();
-extern	int _dr3();
-extern	int _dr6();
-extern	int _dr7();
-extern	void loadtr();
-extern	void outl();
-extern	void outw();
-extern	void outb();
-extern	int inl();
-extern	int inw();
-extern	int inb();
-extern	void intr_disable();
-extern	void intr_restore();
-extern	void intr_enable();
-extern	int struct_zero();
-extern	void copy_bytes();
-
-#endif	/* __STDC__ */
-
-#else	/* lint */
 /*
  *	Very fast byte-at-a-time copy, as opposed to bcopy, which is
  *	longword-at-a-time. For controler boards which can't handle 32 bit accesses.
-*/
-void copy_bytes(from, to, count)
-register caddr_t from, to;
-register int count;
-{	*to = *from;
-	while (--count)
-		*(++to) = *(++from);
+ */
+static __inline__ void
+copy_bytes(const void *from, void *to, unsigned int count)
+{
+	const unsigned char *source;
+	unsigned char *destination;
+	unsigned int index;
+
+	source = (const unsigned char *)from;
+	destination = (unsigned char *)to;
+	for (index = 0; index < count; ++index)
+		destination[index] = source[index];
 }
 
-#if defined(__STDC__)
-
-extern	void flushtlb(void);
-extern	int _cr0(void);
-extern	int _cr2(void);
-extern	int _cr3(void);
-extern	void _wdr0(ulong);
-extern	void _wdr1(ulong);
-extern	void _wdr2(ulong);
-extern	void _wdr3(ulong);
-extern	void _wdr6(ulong);
-extern	void _wdr7(ulong);
-extern	int _dr0(void);
-extern	int _dr1(void);
-extern	int _dr2(void);
-extern	int _dr3(void);
-extern	int _dr6(void);
-extern	int _dr7(void);
-extern	void loadtr(ulong);
-extern  void outl(unsigned, ulong);
-extern	void outw(unsigned,ulong);
-extern	void outb(unsigned,ulong);
-extern  int inl(unsigned);
-extern	int inw(unsigned);
-extern	int inb(unsigned);
-extern  void intr_disable();
-extern  void intr_restore();
-extern  void intr_enable();
-extern  int struct_zero(caddr_t, int);
-
-#else	/* __STDC__ */
-
-extern	void flushtlb();	
-extern	int _cr0();
-extern	int _cr2();
-extern	int _cr3();
-extern	void _wdr0();
-extern	void _wdr1();
-extern	void _wdr2();
-extern	void _wdr3();
-extern	void _wdr6();
-extern	void _wdr7();
-extern	int _dr0();
-extern	int _dr1();
-extern	int _dr2();
-extern	int _dr3();
-extern	int _dr6();
-extern	int _dr7();
-extern	void loadtr();
-extern  void outl();
-extern	void outw();
-extern	void outb();
-extern  int inl();
-extern	int inw();
-extern	int inb();
-extern  void intr_disable();
-extern  void intr_restore();
-extern  void intr_enable();
-extern  int struct_zero();
-
-#endif	/* __STDC__ */
-
-#endif	/* !defined(lint) && !defined(__GNUC__) */
-
-#endif	/* _SYS_INLINE_H */
-
-#ifdef	KPERF  /* This is for kernel performance tool */
-asm	int
-get_spl()
+#ifdef	KPERF	/* This is for kernel performance tool */
+static __inline__ int
+get_spl(void)
 {
-	movl	ipl, %eax
+	int value;
+
+	__asm__ __volatile__("movl ipl, %0" : "=r"(value));
+	return value;
 }
 #endif	/* KPERF */
+
+#endif	/* _SYS_INLINE_H */

@@ -972,7 +972,7 @@ pageio_done(bp)
 /*
  * Determine number of bytes to page boundary.
  */
-#define	pgbnd(a)	(NBPP - ((NBPP - 1) & (int)(a)))
+#define	pgbnd(a)	(NBPP - ((NBPP - 1) & (unsigned int)(a)))
 
 void
 buf_breakup(strat, obp)

@@ -1025,17 +1025,18 @@ inituname()
 scanmem(nextclick, firstclick, lastclick)
 	uint nextclick, firstclick, lastclick;
 {
-	register uint	j, k;
-	register pte_t	*pt, *pd;
+	int k;
+	pte_t *pt, *pd;
 
 	kpd0[0].pg_pte = mkpte(PG_V, PFNUM(_cr3()));
-	j = xphystokv(ctob(firstclick));
-	pd = kpd0 + (k = ptnum(j));
-	pt = (pte_t *)ctob(k) + pgndx(j);
+	addr_t addr = xphystokv(ctob(firstclick));
+	pd = kpd0 + (k = ptnum(addr));
+	pt = (pte_t *)ctob(k) + pgndx(addr);
 
 	/* NOTE: In the following loop, we go one page too far to get around
 		 a compiler bug */
 
+	int j;
 	for (j = firstclick; j <= lastclick; ++pd) {
 		/* See if we need a new page table */
 		if (!PG_ISVALID(pd) || (uint)pd->pgm.pg_pfn < firstfree) {
