@@ -60,10 +60,13 @@ static void c_pbrk();
 static int doname();
 
 
-asm int
+static __inline__ unsigned long
 real_cr3()
 {
-	movl	%cr3, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%cr3, %0" : "=r"(value));
+	return value;
 }
 
 

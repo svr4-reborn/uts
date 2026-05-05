@@ -119,6 +119,7 @@ static unsigned char   buf[80]; /* command buffer */
 char *findsymname();
 static long parse_addr();
 static unsigned char *getname();
+static void dump();
 
 unsigned char * nmi_sav;
 
@@ -181,11 +182,13 @@ dbg_tellsymname(name, addr, sym_addr)
 }
 
 
-asm int
+static __inline__ unsigned long
 get_efl()
 {
-	pushfl
-	popl	%eax
+	unsigned long value;
+
+	__asm__ __volatile__("pushfl\n\tpopl %0" : "=r"(value) : : "memory");
+	return value;
 }
 
 
@@ -504,10 +507,13 @@ dbg_help()
 	dbg_printf("note: <address> can be symbolic name or hex value\n");
 }
 
-asm
+static __inline__ unsigned long
 real_cr3()
 {
-	movl	%cr3, %eax
+	unsigned long value;
+
+	__asm__ __volatile__("movl %%cr3, %0" : "=r"(value));
+	return value;
 }
 
 dump_tss()
@@ -598,7 +604,7 @@ sym_lookup()
  */
 static unsigned char * dump_sav;
 
-static
+static void
 dump() {
 	register int i, j;
 	unsigned char c;
@@ -915,16 +921,16 @@ unsigned char *adr;
 {
 	switch(i) {
 	case 0:
-		_wdr0(adr);
+		_wdr0((unsigned long)adr);
 		break;
 	case 1:
-		_wdr1(adr);
+		_wdr1((unsigned long)adr);
 		break;
 	case 2:
-		_wdr2(adr);
+		_wdr2((unsigned long)adr);
 		break;
 	case 3:
-		_wdr3(adr);
+		_wdr3((unsigned long)adr);
 		break;
 	}
 }

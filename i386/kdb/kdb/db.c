@@ -348,9 +348,9 @@ stackdump(dummy)
 	dbprintf("%4x %4x  %4x %4x  %4x %4x  %4x %4x    %4x\n",
 		*(sp+7),*(sp+6),*(sp+5),*(sp+4),
 		*(sp+3),*(sp+2),*(sp+1),*(sp),
-		(ushort)sp);
+		((unsigned long)sp & 0xffffUL));
     } while (sp > tos);
-    dbprintf("bp at %x\n", (ushort)tos);
+    dbprintf("bp at %x\n", ((unsigned long)tos & 0xffffUL));
 }
 
 

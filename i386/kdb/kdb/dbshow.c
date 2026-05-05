@@ -42,6 +42,9 @@ long findsymaddr();
 void dbprintf();
 void _debugger();
 
+/* local function forward declarations */
+
+void stuffrow(char *row_p, u_char* data);
 
 db_pvfs(_vfsp)
 	as_addr_t	_vfsp;
@@ -216,7 +219,6 @@ db_dump(addr, count)
 	u_char	val[4];
 	char	row[17], *row_p;
 	int	i;
-	static void stuffrow();
 
 	from = addr.a_addr;
 	to = from + count - 1;
@@ -261,10 +263,11 @@ db_dump(addr, count)
 	}
 }
 
-static void
-stuffrow(row_p, data)
-	char	*row_p;		/* pointer into array for row of ASCII chars */
-	u_char	*data;		/* char(s) to stuff in row */
+/* row_p: pointer into array for row of ASCII chars
+ * data: char(s) to stuff in row
+ */
+void
+stuffrow(char *row_p, u_char* data)
 {
 	int	n = db_cur_size;
 

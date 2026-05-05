@@ -87,15 +87,17 @@ extern unsigned long db_st_offset;
 /* This inline function gets the register values needed to start
    a stack trace.  Must be called from the same routine which calls
    db_stacktrace(). */
-asm void
+static __inline__ void
 db_get_stack()
 {
-%lab	push_eip
-	call	push_eip
-push_eip:
-	popl	db_st_startpc
-	movl	%esp, db_st_startsp
-	movl	%ebp, db_st_startfp
+	__asm__ __volatile__(
+		"call 1f\n\t"
+		"1: popl %0\n\t"
+		"movl %%esp, %1\n\t"
+		"movl %%ebp, %2"
+		: "=m" (db_st_startpc),
+		  "=m" (db_st_startsp),
+		  "=m" (db_st_startfp));
 }
 
 #endif /* i386 */

@@ -37,7 +37,6 @@ extern void	dbtellsymname();
 extern char     dbverbose;
 extern ushort   dbibase;
 extern ushort   dbtos;
-extern struct item dbstack[];
 
 struct item {
     union {
@@ -48,6 +47,8 @@ struct item {
     } value;
     unsigned type : 3;
 };
+
+extern struct item dbstack[];
 
 /* item types */
 
