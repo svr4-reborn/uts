@@ -22,6 +22,10 @@ typedef	unsigned long	ulong_t;
 
 
 /* For BSD compatibility */
+/* TODO: deprecate caddr_t and co from this repo; but thats a future thing 
+ * Changing it to a void * at start might help long term but causes a huge 
+ * amount of compile errors.
+ */
 typedef char *		addr_t; /* ?<core address> type */
 
 typedef	char *		caddr_t;	/* ?<core address> type */

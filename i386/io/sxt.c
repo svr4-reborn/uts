@@ -445,7 +445,7 @@ sxtioctl(dev, cmd, arg, mode)
 		
 		sb.input = lp->iblocked;
 		sb.output = lp->oblocked;
-		if (copyout(&sb, arg, sizeof sb)) {
+		if (copyout((caddr_t)&sb, (caddr_t)arg, sizeof sb)) {
 			u.u_error = EFAULT;
 			break;
 		}
@@ -481,7 +481,7 @@ sxtioctl(dev, cmd, arg, mode)
 			tp = lp->line;
 			/* next section lifted from tty.c */
 
-			if (copyin(arg, &tb, sizeof(tb))) {
+			if (copyin((caddr_t)arg, (caddr_t)&tb, sizeof(tb))) {
 				u.u_error = EFAULT;
 				break;
 			}
@@ -562,13 +562,13 @@ sxtioctl(dev, cmd, arg, mode)
 		if (CHAN(dev) == lp->controllingtty) {
 			/* must perform action on real tty */
 			/* insure that line disps remain correct */
-			if (copyin(arg, &cb, sizeof cb)) {
+			if (copyin((caddr_t)arg, (caddr_t)&cb, sizeof cb)) {
 				u.u_error = EFAULT;
 				break;
 			}
 			c_line = cb.c_line;
 			cb.c_line = lp->line->t_line;
-			if (copyout(&cb, arg, sizeof cb)) {
+			if (copyout((caddr_t)&cb, (caddr_t)arg, sizeof cb)) {
 				u.u_error = EFAULT;
 				break;
 			}
@@ -577,7 +577,7 @@ sxtioctl(dev, cmd, arg, mode)
 				(tdev, TCSETA, arg, mode, u.u_cred,&u.u_rval1);
 			/*  now restore user buffer */
 			cb.c_line = c_line;
-			if (copyout(&cb, arg, sizeof cb)) {
+			if (copyout((caddr_t)&cb, (caddr_t)arg, sizeof cb)) {
 				u.u_error = EFAULT;
 				break;
 			}

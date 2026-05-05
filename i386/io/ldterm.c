@@ -1770,7 +1770,7 @@ ldterm_tokerase(q, ebsize, tp)
  * (if ECHOK is set).  Multi-byte processing is included here.
  */
 
-static void
+void
 ldterm_kill(q, ebsize, tp)
 	register queue_t *q;
 	int ebsize;

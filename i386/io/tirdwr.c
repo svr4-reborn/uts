@@ -79,6 +79,9 @@ struct streamtab trwinfo = {
 
 int trwdevflag = 0;
 
+/* local function forward declarations */
+static int check_strhead(queue_t *q);
+
 /*
  * tirdwropen - open routine gets called when the
  *	       module gets pushed onto the stream.
@@ -303,9 +306,8 @@ send_fatal(q, mp)
 		qreply(q, mp);
 }
 
-static
-check_strhead(q)
-	queue_t *q;
+static int
+check_strhead(queue_t *q)
 {
 	register mblk_t *mp;
 	register union T_primitives *pptr;

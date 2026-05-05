@@ -572,7 +572,7 @@ register struct emp_tty *emp_tp;
 	 * the buffer back to freelist.
 	 */
 	if (--mp->e_count == 0) {
-		kmem_free(paddr(mp->e_bp),E_TABSZ);
+		kmem_free((void*)paddr(mp->e_bp),E_TABSZ);
 		freerbuf(mp->e_bp);
 		mp->e_bp = (struct buf *)NULL;
 	}
@@ -713,7 +713,7 @@ struct emp_tty *emp_tp;
 
 	emp_tp->t_merr = err && ep->e_beep;
 	bp->b_wptr = ocp;
-	return(ocp - (char *)bp->b_rptr);
+	return(ocp - (unsigned char *)bp->b_rptr);
 }
 
 

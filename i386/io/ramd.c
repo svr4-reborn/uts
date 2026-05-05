@@ -94,7 +94,7 @@ dev_t dev;
 
 ramdalloc(unit,size)
 minor_t	unit;
-ulong size;
+daddr_t size;
 {
 	_VOID *addr;
 	if(ramd_info[unit].ramd_state & RAMD_ALLOC) {

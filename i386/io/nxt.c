@@ -283,6 +283,8 @@ STATIC struct qinit m_xtwinit = {
 struct streamtab nxtinfo = {
 	&xtrinit, &xtwinit, &m_xtrinit, &m_xtwinit };
 
+#define XT_WIRE_CMD(cmd)	((unsigned char)((cmd) & 0xff))
+
 
 #define NETXT_HIWAT 384
 
@@ -1824,7 +1826,7 @@ int command;
 		freemsg(bp);
 		break;
 
-	case JAGENT & 0xFF:
+	case XT_WIRE_CMD(JAGENT):
 		/* response from terminal to a JAGENT ioctl */
 		if (ctlp->xt_pendjagent == NULL) {
 			debug(("recvpkt: Agent response with nothing pending\n"));
@@ -2264,7 +2266,7 @@ struct xt_chan *chanp;
 				STATS(ctlp, S_NOMBLK);
 				bp->b_datap->db_type = M_IOCNAK;
 			} else {
-				*bpt->b_wptr++ = JTIMOM;
+				*bpt->b_wptr++ = XT_WIRE_CMD(JTIMOM);
 				*bpt->b_wptr++ = n;
 				*bpt->b_wptr++ = n >> 8;
 				*bpt->b_wptr++ = tdev;
@@ -2404,7 +2406,7 @@ struct xt_chan *chanp;
 				bp->b_datap->db_type = M_IOCNAK;
 				break;
 			}
-			*bpt->b_wptr++ = (unsigned char)iocbp->ioc_cmd;
+			*bpt->b_wptr++ = XT_WIRE_CMD(iocbp->ioc_cmd);
 			*bpt->b_wptr++ = (unsigned char)chanp->xt_channo;
 			if ( xtsend(ctlp->xt_ttyq, &ctlp->xt_chan[0], bpt) ) {
 				/* It's sent to the terminal. ACK it next. */
@@ -2858,7 +2860,7 @@ struct xt_chan *chanp;
 			bp->b_datap->db_type = M_IOCNAK;
 			break;
 		}
-		*mp->b_wptr++ = (unsigned char)JXTPROTO;
+		*mp->b_wptr++ = XT_WIRE_CMD(JXTPROTO);
 		*mp->b_wptr++ = (unsigned char)maxpkt;
 		if ( xtsend(ctlp->xt_ttyq, &ctlp->xt_chan[0], mp) ) {
 			ctlp->xt_maxpkt = maxpkt;
@@ -2971,7 +2973,7 @@ struct xt_chan *chanp;
 			}
 			tmp = bp->b_cont;
 			bp->b_cont = NULL;
-			*mp->b_wptr++ = JAGENT;
+			*mp->b_wptr++ = XT_WIRE_CMD(JAGENT);
 			*mp->b_wptr++ = bagp->size;
 			while ((tmp) && (mp->b_wptr <= mp->b_datap->db_lim))
 				*mp->b_wptr++ = bnextchar(&tmp);

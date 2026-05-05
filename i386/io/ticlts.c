@@ -98,26 +98,26 @@ kmem_free(a,b);
 extern char			ti_statetbl[TE_NOEVENTS][TS_NOSTATES];
 extern int			nulldev();
 int				tclinit();
-STATIC int			tcl_bequal(),tcl_bind(),tcl_blink(),tcl_ckopt(),
+static int			tcl_bequal(),tcl_bind(),tcl_blink(),tcl_ckopt(),
 				tcl_ckstate(),tcl_close(),tcl_cpabuf(),tcl_data(),
 				tcl_errack(),tcl_fatal(),tcl_flush(),tcl_ireq(),
 				tcl_okack(),tcl_olink(),tcl_open(),tcl_optmgmt(),
 				tcl_rsrv(),tcl_sumbytes(),tcl_uderr(),tcl_unbind(),
 				tcl_unblink(),tcl_unconnect(),tcl_unolink(),tcl_wput(),
 				tcl_wropt(),tcl_wsrv();
-STATIC void			tcl_link();
-STATIC tcl_endpt_t		*tcl_endptinit(),*tcl_getendpt();
-STATIC tcl_addr_t		*tcl_addrinit(),*tcl_getaddr();
+static void			tcl_link();
+static tcl_endpt_t		*tcl_endptinit(),*tcl_getendpt();
+static tcl_addr_t		*tcl_addrinit(),*tcl_getaddr();
 
 
-STATIC tcl_endpt_t		*tcl_endptopen[TCL_NMHASH];	/* open endpt hash table */
-STATIC tcl_endpt_t		tcl_defaultendpt;
-STATIC tcl_addr_t		*tcl_addrbnd[TCL_NAHASH];	/* bound addr hash table */
-STATIC tcl_addr_t		tcl_defaultaddr;
-STATIC char			tcl_defaultabuf[TCL_DEFAULTADDRSZ];
-STATIC struct module_info	tcl_info = {TCL_ID,"tcl",TCL_MINPSZ,TCL_MAXPSZ,TCL_HIWAT,TCL_LOWAT};
-STATIC struct qinit		tcl_winit = {tcl_wput,tcl_wsrv,tcl_open,tcl_close,nulldev,&tcl_info,NULL};
-STATIC struct qinit		tcl_rinit = {NULL,tcl_rsrv,tcl_open,tcl_close,nulldev,&tcl_info,NULL};
+static tcl_endpt_t		*tcl_endptopen[TCL_NMHASH];	/* open endpt hash table */
+static tcl_endpt_t		tcl_defaultendpt;
+static tcl_addr_t		*tcl_addrbnd[TCL_NAHASH];	/* bound addr hash table */
+static tcl_addr_t		tcl_defaultaddr;
+static char			tcl_defaultabuf[TCL_DEFAULTADDRSZ];
+static struct module_info	tcl_info = {TCL_ID,"tcl",TCL_MINPSZ,TCL_MAXPSZ,TCL_HIWAT,TCL_LOWAT};
+static struct qinit		tcl_winit = {tcl_wput,tcl_wsrv,tcl_open,tcl_close,nulldev,&tcl_info,NULL};
+static struct qinit		tcl_rinit = {NULL,tcl_rsrv,tcl_open,tcl_close,nulldev,&tcl_info,NULL};
 struct streamtab		tclinfo = {&tcl_rinit,&tcl_winit,NULL,NULL};
 
 
@@ -126,7 +126,7 @@ struct streamtab		tclinfo = {&tcl_rinit,&tcl_winit,NULL,NULL};
  *
  *	buf equality checker
  */
-STATIC int
+static int
 tcl_bequal(a,b,n)
 	register char			*a,*b;
 	register int			n;
@@ -154,7 +154,7 @@ tcl_bequal(a,b,n)
  *
  *	link endpt to tcl_endptopen[] hash table
  */
-STATIC int
+static int
 tcl_olink(te)
 	register tcl_endpt_t		*te;
 {
@@ -181,7 +181,7 @@ tcl_olink(te)
  *
  *	unlink endpt from tcl_endptopen[] hash table
  */
-STATIC int
+static int
 tcl_unolink(te)
 	register tcl_endpt_t		*te;
 {
@@ -210,7 +210,7 @@ tcl_unolink(te)
  *
  *	link endpt to addr, and addr to tcl_addrbnd[] hash table
  */
-STATIC int
+static int
 tcl_blink(te,ta)
 	register tcl_endpt_t		*te;
 	register tcl_addr_t		*ta;
@@ -246,7 +246,7 @@ tcl_blink(te,ta)
  *
  *	unlink endpt from addr, and addr from tcl_addrbnd[] hash table
  */
-STATIC int
+static int
 tcl_unblink(te)
 	register tcl_endpt_t		*te;
 {
@@ -288,7 +288,7 @@ tcl_unblink(te)
  *
  *	sum bytes of buffer (used for hashing)
  */
-STATIC int
+static int
 tcl_sumbytes(a,n)
 	register char			*a;
 	register int			n;
@@ -313,7 +313,7 @@ tcl_sumbytes(a,n)
  *	copy ta_abuf part of addr, together with ta_len, ta_ahash
  *	(this routine will create a ta_abuf if necessary, but won't resize one)
  */
-STATIC int
+static int
 tcl_cpabuf(to,from)
 	tcl_addr_t			*to,*from;
 {
@@ -346,7 +346,7 @@ tcl_cpabuf(to,from)
  *
  *	initialize endpoint
  */
-STATIC tcl_endpt_t *
+static tcl_endpt_t *
 tcl_endptinit(min)
 	minor_t				min;
 {
@@ -431,7 +431,7 @@ tcl_endptinit(min)
  *
  *	initialize address
  */
-STATIC tcl_addr_t *
+static tcl_addr_t *
 tcl_addrinit(ta)
 	register tcl_addr_t		*ta;
 {
@@ -510,7 +510,7 @@ tcl_addrinit(ta)
  *
  *	search tcl_endptopen[] for endpt
  */
-STATIC tcl_endpt_t *
+static tcl_endpt_t *
 tcl_getendpt(flg,min)
 	int				flg;
 	minor_t				min;
@@ -553,7 +553,7 @@ tcl_getendpt(flg,min)
  *
  *	search tcl_addrbnd[] for addr
  */
-STATIC tcl_addr_t *
+static tcl_addr_t *
 tcl_getaddr(flg,ta)
 	int				flg;
 	register tcl_addr_t		*ta;
@@ -610,7 +610,7 @@ tcl_getaddr(flg,ta)
  *
  *	check validity of opt list
  */
-STATIC int
+static int
 tcl_ckopt(obuf,ebuf)
 	char				*obuf,*ebuf;
 {
@@ -741,7 +741,7 @@ tcl_ckopt(obuf,ebuf)
  *
  *	write opt info into buf
  */
-STATIC int
+static int
 tcl_wropt(idflg,te,obuf)
 	long				idflg;
 	tcl_endpt_t			*te;
@@ -845,7 +845,7 @@ tclinit()
  *
  *	driver open routine
  */
-STATIC int
+static int
 tcl_open(q,dev,oflg,sflg)
 	register queue_t		*q;
 	int				dev,oflg,sflg;
@@ -904,7 +904,7 @@ tcl_open(q,dev,oflg,sflg)
  *
  *	driver close routine
  */
-STATIC int
+static int
 tcl_close(q)
 	register queue_t		*q;
 {
@@ -936,7 +936,7 @@ tcl_close(q)
  *
  *	driver write side put procedure
  */
-STATIC int
+static int
 tcl_wput(q,mp)
 	register queue_t		*q;
 	register mblk_t			*mp;
@@ -1129,7 +1129,7 @@ tcl_wput(q,mp)
  *
  *	driver write side service routine
  */
-STATIC int
+static int
 tcl_wsrv(q)
 	register queue_t		*q;
 {
@@ -1184,7 +1184,7 @@ tcl_wsrv(q)
  *
  *	driver read side service routine
  */
-STATIC int
+static int
 tcl_rsrv(q)
 	register queue_t		*q;
 {
@@ -1210,7 +1210,7 @@ tcl_rsrv(q)
  *
  *	handle ok ack
  */
-STATIC int
+static int
 tcl_okack(q,mp)
 	queue_t				*q;
 	register mblk_t			*mp;
@@ -1265,7 +1265,7 @@ tcl_okack(q,mp)
  *
  *	handle error ack
  */
-STATIC int
+static int
 tcl_errack(q,mp,tli_err,unix_err)
 	queue_t				*q;
 	register mblk_t			*mp;
@@ -1326,7 +1326,7 @@ tcl_errack(q,mp,tli_err,unix_err)
  *
  *	handle fatal condition (endpt is hosed)
  */
-STATIC int
+static int
 tcl_fatal(q,mp)
 	register queue_t		*q;
 	register mblk_t			*mp;
@@ -1366,7 +1366,7 @@ printf("FATAL tcl_fatal called %x %x\n",q,mp);
  *
  *	flush rd & wr queues
  */
-STATIC int
+static int
 tcl_flush(q)
 	queue_t				*q;
 {
@@ -1401,7 +1401,7 @@ tcl_flush(q)
  *
  *	check interface state and handle event
  */
-STATIC int
+static int
 tcl_ckstate(q,mp)
 	register queue_t		*q;
 	register mblk_t			*mp;
@@ -1468,7 +1468,7 @@ tcl_ckstate(q,mp)
  *
  *	handle info request
  */
-STATIC int
+static int
 tcl_ireq(q,mp)
 	queue_t				*q;
 	register mblk_t			*mp;
@@ -1523,7 +1523,7 @@ tcl_ireq(q,mp)
  *
  *	handle bind request
  */
-STATIC int
+static int
 tcl_bind(q,mp)
 	queue_t				*q;
 	register mblk_t			*mp;
@@ -1670,7 +1670,7 @@ tcl_bind(q,mp)
  *
  *	handle unbind request
  */
-STATIC int
+static int
 tcl_unbind(q,mp)
 	queue_t				*q;
 	register mblk_t			*mp;
@@ -1719,7 +1719,7 @@ tcl_unbind(q,mp)
  *
  *	handle option mgmt request
  */
-STATIC int
+static int
 tcl_optmgmt(q,mp)
 	queue_t				*q;
 	register mblk_t			*mp;
@@ -1969,7 +1969,7 @@ tcl_optmgmt(q,mp)
  *
  *	cleanup utility routine
  */
-STATIC int
+static int
 tcl_unconnect(te)
 	register tcl_endpt_t		*te;
 {
@@ -1990,7 +1990,7 @@ tcl_unconnect(te)
  *
  *	handle unitdata error
  */
-STATIC int
+static int
 tcl_uderr(q,mp,err)
 	register queue_t		*q;
 	register mblk_t			*mp;
@@ -2090,7 +2090,7 @@ tcl_uderr(q,mp,err)
  *
  *	handle unitdata request
  */
-STATIC int
+static int
 tcl_data(q,mp)
 	queue_t				*q;
 	register mblk_t			*mp;

@@ -33,6 +33,7 @@
 #include <sys/errno.h>
 #include <sys/kmem.h>
 #include <sys/mkdev.h>
+#define TICOTSORD
 #include <sys/ticotsord.h>
 
 extern char			ti_statetbl[TE_NOEVENTS][TS_NOSTATES];

@@ -1358,7 +1358,7 @@ SOCKLOG(so, "sockmodrsrv: Got T_OK_ACK\n", 0);
 				if (((sockaddr_t)so->laddr.buf)->sa_family
 						== AF_UNIX)
 					ux_dellink(so);
-#endif AF_UNIX
+#endif /* AF_UNIX */
 				if (so->flags & S_WUNBIND) {
 					so->flags &= ~S_WUNBIND;
 					freemsg(mp);

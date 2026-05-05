@@ -69,7 +69,7 @@ static Link_p   linkTable[MAXLINKS];
 
 /** Bytes per timeout scan (1/2 sec) for each speed (minimum 1) **/
 
-static Pbyte speeds[16] =
+static unsigned short speeds[16] =
 {
 	1,      2,      3,      5,      6,      7,      10,     15,
 	30,     60,     90,     120,    240,    480,    960,    1

@@ -150,13 +150,20 @@ struct tcoo_addr {
 };
 typedef struct tcoo_addr		tcoo_addr_t;
 
+#if defined(TICOTS) && defined(TICOTSORD)
+#error "ticots kernel headers require exactly one transport variant"
+#endif
+
+#if !defined(TICOTS) && !defined(TICOTSORD)
+#error "ticots kernel headers require TICOTS or TICOTSORD"
+#endif
+
 /*
  *	registered id
  */
-#ifdef TICOTS
+#if defined(TICOTS)
 #define TCOO_ID			10002
-#endif
-#ifdef TICOTSORD
+#elif defined(TICOTSORD)
 #define	TCOO_ID			10003
 #endif
 
@@ -171,10 +178,9 @@ typedef struct tcoo_addr		tcoo_addr_t;
  *	basic constants
  */
 #define TCOO_NENDPT		(OMAXMIN+1)
-#ifdef TICOTS
+#if defined(TICOTS)
 #define TCOO_SERVTYPE		T_COTS
-#endif
-#ifdef TICOTSORD
+#elif defined(TICOTSORD)
 #define TCOO_SERVTYPE		T_COTS_ORD
 #endif
 #define TCOO_TIDUSZ		(4*1024)		/* max packet size */
