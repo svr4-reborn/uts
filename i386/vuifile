@@ -26,12 +26,15 @@ MEMORY	{
 	uv_stack :       ORIGIN  = 0x7ffffffc,   LENGTH =    0x00000
 	}
 PHDRS {
- text PT_LOAD FLAGS(5);
- data PT_LOAD FLAGS(7);
- bki PT_NOTE FLAGS(0);
+	text PT_LOAD;
+	data PT_LOAD;
+	bki PT_NOTE;
 }
 SECTIONS {
-	BKI (COPY): { . += 2; } = 2	/* BKI version number */
+	/* The bootloader expects a BKI note section; map it explicitly to a PT_NOTE
+	 * output section so it's visible to the bootloader without being loadable.
+	 */
+	BKI 0 (TYPE = SHT_NOTE) : { *(BKI) *(.BKI) *(.BKI.*) *(BKI.*) } :bki
 
 	/* sections whose names begin with a period are virtual */
 	dft_stack (NOLOAD) :
@@ -78,6 +81,15 @@ SECTIONS {
 		. += 4;
 #endif /* WEITEK_EMULATOR */
 		edata = .;
+		} > kv_loadsite :data
+	
+	.rodata ALIGN(0x1000) : {
+		srodata = .;
+		*(.rodata)
+		*(.rodata.*)
+		*(.rdata)
+		*(.rdata.*)
+		erodata = .;
 		} > kv_loadsite :data
 
 	.bss ALIGN(0x1000) : {
