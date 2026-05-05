@@ -9,32 +9,37 @@
 */
 
 MEMORY	{
-	DF_stack:	origin	= 0xD0000000,	length	=   0x01000
+	df_stack :	ORIGIN	= 0xD0000000,	LENGTH	=   0x01000
 /* MB1 and MB2 need space at 10000 for boot parameter string */
 #if defined (MB1) || defined (MB2)
-	KV_loadsite:    origin  = 0xD0011000,   length  =  0x3f0000
+	kv_loadsite :    ORIGIN  = 0xD0011000,   LENGTH  =  0x3f0000
 #else
-	KV_loadsite:    origin  = 0xD0010000,   length  =  0x3f0000
+	kv_loadsite :    ORIGIN  = 0xD0010000,   LENGTH  =  0x3f0000
 #endif
 
-	KV_sysseg:	origin  = 0xD1000000,	length 	=  0x400000
-	KV_pioseg:	origin  = 0xD2000000,	length 	=  0x400000
-	KV_segmap:	origin	= 0xD2400000,	length	=  0x400000
+	kv_sysseg :	ORIGIN  = 0xD1000000,	LENGTH 	=  0x400000
+	kv_pioseg :	ORIGIN  = 0xD2000000,	LENGTH 	=  0x400000
+	kv_segmap :	ORIGIN	= 0xD2400000,	LENGTH	=  0x400000
 
-	UV_ublock:	origin  = 0xe0000000,	length =    0x20000
-	KV_segu:	origin	= 0xe0200000,	length	=  0x400000
-	UV_stack:       origin  = 0x7ffffffc,   length =    0x00000
+	uv_ublock :	ORIGIN  = 0xe0000000,	LENGTH =    0x20000
+	kv_segu :	ORIGIN	= 0xe0200000,	LENGTH	=  0x400000
+	uv_stack :       ORIGIN  = 0x7ffffffc,   LENGTH =    0x00000
 	}
+PHDRS {
+ text PT_LOAD FLAGS(5);
+ data PT_LOAD FLAGS(7);
+ bki PT_NOTE FLAGS(0);
+}
 SECTIONS {
 	BKI (COPY): { . += 2; } = 2	/* BKI version number */
 
 	/* sections whose names begin with a period are virtual */
-	dft_stack (NOLOAD):
+	dft_stack (NOLOAD) :
 		{
 		df_stack	=	.;
-		} > DF_stack
+		} > df_stack
 
-	page0 0xD0000000 (NOLOAD):
+	page0 0xD0000000 (NOLOAD) :
 		{
 #if defined (MB1)
 		enetmem =   .+0x1600;
@@ -55,12 +60,13 @@ SECTIONS {
 		kpd0 = 		.+0x2000;
 #endif
 	}
-	.text:	{
+	.text : {
 		stext = .;
 		../pack.d/kernel/start.o(.text)
-		} > KV_loadsite
+		etext = .;
+		} > kv_loadsite :text
 
-	.data ALIGN(0x1000) :	{
+	.data ALIGN(0x1000) : {
 		sdata = .;
 #if defined (MB1)
 			i214dev = .;
@@ -71,42 +77,46 @@ SECTIONS {
 		__fltused = .;
 		. += 4;
 #endif /* WEITEK_EMULATOR */
-		} > KV_loadsite
+		edata = .;
+		} > kv_loadsite :data
 
-	.bss ALIGN(0x1000) :	{
+	.bss ALIGN(0x1000) : {
 		sbss = .;
 		../pack.d/kernel/locore.o(.bss)
-		} > KV_loadsite
+		end = .;
+		_end = .;
+		} > kv_loadsite :data
 
-	kv_sysseg (NOLOAD):
+	kv_sysseg (NOLOAD) :
 		{
 		syssegs		=	.;
-		} > KV_sysseg
+		} > kv_sysseg
 
-	kv_pioseg (NOLOAD):
+	kv_pioseg (NOLOAD) :
 		{
 		piosegs		=	.;
-		} > KV_pioseg
+		} > kv_pioseg
 
-	kv_segmap (NOLOAD):
+	kv_segmap (NOLOAD) :
 		{
 		kvsegmap	=	.;
-		} > KV_segmap
+		} > kv_segmap
 
-	kv_segu (NOLOAD):
+	kv_segu (NOLOAD) :
 		{
 		kvsegu		=	.;
-		} > KV_segu
+		} > kv_segu
 
-	uv_stack (NOLOAD):
+	uv_stack (NOLOAD) :
 		{
 		userstack	=	.;
-		} > UV_stack
+		} > uv_stack
 
-	uv_ublock (NOLOAD):
+	uv_ublock (NOLOAD) :
 		{
 		u		=	.;
-		} > UV_ublock
+		} > uv_ublock
 
+	/DISCARD/ : { *(.eh_frame) *(.rel.eh_frame) *(.note.gnu.property) *(.comment) }
 	}
 
