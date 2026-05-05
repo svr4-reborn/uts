@@ -1,21 +1,21 @@
-/	Copyright (c) 1990 UNIX System Laboratories, Inc.
-/	Copyright (c) 1984, 1986, 1987, 1988, 1989, 1990 AT&T
-/	  All Rights Reserved
+/* Copyright (c) 1990 UNIX System Laboratories, Inc. */
+/* Copyright (c) 1984, 1986, 1987, 1988, 1989, 1990 AT&T */
+/* All Rights Reserved */
 
-/	THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF
-/	UNIX System Laboratories, Inc.
-/	The copyright notice above does not evidence any
-/	actual or intended publication of such source code.
+/* THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF */
+/* UNIX System Laboratories, Inc. */
+/* The copyright notice above does not evidence any */
+/* actual or intended publication of such source code. */
 
 	.ident	"@(#)kern-ml:syms.s	1.3"
 
-/	Due to mapfile/vuifile compatibility, the usage of
-/	this file, and in this particular fashion is
-/	kludgy but necessary.
+/* Due to mapfile#vuifile compatibility, the usage of */
+/* this file, and in this particular fashion is */
+/* kludgy but necessary. */
 
-/	The following symbols are defined here for CI5 cplu.
-/	CI5 ld will not allow global arbitrary
-/	assignments in mapfiles 
+/* The following symbols are defined here for CI5 cplu. */
+/* CI5 ld will not allow global arbitrary */
+/* assignments in mapfiles */
 
 	.text
 	.globl	stext
