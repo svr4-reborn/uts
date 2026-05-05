@@ -119,7 +119,7 @@ esac
 
 else
 
-fgrep \
+grep -F \
 'i_flag
 memused
 memusedcnt
@@ -190,7 +190,7 @@ esac
 
 else
 
-fgrep \
+grep -F \
 'xt_vflptr
 xt_magictrap
 xt_magicstat
@@ -226,7 +226,7 @@ case $? in
 esac
 fi
 
-fgrep \
+grep -F \
 'BKI_MAGIC
 BOOTINFO_LOC
 CPPTSHIFT

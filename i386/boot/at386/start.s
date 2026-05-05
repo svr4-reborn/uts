@@ -47,19 +47,21 @@ restart:
 	movw	%ax, %es
 	movw	%ax, %ds
 	movw	%ax, %ss	/ set up stack
-	data16			/ this indicates a "true" 32 bit operation
+/	this indicates a "true" 32 bit operation
+	.byte	0x66
 	movl	$STACK, %esp
 	sti
 
-	addr16			
- 	movw	destseg, %ss		/ set stack at top of memory
+	.byte	0x67
+	movw	destseg, %ss
 /	data16
 /	mov	$STACK, %esp
 
 	push	%ss			/ save for lret
 
-	data16
-	call	readboot		/ read/relocate boot
+/	read/relocate boot
+	.byte	0x66
+	call	readboot
 
 	.byte	0x8d
 	.byte	0x06
@@ -83,81 +85,93 @@ readboot:
 
 	int	$0x13			/ BIOS disk support
 
-	addr16
-	mov	%ecx, hd0parm		/ Save parameters in table
-	addr16
+/	Save parameters in table
+	.byte	0x67
+	mov	%ecx, hd0parm
+	.byte	0x67
 	mov	%edx, hd0parm+2
 
 	/ As a result of the BIOS call, the following parameters are now loaded:
 	/   CL = max_sect  CH = max_cyl  DL = n_drives  DH = max_head
 
 #ifdef WINI
-	data16
-	movzbl	%cl, %eax		/ # sectors per track
+/	# sectors per track
+	.byte	0x66
+	movzbl	%cl, %eax
 	andb	$0x3F, %al
 
-	addr16		
-	data16	
+	.byte	0x67
+	.byte	0x66
 	movl	%eax, spt
 
-	data16
-	movzbl	%dh, %eax		/ # tracks per cylinder
+/	# tracks per cylinder
+	.byte	0x66
+	movzbl	%dh, %eax
 	incl	%eax
 
-	addr16
-	mul	spt			/   	* # sectors per track
-	addr16				/ 32 bit moff
-	data16				/ 32 bits of data
-	movl	%eax, spc		/   	= # sectors per cylinder
+/	* # sectors per track
+	.byte	0x67
+	mulw	spt
+/	32 bit moff, 32 bits of data
+	.byte	0x67
+	.byte	0x66
+	movl	%eax, spc
 
 / 	Find the active partition
 
-	data16
-	movl	$1, %ecx		/ sector = partition table
-	data16
-	movl	$0x201, %eax		/ read 1 sector
+/	sector = partition table
+	.byte	0x66
+	movl	$1, %ecx
+/	read 1 sector
+	.byte	0x66
+	movl	$0x201, %eax
 
-	addr16				/ 32 bit moff
-	movw	destseg, %es		/ destination segment
+/	32 bit moff
+	.byte	0x67
+	movw	destseg, %es
 
-	addr16				/ 32 bit moff
-	data16				/ move 32 bits of data
-	movl	destoff, %ebx		/ destination offset
+/	32 bit moff, move 32 bits of data
+	.byte	0x67
+	.byte	0x66
+	movl	destoff, %ebx
 
-	data16
-	movl	$BOOTDRIVE, %edx	/ from main wini drive 0x80
+/	from main wini drive 0x80
+	.byte	0x66
+	movl	$BOOTDRIVE, %edx
 
 	int	$0x13			/ BIOS disk support
 
 	jc	ioerr
 
-	data16
+	.byte	0x66
 	movl	$FD_NUMPART, %ecx
-	data16
+	.byte	0x66
 	addl	$BOOTSZ, %ebx
 
 ostry:
-	addr16
+	.byte	0x67
 	movb    %es:BOOTIND(%ebx), %al
 	cmpb	$ACTIVE, %al
 	je	osfound
 
-	data16
+	.byte	0x66
 	addl	$16, %ebx
 
 	loop	ostry
 
-	data16
-	movl	$nopart, %esi		/ no active partition found
-	data16
+/	no active partition found
+	.byte	0x66
+	movl	$nopart, %esi
+	.byte	0x66
 	jmp	fatal
 
 osfound:
-	addr16
-	data16
-	movl	%es:RELSECT(%ebx), %eax	/ save relative sector number
-	data16
-	addr16
+/	save relative sector number
+	.byte	0x67
+	.byte	0x66
+	movl	%es:RELSECT(%ebx), %eax
+	.byte	0x66
+	.byte	0x67
 	movl	%eax, unix_start
 #else	/* WINI */
 
@@ -165,130 +179,139 @@ osfound:
 /	the diskette parameter table to discover the # of sectors/track.
 /	Recall that, for a diskette, sectors/cyl = 2 * sectors/track.
 
-	data16
+	.byte	0x66
 	pusha
 
-	data16
-	xorl	%eax, %eax		/ clear out %eax
+/	clear out %eax
+	.byte	0x66
+	xorl	%eax, %eax
 	movb	$0x8, %ah		/ subfunction 8
 	movb	$0, %dl			/ drive 0
 
 	int	$0x13
 	jc	typecheck_failed	/ assume 15 sec per track if fails
 	
-	data16
-	and	$0x3f, %ecx		/ low 6 bits of %ecx are spt
+/	low 6 bits of %ecx are spt
+	.byte	0x66
+	and	$0x3f, %ecx
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	movl	%ecx, spt
 
 typecheck_failed:
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	movl	spt, %ecx
 
-	addr16
-	data16
-	movl	numsec, %eax		/ set numsec to do one track at a time
+/	set numsec to do one track at a time
+	.byte	0x67
+	.byte	0x66
+	movl	numsec, %eax
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	movl	%ecx, numsec
 
-	data16
+	.byte	0x66
 	subl	%ecx, %eax
 
-	addr16
-	data16
-	movl	%eax, extrasec		/ leftover sectors on second track
+/	leftover sectors on second track
+	.byte	0x67
+	.byte	0x66
+	movl	%eax, extrasec
 
 	shl	$1, %ecx  		/ multiply spt by 2 to get spc
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	movl	%ecx, spc
 
-	data16 
+	.byte	0x66
 	popa
 #endif /* WINI */
 
 / 	call the BIOS to read the remainder of the bootstrap from disk
 
 doio:
-	addr16
+	.byte	0x67
 	mov	numsec, %ebx
 	push	%ebx			/ sector count: 16 bits
 
-	addr16
+	.byte	0x67
 	mov	destoff, %ebx
 	push	%ebx			/ destination offset: 16 bits
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	mov	destseg, %ebx
 	push	%ebx			/ destination segment: 16 bits
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	mov	unix_start, %ebx
-	data16
+	.byte	0x66
 	push	%ebx			/ relative sector number: 32 bits
 
-	data16
+	.byte	0x66
 	call	_disk			/ do the i/o
 
-	data16
+	.byte	0x66
 	addl	$10, %esp		/ restore the stack
 
 #ifndef WINI
-	addr16
-	push	extrasec		/ extra sectors on second track
+/	extra sectors on second track
+	.byte	0x67
+	push	extrasec
 
-	data16
-	xorl	%edx, %edx		/ clear %edx for multiplies
+/	clear %edx for multiplies
+	.byte	0x66
+	xorl	%edx, %edx
 
-	addr16
-	data16
-	mov	numsec, %eax		/ calculate new dest. offset
+/	calculate new dest. offset
+	.byte	0x67
+	.byte	0x66
+	mov	numsec, %eax
 
-	data16
+	.byte	0x66
 	mov	$SECSIZE, %ebx		/ multiply by dev_gran
 
-	data16
+	.byte	0x66
 	mul	%ebx	
 
-	addr16
-	data16
-	add	destoff, %eax		/ add to original offset
+/	add to original offset
+	.byte	0x67
+	.byte	0x66
+	add	destoff, %eax
 
 	push	%eax			/ destination offset: 16 bits
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	mov	destseg, %ebx
 	push	%ebx			/ destination segment: 16 bits
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	mov	unix_start, %ebx
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	addl	numsec, %ebx
 
-	data16
+	.byte	0x66
 	push	%ebx			/ relative sector number: 32 bits
 
-	data16
+	.byte	0x66
 	call	_disk			/ do the i/o
 
-	data16
+	.byte	0x66
 	addl	$10, %esp		/ restore the stack
 #endif
 
-	data16
-	ret				/ return to caller
+/	return to caller
+	.byte	0x66
+	ret
 
 #ifndef WINI
 
@@ -302,9 +325,9 @@ fd_zero:
 #endif
 
 ioerr:
-	data16
+	.byte	0x66
 	movl	$readerr, %esi
-	data16
+	.byte	0x66
 	jmp	fatal
 
 
@@ -314,18 +337,20 @@ ioerr:
 /
 	.globl	_puts
 _puts:
-	data16
+	.byte	0x66
 	pushl	%esi
 
 	movb	$1, %bl		/ normal attribute
 ploop:
 	cld
 
-	addr16
-	lodsb			/ get next msg byte
+/	get next msg byte
+	.byte	0x67
+	lodsb
 
-	addr16			/ chip bug workaround
-	nop			/ errata 7
+/	chip bug workaround, errata 7
+	.byte	0x67
+	nop
 
 	orb	%al,%al
 	jz	pend		/ end of msg if NUL
@@ -336,10 +361,10 @@ ploop:
 	jmp	ploop
 
 pend:
-	data16
+	.byte	0x66
 	popl	%esi
 
-	data16
+	.byte	0x66
 	ret			
 
 /	----------------------------------------------------
@@ -352,31 +377,35 @@ pend:
 /
 	.globl	_disk
 _disk:	
-	data16
+	.byte	0x66
 	push	%ebp			
-	data16
-	mov	%esp, %ebp		/ C-entry save stack frame
+/	C-entry save stack frame
+	.byte	0x66
+	mov	%esp, %ebp
 
 	push	%es
 
-	data16
+	.byte	0x66
 	push	%ebx
-	data16
-	push	%esi			/ save registers
-	data16
+/	save registers
+	.byte	0x66
+	push	%esi
+	.byte	0x66
 	push	%edi
 
 retry:
-	addr16
-	mov	8(%ebp),%eax		/ secno (%ax,dx) = rel sector number
-	addr16
+	.byte	0x67
+	mov	8(%ebp),%eax
+	.byte	0x67
 	mov	10(%ebp),%edx
-	addr16
-	div	spc			/ cyl (%cx) = secno / spc
+/	cyl (%cx) = secno / spc
+	.byte	0x67
+	divw	spc
 	mov	%eax, %ecx			/   temp (%dx) = secno % spc
 	mov	%edx, %eax			/ head (%al) = temp / spt
-	addr16
-	divb	spt			/   sector (%ah) = temp % spt
+/	sector (%ah) = temp % spt
+	.byte	0x67
+	divb	spt
 	xchgb	%ch,%cl			/ low cylinder bits in %ch
 	rorb	$1,%cl			/ high cyl bits in top 2 bits of %cl
 	rorb	$1,%cl
@@ -384,12 +413,15 @@ retry:
 	incb	%cl			/ convert to 1-based
 	movb	%al,%dh			/ head
 
-	addr16
-	movw	12(%ebp), %es		/ segment
-	addr16
-	mov	14(%ebp), %ebx		/ starting offset
-	addr16
-	movb	16(%ebp), %al		/ number of sectors to read
+/	segment
+	.byte	0x67
+	movw	12(%ebp), %es
+/	starting offset
+	.byte	0x67
+	mov	14(%ebp), %ebx
+/	number of sectors to read
+	.byte	0x67
+	movb	16(%ebp), %al
 	movb	$2, %ah			/ function code for reading sectors
 	movb	$BOOTDRIVE, %dl		/ from which drive 
 
@@ -402,20 +434,22 @@ retry:
 	jmp	retry
 
 okread:
-	data16
-	pop	%edi			/ restore registers
-	data16
+/	restore registers
+	.byte	0x66
+	pop	%edi
+	.byte	0x66
 	pop	%esi
-	data16
+	.byte	0x66
 	pop	%ebx
 
 	pop	%es
 
-	data16
+	.byte	0x66
 	pop	%ebp
 
-	data16
-	ret				/ return
+/	return
+	.byte	0x66
+	ret
 
 /	----------------------------------------------------
 /	Routine to read the requested byte (in %al) from the CMOS ram, 
@@ -426,7 +460,7 @@ rdcmos:
  	outb	$0x70
  	inb	$0x71
 
-	data16
+	.byte	0x66
 	ret
 
 /	----------------------------------------------------
@@ -436,8 +470,9 @@ rdcmos:
 /
 
 fatal:
-	data16
-	call	_puts			/ print error message
+/	print error message
+	.byte	0x66
+	call	_puts
 					/ fall through to...
 	.align	4
 	.globl	halt
@@ -538,45 +573,51 @@ secondstage:
 /	need to copy variables from first stage that were changed
 
 	int	$0x12			/ BIOS memory size call
-	addr16
-	data16
-	mov	%eax, %cs:memsz		/ already relocated, do not add cs
-	addr16
-	data16				/ move 32 bits of data
-	mov	hd0parm, %eax		/ copy hd0parm into relocated data
-	addr16
-	data16				/ move 32 bits of data
+/	already relocated, do not add cs
+	.byte	0x67
+	.byte	0x66
+	mov	%eax, %cs:memsz
+/	copy hd0parm into relocated data
+	.byte	0x67
+	.byte	0x66
+	mov	hd0parm, %eax
+	.byte	0x67
+	.byte	0x66
 	mov	%eax, %cs:hd0parm
-	addr16
-	data16				/ move 32 bits of data
-	mov	spt, %eax		/ copy spt into relocated data
-	addr16
-	data16				/ move 32 bits of data
+/	copy spt into relocated data
+	.byte	0x67
+	.byte	0x66
+	mov	spt, %eax
+	.byte	0x67
+	.byte	0x66
 	mov	%eax, %cs:spt
-	addr16
-	data16				/ move 32 bits of data
-	mov	spc, %eax		/ copy spc into relocated data
-	addr16
-	data16				/ move 32 bits of data
+/	copy spc into relocated data
+	.byte	0x67
+	.byte	0x66
+	mov	spc, %eax
+	.byte	0x67
+	.byte	0x66
 	mov	%eax, %cs:spc
-	addr16
-	data16				/ move 32 bits of data
-	mov	dev_gran, %eax		/ copy dev_gran into relocated data
-	addr16
-	data16				/ move 32 bits of data
-	mov	%eax, %cs:dev_gran	
-	addr16
-	data16				/ move 32 bits of data
-	mov	destseg, %eax		/ copy spt into relocated data
-	addr16
-	data16				/ move 32 bits of data
+/	copy dev_gran into relocated data
+	.byte	0x67
+	.byte	0x66
+	mov	dev_gran, %eax
+	.byte	0x67
+	.byte	0x66
+	mov	%eax, %cs:dev_gran
+/	copy destseg into relocated data
+	.byte	0x67
+	.byte	0x66
+	mov	destseg, %eax
+	.byte	0x67
+	.byte	0x66
 	mov	%eax, %cs:destseg
-
-	addr16
-	data16				/ move 32 bits of data
-	mov	unix_start, %eax	/ copy unix_start into relocated data
-	addr16
-	data16				/ move 32 bits of data
+/	copy unix_start into relocated data
+	.byte	0x67
+	.byte	0x66
+	mov	unix_start, %eax
+	.byte	0x67
+	.byte	0x66
 	mov	%eax, %cs:unix_start
 
 /	set up the segment registers
@@ -586,13 +627,13 @@ secondstage:
 	movw	%ax, %es			
  	movw	%ax, %ss
 
-	data16
+	.byte	0x66
 	mov	$STACK, %esp
 
 #ifdef DEBUG
-	data16
+	.byte	0x66
 	mov	$banner2, %esi
-	data16
+	.byte	0x66
 	call	_puts
 #endif
 
@@ -603,15 +644,17 @@ secondstage:
 
 	int	$0x13			/ BIOS disk support
 
-	addr16
-	mov	%ecx, hd1parm		/ Save parameters in table
-	addr16
+/	Save parameters in table
+	.byte	0x67
+	mov	%ecx, hd1parm
+	.byte	0x67
 	mov	%edx, hd1parm+2
 
 /	start up the C code
 
-	data16
-	call	goprot			/ enter protected mode
+/	enter protected mode
+	.byte	0x66
+	call	goprot
 	cli
 
 	call	main			/ jump to the C code; shouldn't return

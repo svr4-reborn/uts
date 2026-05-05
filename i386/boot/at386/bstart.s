@@ -111,9 +111,9 @@ realstart:
 	call	goreal
 	sti
 
-	data16
+	.byte	0x66
 	pop	%ecx
-	data16
+	.byte	0x66
 	pop	%eax
 
 	movw	%ax, %ds		/ set up %ds and %es for...
@@ -123,7 +123,7 @@ realstart:
 
 	push 	%cs			/ our code segment
 
-	data16
+	.byte	0x66
 	movl	$realreturn, %edx
 	push	%edx			/ %ip of location to return to
 
@@ -132,7 +132,7 @@ realstart:
 
 / 	put magic number (0xff1234ff) into %edi
 
-	data16
+	.byte	0x66
 	mov	$BKI_MAGIC, %edi
 
 	cli				/ turn off interrupts (for kernel)
@@ -145,7 +145,7 @@ realreturn:
 	movw	%ax, %es
 
 	cli
-	data16
+	.byte	0x66
 	call	goprot
 
 	pop 	%ebp

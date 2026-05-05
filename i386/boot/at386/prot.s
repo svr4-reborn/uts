@@ -32,18 +32,19 @@
 	.globl	goprot
 goprot:
 
-	data16
-	popl	%ebx			/ get return %eip, for later use
+/	get return %eip, for later use
+	.byte	0x66
+	popl	%ebx
 
 /	load the GDTR
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	lgdt	GDTptr
 
 	mov	%cr0, %eax
 
-	data16
+	.byte	0x66
 	or	$PROTMASK, %eax
 
 	mov	%eax, %cr0 
@@ -56,7 +57,7 @@ goprot:
 / 	and we will continue to be until the new %cs is established. 
 
 qflush:
-	data16
+	.byte	0x66
 	mov	$0x10, %eax
 	movw	%ax, %es
 	movw	%ax, %ds
@@ -64,13 +65,15 @@ qflush:
 
 / 	Now, set up %cs by fiddling with the return stack and doing an lret
 
-	data16
-	pushl	$0x18			/ push %cs
+/	push %cs
+	.byte	0x66
+	pushl	$0x18
 
-	data16
-	pushl	%ebx			/ push %eip
+/	push %eip
+	.byte	0x66
+	pushl	%ebx
 
-	data16
+	.byte	0x66
 	lret
 
 /	----------------------------------------------------
@@ -98,30 +101,32 @@ goreal:
 	ljmp	$0x20, $set16cs
 set16cs:			/ 16 bit addresses and operands 
 
-	data16
-	movl	$0x10, %eax	/ need to have all segment regs sane ...
-	movw	%ax, %es	/ ... before we can enter real mode
+/	need to have all segment regs sane before we can enter real mode
+	.byte	0x66
+	movl	$0x10, %eax
+	movw	%ax, %es
 
-	data16
+	.byte	0x66
 	mov	%cr0, %eax
 
-	data16
-	and 	$NOPROTMASK, %eax	/ clear the protection bit
+/	clear the protection bit
+	.byte	0x66
+	and 	$NOPROTMASK, %eax
 
-	data16
+	.byte	0x66
 	mov	%eax, %cr0
 
 / 	We want to do a long ret here, to reestablish %cs in real mode
 /	Check destseg to find out where we want to go.
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	pushl	destseg
 
-	data16
+	.byte	0x66
 	pushl	$restorecs
 
-	data16
+	.byte	0x66
 	lret
 
 / 	Now we've returned to real mode, so everything is as it 
@@ -136,5 +141,6 @@ restorecs:
 	movw	%ax, %ds
 	movw	%ax, %es
 
-	data16
-	ret			/ return to whence we came; it was a 32 bit call
+/	return to whence we came; it was a 32 bit call
+	.byte	0x66
+	ret

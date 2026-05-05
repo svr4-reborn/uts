@@ -17,7 +17,7 @@
 
 	.set	WORD_BYTES, 4		# no of bytes in a word.
 
-	.set    CR0_ET, 0x10            # extension type (1->387,0->???)
+	.set    CR0_ET, 0x10            # extension type (1->387,0->unknown)
 	.set    CR0_TS, 0x08            # task switched
 	.set    CR0_EM, 0x04            # use math emulation
 	.set    CR0_MP, 0x02            # math coprocessor present
@@ -861,7 +861,7 @@ cont:
 	movl	%eax, %cr3
 	movl	$0xB8000000, 0x000(%ebx)
 	movl	0x400(%ebx), %eax	# Check for 20 MHz 1163
-	andl	$WEITEK_20MHz, %eax
+	andl	$WEITEK_20MHZ_FLAG, %eax
 	jnz	w_init_20MHz
 	movl 	$0x16000000, 0x000(%ebx)	# 16 MHz 1164#1165 flowthrough
 /* timer */
@@ -986,7 +986,7 @@ outw:	pushl	%ebp
 	movl	%esp, %ebp
 	movw	PORT(%ebp), %dx
 	movw	VAL(%ebp), %ax
-	data16
+	.byte	0x66
 	outl	(%dx)
 	popl	%ebp
 	ret
@@ -1024,7 +1024,7 @@ inw:	pushl	%ebp
 	movl	%esp, %ebp
 	subl    %eax, %eax
 	movw	PORT(%ebp), %dx
-	data16
+	.byte	0x66
 	inl	(%dx)
 	popl	%ebp
 	ret
@@ -1072,7 +1072,7 @@ loutw:
 	movl	ADDR(%ebp),%esi
 	movl	COUNT(%ebp),%ecx
 	rep
-	data16
+	.byte	0x66
 	outsl
 	popl	%ecx
 	popl	%esi
@@ -1096,7 +1096,7 @@ linw:
 	movl	ADDR(%ebp),%edi
 	movl	COUNT(%ebp),%ecx
 	rep
-	data16
+	.byte	0x66
 	insl
 	popl	%ecx
 	popl	%edi

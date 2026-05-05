@@ -85,7 +85,7 @@ rst_vga:
 	.value	0x03
 	.value	0xc000		/ lcall 0xc000:3 resets the video BIOS
 	cli
-	data16
+	.byte	0x66
 	call	goprot
 	pop	%ebp
 
@@ -122,14 +122,15 @@ done:
 / 	Return to protected mode; stolen from prot.s
 
 goprot:
-	data16
-	popl	%ebx			/ get return %eip, for later use
+/	get return %eip, for later use
+	.byte	0x66
+	popl	%ebx
 
 /	return to protected mode
 
 	mov	%cr0, %eax
 
-	data16
+	.byte	0x66
 	or	$PROTMASK, %eax
 
 	mov	%eax, %cr0 
@@ -142,23 +143,27 @@ goprot:
 / 	and we will continue to be until the new %cs is established. 
 
 qflush:
-	data16
-	mov	$0x28, %ecx	/ hack, hack; this shouldn't be hard coded
+/	hack, hack; this shouldn't be hard coded
+	.byte	0x66
+	mov	$0x28, %ecx
 	movw	%cx, %es
 	movw	%cx, %ds
 	movw	%cx, %ss		
 	
 / 	Now, set up %cs by fiddling with the return stack and doing an lret
 
-	data16
-	mov	$0x30, %edx		/ hack, hack; ditto
-	data16
-	pushl	%edx			/ push %cs
+/	hack, hack; ditto
+	.byte	0x66
+	mov	$0x30, %edx
+/	push %cs
+	.byte	0x66
+	pushl	%edx
 
-	data16
-	pushl	%ebx			/ push %eip
+/	push %eip
+	.byte	0x66
+	pushl	%ebx
 
-	data16
+	.byte	0x66
 	lret
 
 /	----------------------------------------------------
@@ -174,20 +179,22 @@ set16cs:
 
 / 	16 bit addresses and operands, here.
 
-	data16
+	.byte	0x66
 	mov	%cr0, %eax
 
-	data16
-	and 	$NOPROTMASK, %eax	/ clear the protection bit
+/	clear the protection bit
+	.byte	0x66
+	and 	$NOPROTMASK, %eax
 
-	data16
+	.byte	0x66
 	mov	%eax, %cr0
 
 / 	Do a long jump to reestablish %cs in real mode
 
-	addr16
-	data16
-	ljmp	$0xA00, $restorecs 		/ initprogs are always 
+/	initprogs are always loaded at 0xA000 physical
+	.byte	0x67
+	.byte	0x66
+	ljmp	$0xA00, $restorecs
 						/ loaded at 0xA000 physical. 
 						/ So mote it be.
 
@@ -203,5 +210,6 @@ restorecs:
 	movw	%ax, %ds
 	movw	%ax, %es
 
-	data16
-	ret			/ return to whence we came; it was a 32 bit call
+/	return to whence we came; it was a 32 bit call
+	.byte	0x66
+	ret

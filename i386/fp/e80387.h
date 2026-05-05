@@ -122,8 +122,8 @@
 */
 
 #define		offset_gs	0 + 220		/* global_reent_seg_length */
-#define		offset_eax	11 \* 4 + 220	/* offset of user's eax */
-#define		int_esp		17 \* 4 + 220	/* user esp at int. */
+#define		offset_eax	11 * 4 + 220	/* offset of user's eax */
+#define		int_esp		17 * 4 + 220	/* user esp at int. */
 #define	KDSSEL	0x160		/* This is the value assigned to the kernel DS
 				  and needs to be modified if the kernel value
 				  ever changes		*/
@@ -464,7 +464,7 @@
 #define fpvalid		0
 /
 
-#define	EIP_offset	14\*4 + 220  /* EIP that will be loaded on iret */
+#define	EIP_offset	14*4 + 220  /* EIP that will be loaded on iret */
 
 /	.globl	sr_mem_offset
 /	.globl	sr_mem_base

@@ -42,7 +42,7 @@ wait1s:
 	mov	$0, %eax
 
 	cli
-	data16
+	.byte	0x66
 	call	goprot
 
 	pop	%ebx

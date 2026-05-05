@@ -48,25 +48,29 @@ disk:
 	call	goreal
 	sti
 
-	addr16
-	pushl	16(%ebp)		/ count of sectors to read
-	data16
+/	count of sectors to read
+	.byte	0x67
+	pushl	16(%ebp)
+	.byte	0x66
 	mov	$DISKBUF, %eax
 	push	%eax			/ offset of disk buffer
 	push	%ds			/ segment of disk buffer
-	addr16
-	push	10(%ebp)		/ high word of sector number
-	addr16
-	push	8(%ebp)			/ low word of sector number
+/	high word of sector number
+	.byte	0x67
+	push	10(%ebp)
+/	low word of sector number
+	.byte	0x67
+	push	8(%ebp)
 
-	data16
+	.byte	0x66
 	call	_disk
 
-	data16
-	addl	$10, %esp		/ pop stack
+/	pop stack
+	.byte	0x66
+	addl	$10, %esp
 
 	cli
-	data16
+	.byte	0x66
 	call	goprot
 
 	xor	%eax, %eax		/ clear out %eax
@@ -110,13 +114,13 @@ putchar:
 	sti
 
 	movb	$1, %bl
-	addr16
+	.byte	0x67
 	movb	8(%ebp), %al		
 	movb	$14, %ah		/ teletype putchar
 	int	$0x10			/ issue request
 
 	cli
-	data16
+	.byte	0x66
 	call	goprot
 
 	popl	%ebx
@@ -143,7 +147,7 @@ getchar:
 	movl	%eax, %edx		/ goprot trashes %ax, %bx
 
 	cli
-	data16
+	.byte	0x66
 	call	goprot			
 
 	movl	%edx, %eax		/ put result in %ax
@@ -170,20 +174,22 @@ ischar:
 	call	goreal
 	sti
 
-	data16
-	mov	$0, %edx		/ clear %ecx for result
+/	clear %ecx for result
+	.byte	0x66
+	mov	$0, %edx
 
 	movb	$1, %ah			/ setup for bios test for a char
 	int	$0x16			/ sets the zero flag if char is waiting
 
 	jz	nochar			/ no char waiting
 
-	data16
-	mov	$1, %edx		/ char waiting: return TRUE
+/	char waiting: return TRUE
+	.byte	0x66
+	mov	$1, %edx
 
 nochar:
 	cli
-	data16
+	.byte	0x66
 	call	goprot	
 
 	pop	%esi			/ C exit

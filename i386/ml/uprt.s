@@ -1,17 +1,17 @@
-/* Copyright (c) 1990 UNIX System Laboratories, Inc. */
-/* Copyright (c) 1984, 1986, 1987, 1988, 1989, 1990 AT&T */
-/* All Rights Reserved */
+#* Copyright (c) 1990 UNIX System Laboratories, Inc. */
+#* Copyright (c) 1984, 1986, 1987, 1988, 1989, 1990 AT&T */
+#* All Rights Reserved */
 
-/* THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF */
-/* UNIX System Laboratories, Inc. */
-/* The copyright notice above does not evidence any */
-/* actual or intended publication of such source code. */
+#* THIS IS UNPUBLISHED PROPRIETARY SOURCE CODE OF */
+#* UNIX System Laboratories, Inc. */
+#* The copyright notice above does not evidence any */
+#* actual or intended publication of such source code. */
 
-/* Copyright (c) 1987, 1988 Microsoft Corporation */
-/* All Rights Reserved */
+#* Copyright (c) 1987, 1988 Microsoft Corporation */
+#* All Rights Reserved */
 
-/* This Module contains Proprietary Information of Microsoft */
-/* Corporation and should be treated as Confidential. */
+#* This Module contains Proprietary Information of Microsoft */
+#* Corporation and should be treated as Confidential. */
 
 	.ident	"@(#)kern-ml:uprt.s	1.3.2.2"
 
@@ -50,33 +50,33 @@
 	.set	KPD_LOC, [KPTBL_LOC+0x1000]
 
 	.text
-/* */
-/* *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** */
-/* */
-/* The instructions in pstart are reversed 16 <--> 32 */
-/* bits.  This is because we are running pstart in */
-/* REAL MODE.  By using long instructions, we generate */
-/* opcodes that are 16 bit instructions when run */
-/* in REAL MODE. */
+#* */
+#* *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** */
+#* */
+#* The instructions in pstart are reversed 16 <--> 32 */
+#* bits.  This is because we are running pstart in */
+#* REAL MODE.  By using long instructions, we generate */
+#* opcodes that are 16 bit instructions when run */
+#* in REAL MODE. */
 
-/* More nice information: */
-/* This code now only supports the BKI boot-kernel interface. */
-/* This passes the magic number 0xff1234ff in %edi. */
-/* All other info is passed in the bootinfo structure. */
+#* More nice information: */
+#* This code now only supports the BKI boot-kernel interface. */
+#* This passes the magic number 0xff1234ff in %edi. */
+#* All other info is passed in the bootinfo structure. */
 
 pstart:
 _start:
 
-	data16
+	.byte	0x66
 	cmpl	$BKI_MAGIC, %edi
-	data16
+	.byte	0x66
 	je	BKI_ok
 
-/* Bad magic number from bootstrap. */
-/* Print a message, then halt. */
-/* Unfortunately, this will only work on an AT386. */
+#* Bad magic number from bootstrap. */
+#* Print a message, then halt. */
+#* Unfortunately, this will only work on an AT386. */
 
-	data16
+	.byte	0x66
 	call	_rprint
 	.string	"\r\nBootstrap too old.\r\n"
 _halt:
@@ -85,13 +85,13 @@ _halt:
 	jmp	_halt
 
 _rprint:
-	data16
+	.byte	0x66
 	popl	%esi		# get pointer to message
 
 	movb	$1, %bl		# foreground color
-ploop:	addr16
+ploop:	.byte	0x67
 	movb	%cs:(%esi), %al	# get chr
-	data16
+	.byte	0x66
 	incl	%esi
 	testb	%al, %al	# test for end of string
 	jz	pend
@@ -99,18 +99,18 @@ ploop:	addr16
 	int	$0x10		# print chr
 	jmp	ploop		# repeat for next chr
 pend:
-	data16
+	.byte	0x66
 	pushl	%esi
-	data16
+	.byte	0x66
 	ret
 
 
 	.align	8
 Rusermon:
 	.byte   0               # If you set this byte to non-zero
-/* moninit will put the monitors vectors */
-/* into idt(1) and idt(3), thus allowing */
-/* user programs to be debugged with DMON. */
+#* moninit will put the monitors vectors */
+#* into idt(1) and idt(3), thus allowing */
+#* user programs to be debugged with DMON. */
 	.string	"<-Here"
 
 	.align	8	# This is for ease of looking at memory.
@@ -144,9 +144,9 @@ R0idtdscr:
 	.value	0xffff
 	.long	0
 
-/* EGA font pointers (these start as real mode pointers) */
-/* The pointers point to the 8x8, 8x14, 9x14, 8x16 and */
-/* the 9x16 fonts, respectively */
+#* EGA font pointers (these start as real mode pointers) */
+#* The pointers point to the 8x8, 8x14, 9x14, 8x16 and */
+#* the 9x16 fonts, respectively */
 
 egafontptr:
 	.long	0
@@ -156,197 +156,197 @@ egafontptr:
 	.long	0
 	
 BKI_ok:
-/* Here we have to set up the kernel symbol page table */
-/* according to the memused information passed by the bootstrap. */
-/* After we're done, R_Set_Addr will be able to convert virtual */
-/* addresses to physical addresses using this page table. */
+#* Here we have to set up the kernel symbol page table */
+#* according to the memused information passed by the bootstrap. */
+#* After we're done, R_Set_Addr will be able to convert virtual */
+#* addresses to physical addresses using this page table. */
 
-	data16
+	.byte	0x66
 	xorl	%eax, %eax		# Load 0 into segment registers
 	movw	%ax, %ds		#   so we get absolute addresses
 	movw	%ax, %es
 	movw	%ax, %fs
 	cld
 
-	data16
+	.byte	0x66
 	movl	$KPTBL_LOC, %edi	# First zero out the page table & dir
-	data16
+	.byte	0x66
 	movl	$2048, %ecx
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	rep; sstol
 
-	data16
+	.byte	0x66
 	movl	$BOOTINFO_LOC, %ebx
-	data16
-	addr16
+	.byte	0x66
+	.byte	0x67
 	movl	memusedcnt(%ebx), %edx	# Get count of memused segments
-	data16
+	.byte	0x66
 	movl	%edx, %esi
-	data16
+	.byte	0x66
 	addl	$memused, %ebx		# Get pointer to first segment
 
-	data16
+	.byte	0x66
 	movl	$KPTBL_LOC, %edi	# "Reserved" segment maps at KVSBASE
 
 kptbl_loop:
-	data16
-	addr16
+	.byte	0x66
+	.byte	0x67
 	movl	BM_EXTENT(%ebx), %ecx	# Compute # pages for this segment
-	data16
+	.byte	0x66
 	shrl	$12, %ecx
 
-	data16
-	addr16
+	.byte	0x66
+	.byte	0x67
 	movl	BM_BASE(%ebx), %eax	# Compute base pte for this segment
-	data16
+	.byte	0x66
 	andl	$0xfffff000, %eax
 	incl	%eax			# Set present bit
 
 kptseg_loop:
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	sstol				# Store the next page table entry
-	data16
+	.byte	0x66
 	addl	$0x1000, %eax		# Advance to next physical page
 	loop	kptseg_loop
 
-	data16
+	.byte	0x66
 	cmpl	%edx, %esi		# If moving on to 2nd segment,
 	jne	kptbl_next		# Reset %esi for start of text
 
-	data16
+	.byte	0x66
 	movl	$stext, %edi		# Compute addr of page table
-	data16
+	.byte	0x66
 	shrl	$12-2, %edi		#  entry for start of kernel text
-	data16
+	.byte	0x66
 	andl	$0xffc, %edi
-	data16
+	.byte	0x66
 	addl	$KPTBL_LOC, %edi
 
 kptbl_next:
-	data16
+	.byte	0x66
 	addl	$12, %ebx		# Advance to next segment
 	decl	%edx
-	data16
+	.byte	0x66
 	jnz	kptbl_loop
 
-/* At this point, we are running on the bootloaders stack. */
-/* We will now find our stack and switch to it. */
-	data16
+#* At this point, we are running on the bootloaders stack. */
+#* We will now find our stack and switch to it. */
+	.byte	0x66
 	movl	$df_stack, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
 	movw	%ds, %ax
 	movw	%ax, %ss
-	data16
+	.byte	0x66
 	addl	$DFSTKSIZ, %ebx
 	movw	%bx, %sp
 
-/* Now, find the GDT so that we can rearrange it. */
-	data16
+#* Now, find the GDT so that we can rearrange it. */
+	.byte	0x66
 	movl	$gdt, %eax
 
-	data16
+	.byte	0x66
 	movl    $gdtend, %ecx
 	subw	%ax, %cx
 	subw	$1, %cx
 
-	data16
+	.byte	0x66
 	movl	$Rgdtdscr, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%ecx, (%ebx)
 
-	data16
+	.byte	0x66
 	movl	$gdt, %eax
-	data16
+	.byte	0x66
 	call	munge_table
 
-/* Find the IDT so that we can rearrange it. */
-	data16
+#* Find the IDT so that we can rearrange it. */
+	.byte	0x66
 	movl	$idt, %eax
 
-	data16
+	.byte	0x66
 	movl	$IDTLIM, %ecx
-	data16
+	.byte	0x66
 	call	munge_table
 #ifdef VPIX
-/* Find the IDT so that we can rearrange it. */
-	data16
+#* Find the IDT so that we can rearrange it. */
+	.byte	0x66
 	movl	$idt2, %eax
 
-	data16
+	.byte	0x66
 	movl	$IDTLIM, %ecx
-	data16
+	.byte	0x66
 	call	munge_table
 #endif
 
-/* A couple of other interesting descriptors.  (scall_dscr) */
-	data16
+#* A couple of other interesting descriptors.  (scall_dscr) */
+	.byte	0x66
 	movl    $scall_dscr, %eax
-	data16
+	.byte	0x66
 	movl	$1, %ecx
-	data16
+	.byte	0x66
 	call	munge_table
 
-/* A couple of other interesting descriptors.  (sigret_dscr) */
-	data16
+#* A couple of other interesting descriptors.  (sigret_dscr) */
+	.byte	0x66
 	movl    $sigret_dscr, %eax
-	data16	
+	.byte	0x66
 	movl	$1, %ecx
-	data16
+	.byte	0x66
 	call	munge_table
 
-/* Now, we need to fix up the first, 3gig, and last entries in the */
-/* page directory. */
+#* Now, we need to fix up the first, 3gig, and last entries in the */
+#* page directory. */
 
-	data16
+	.byte	0x66
 	movl	$kpt0, %eax		# First, Page table 0
-	data16
+	.byte	0x66
 	call	R_Virt_to_Phys
 	incl	%eax			# Set the present bit
-	addr16
+	.byte	0x67
 	movw	%ax, %fs:KPD_LOC
-	addr16
+	.byte	0x67
 	movw	%ax, %fs:[KPD_LOC+3072]
 
-	data16				# Also, kernel address page table
+	.byte	0x66			# Also, kernel address page table
 	movl	$KPTBL_LOC+1, %eax	#   (with present bit set)
-	addr16
+	.byte	0x67
 	movw	%ax, %fs:[KPD_LOC+3328]
 
-	data16
+	.byte	0x66
 	movl	$kptn, %eax		# Now, the last Page table
-	data16
+	.byte	0x66
 	call	R_Virt_to_Phys
 	incl	%eax			# Set the present bit
-	addr16
+	.byte	0x67
 	movw	%ax, %fs:[KPD_LOC+4092]
 
 
 #if defined (MB1) || defined (MB2)
-/* The mon_init procedure will call into the monitor to allow it */
-/* to initialize its vectors in the IDT and GDT.  Due to some */
-/* 'features' in DMON, gdtr and idtr will be handled in mon_init. */
-/* data16 */
-/* call	mon_init */
-#endif /* MB1 */
+#* The mon_init procedure will call into the monitor to allow it */
+#* to initialize its vectors in the IDT and GDT.  Due to some */
+#* 'features' in DMON, gdtr and idtr will be handled in mon_init. */
+#* data16 */
+#* call	mon_init */
+#endif
 
-/* Load IDTR and GDTR */
-	data16
+#* Load IDTR and GDTR */
+	.byte	0x66
 	movl    $Rgdtdscr, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	lgdt	(%ebx)
 
 #ifdef AT386
-/* Code to find font locations from the bios */
-/* and to put them in egafonptr[] where the kd driver can find them. */
+#* Code to find font locations from the bios */
+#* and to put them in egafonptr[] where the kd driver can find them. */
 
 	movw	$0x1130, %ax	# set up bios call
 	.value	0
@@ -354,13 +354,13 @@ kptbl_next:
 	.value	0
 	int	$0x10
 
-	data16
+	.byte	0x66
 	movl	$egafontptr, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%ebp, (%ebx)
-	addr16
+	.byte	0x67
 	movw	%es, 2(%ebx)
 
 	movw	$0x1130, %ax	# set up bios call
@@ -369,13 +369,13 @@ kptbl_next:
 	.value	0
 	int	$0x10
 
-	data16
+	.byte	0x66
 	movl	$egafontptr+4, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%ebp, (%ebx)
-	addr16
+	.byte	0x67
 	movw	%es, 2(%ebx)
 
 	movw	$0x1130, %ax	# set up bios call
@@ -384,13 +384,13 @@ kptbl_next:
 	.value	0
 	int	$0x10
 
-	data16
+	.byte	0x66
 	movl	$egafontptr+8, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%ebp, (%ebx)
-	addr16
+	.byte	0x67
 	movw	%es, 2(%ebx)
 
 	movw	$0x1130, %ax	# set up bios call
@@ -399,13 +399,13 @@ kptbl_next:
 	.value	0
 	int	$0x10
 
-	data16
+	.byte	0x66
 	movl	$egafontptr+0xc, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%ebp, (%ebx)
-	addr16
+	.byte	0x67
 	movw	%es, 2(%ebx)
 
 	movw	$0x1130, %ax	# set up bios call
@@ -414,77 +414,77 @@ kptbl_next:
 	.value	0
 	int	$0x10
 
-	data16
+	.byte	0x66
 	movl	$egafontptr+0x10, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%ebp, (%ebx)
-	addr16
+	.byte	0x67
 	movw	%es, 2(%ebx)
-#endif /* AT386 */
+#endif
 
-/* *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** */
-/* */
-/* Do not try to single step past this point!!!! */
-/* use a 'go till' command!!!! */
-	data16
+#* *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** */
+#* */
+#* Do not try to single step past this point!!!! */
+#* use a 'go till' command!!!! */
+	.byte	0x66
 	movl    $Ridtdscr, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	lidt	(%ebx)
-	addr16
+	.byte	0x67
 	smsw %ax		# Get the MSW
 
-	data16
+	.byte	0x66
 	orl	$PROTBIT, %eax
 
-	addr16
+	.byte	0x67
 	lmsw %ax		# Kick us into protected mode
 	jmp	qflush
 
 qflush:			# Note that this point we are still
-/* in 16 bit addressing mode. */
+#* in 16 bit addressing mode. */
 
-	data16
+	.byte	0x66
 	movl	$KPD_LOC, %eax
-	addr16
+	.byte	0x67
 	movl	%eax, %cr3
 
-	addr16
+	.byte	0x67
 	movl	%cr0, %eax
 	orw	$0, %ax
 	.value	PAGEBIT
-	addr16
+	.byte	0x67
 	movl	%eax, %cr0
 
-	data16
+	.byte	0x66
 	movl	$JTSSSEL, %eax
 
 	ltr	%ax
 
-/* This is a 16 bit long jump. */
+#* This is a 16 bit long jump. */
 	.byte	0xEA
 	.value	0
 	.value	KTSSSEL
 
-/* ********************************************************************* */
-/* */
-/* munge_table: */
-/* This procedure will 'munge' a descriptor table to */
-/* change it from initialized format to runtime format. */
-/* */
-/* Assumes: */
-/* %eax -- contains the base address of table. */
-/* %ecx -- contains size of table. */
-/* */
-/* ********************************************************************* */
+#* ********************************************************************* */
+#* */
+#* munge_table: */
+#* This procedure will 'munge' a descriptor table to */
+#* change it from initialized format to runtime format. */
+#* */
+#* Assumes: */
+#* %eax -- contains the base address of table. */
+#* %ecx -- contains size of table. */
+#* */
+#* ********************************************************************* */
 munge_table:
 	pushl	%ds
 
-	data16
+	.byte	0x66
 	andl	$0xFFFF, %ecx
 	addw	%ax, %cx
 	movw	%ax, %si
@@ -494,89 +494,89 @@ moretable:
 	jl	donetable		# Have we done every descriptor??
 
 	movw	%si, %ax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	movb	7(%ebx), %al	# Find the byte containing the type field
 	testb	$0x10, %al	# See if this descriptor is a segment
 	jne	notagate
 	testb	$0x04, %al	# See if this destriptor is a gate
 	je	notagate
-/* Rearrange a gate descriptor. */
-	addr16
+#* Rearrange a gate descriptor. */
+	.byte	0x67
 	movl	6(%ebx), %eax	# Type (etc.) lifted out
-	addr16
+	.byte	0x67
 	movl	4(%ebx), %edx	# Selector lifted out.
-	addr16
+	.byte	0x67
 	movl	%eax, 4(%ebx)	# Type (etc.) put back
-	addr16
+	.byte	0x67
 	movl	2(%ebx), %eax	# Grab Offset 16..31
-	addr16
+	.byte	0x67
 	movl	%edx, 2(%ebx)	# Put back Selector
-	addr16
+	.byte	0x67
 	movl	%eax, 6(%ebx)	# Offset 16..31 now in right place
 	jmp	descdone
 
 notagate:			# Rearrange a non gate descriptor.
-	addr16
+	.byte	0x67
 	movl	4(%ebx), %edx	# Limit 0..15 lifted out
-	addr16
+	.byte	0x67
 	movb	%al, 5(%ebx)	# type (etc.) put back
-	addr16
+	.byte	0x67
 	movl	2(%ebx), %eax	# Grab Base 16..31
-	addr16
+	.byte	0x67
 	movb	%al, 4(%ebx)	# put back Base 16..23
-	addr16
+	.byte	0x67
 	movb	%ah, 7(%ebx)	# put back Base 24..32
-	addr16
+	.byte	0x67
 	movl	(%ebx), %eax	# Get Base 0..15
-	addr16
+	.byte	0x67
 	movl	%eax, 2(%ebx)	# Base 0..15 now in right place
-	addr16
+	.byte	0x67
 	movl	%edx, (%ebx)	# Limit 0..15 in its proper place
 
 descdone:
-	data16
+	.byte	0x66
 	addl	$8, %esi	# Go for the next descriptor
 	jmp	moretable
 
 donetable:
 	popl	%ds
-	data16
+	.byte	0x66
 	ret
 
 #if defined (MB1) || defined (MB2)
-/* ********************************************************************* */
-/* */
-/* mon_init: */
-/* This procedure will check a DMON flag in memory to */
-/* find the entry point to sq$init_monitor and call it. */
-/* */
-/* The steps performed are: */
-/* 1) Look at the start of the table to see if */
-/* the characters "JBT" are there.  If so, */
-/* this is DMON and we can call sq$mon_init. */
-/* If not, exit, we cannot use the monitor. */
-/* */
-/* 2) Load gdtr and idtr with the physical addresses */
-/* of the descriptor tables.  These addresses are not */
-/* the same as the linear addresses we will use, but */
-/* must be the physical addresses so that DMON can */
-/* find the tables. */
-/* ********************************************************************* */
+#* ********************************************************************* */
+#* */
+#* mon_init: */
+#* This procedure will check a DMON flag in memory to */
+#* find the entry point to sq$init_monitor and call it. */
+#* */
+#* The steps performed are: */
+#* 1) Look at the start of the table to see if */
+#* the characters "JBT" are there.  If so, */
+#* this is DMON and we can call sq$mon_init. */
+#* If not, exit, we cannot use the monitor. */
+#* */
+#* 2) Load gdtr and idtr with the physical addresses */
+#* of the descriptor tables.  These addresses are not */
+#* the same as the linear addresses we will use, but */
+#* must be the physical addresses so that DMON can */
+#* find the tables. */
+#* ********************************************************************* */
 mon_init:
-	data16
+	.byte	0x66
 	movl	$JBTLOC, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	movw	(%ebx), %ax
 	andw	$0xffff, %ax
 	.value	0x00ff
 
-	data16
+	.byte	0x66
 	cmpl    $0x0054424a, %eax
 	jne	no_monitor
 
@@ -584,245 +584,245 @@ mon_init:
 	popl    %es
 	movw	%bx, %cx
 
-/* Load IDTR and GDTR with the physical addresses of the tables. */
-	data16
+#* Load IDTR and GDTR with the physical addresses of the tables. */
+	.byte	0x66
 	movl	$RIgdtdscr, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	movw	2(%ebx), %ax
-	data16
+	.byte	0x66
 	call	R_Virt_to_Phys
-	addr16
+	.byte	0x67
 	movw	%ax, 2(%ebx)
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	lgdt	(%ebx)
 
-/* *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** */
-/* */
-/* Do not try to single step past this point!!!! */
-/* use a 'go till' command!!!! */
-/* See if the user wants to use DMON on user processes. */
-	data16
+#* *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** NOTICE *** */
+#* */
+#* Do not try to single step past this point!!!! */
+#* use a 'go till' command!!!! */
+#* See if the user wants to use DMON on user processes. */
+	.byte	0x66
 	movl	$Rusermon, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	testb	$0xff, (%ebx)
 	jz	normal_mon
 
-	data16
+	.byte	0x66
 	movl	$RIidtdscr, %eax
-	data16
+	.byte	0x66
 	movl	$idt, %edi
 	jmp	chose_mon
 
 normal_mon:
-	data16
+	.byte	0x66
 	movl	$RMidtdscr, %eax
-	data16
+	.byte	0x66
 	movl	$monidt, %edi
 
 chose_mon:
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	movw	2(%ebx), %ax
-	data16
+	.byte	0x66
 	call	R_Virt_to_Phys
-	addr16
+	.byte	0x67
 	movw	%ax, 2(%ebx)
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	lidt	(%ebx)
 
-/* Let the monitor initialize its vectors. */
-/* .byte	0x9A */
-/* .value	0x341 */
-/* .value	0x80 */
+#* Let the monitor initialize its vectors. */
+#* .byte	0x9A */
+#* .value	0x341 */
+#* .value	0x80 */
 	movl	%ecx, %ebx
 	.byte	0x26		# Use es
 	.byte	0xff
 	.byte	0x5f
 	.byte	0x18
-/* call	%es:24(%cx) */
+#* call	%es:24(%cx) */
 
-	data16
+	.byte	0x66
 	movl	$R0idtdscr, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
-	data16
+	.byte	0x67
+	.byte	0x66
 	lidt	(%ebx)
 
-/* Since we do not want DMON to use 0 linear for its data segment, */
-/* we must reset the base of gdt[3] to the linear area we have mapped */
-/* to 0 physical. */
-	data16
+#* Since we do not want DMON to use 0 linear for its data segment, */
+#* we must reset the base of gdt[3] to the linear area we have mapped */
+#* to 0 physical. */
+	.byte	0x66
 	movl	$gdt, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	movw	26(%ebx), %ax
-	data16
+	.byte	0x66
 	call	R_Virt_to_Phys
 	movw	%ax, %cx
 	xorw	%ax, %ax
-	addr16
+	.byte	0x67
 	movb	31(%ebx), %al
 	shlw	$24, %ax
 	orw	%cx, %ax
 	addw	$0x0000, %ax
 	.value	0xFFF7
-	addr16
+	.byte	0x67
 	movl	%eax, 26(%ebx)
 	shrw	$16, %ax
-	addr16
+	.byte	0x67
 	movb	%ah, 31(%ebx)
-	addr16
+	.byte	0x67
 	movb	%al, 28(%ebx)
 
-/* Now, grab the selector and offset out of interrupt 1 and 3 */
-/* We will store them so the interrupt handlers can access them */
-/* at will. */
+#* Now, grab the selector and offset out of interrupt 1 and 3 */
+#* We will store them so the interrupt handlers can access them */
+#* at will. */
 	movw	%di, %ax	# We loaded edi before the first lidt
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 	pushl	%ds
 	popl	%es
 	movw	%bx, %di
 
-	data16
+	.byte	0x66
 	movl	$mon1sel, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	movl	%es:10(%edi), %eax
-	addr16
+	.byte	0x67
 	movl	%eax, (%ebx)
 
-	data16
+	.byte	0x66
 	movl	$mon1off, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%es:8(%edi), %eax
-	addr16
+	.byte	0x67
 	movl	%eax, (%ebx)
-	addr16
+	.byte	0x67
 	movl	%es:14(%edi), %eax
-	addr16
+	.byte	0x67
 	movl	%eax, 2(%ebx)
 
-	data16
+	.byte	0x66
 	movl	$mon3sel, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
 
-	addr16
+	.byte	0x67
 	movl	%es:26(%edi), %eax
-	addr16
+	.byte	0x67
 	movl	%eax, (%ebx)
 
-	data16
+	.byte	0x66
 	movl	$mon3off, %eax
-	data16
+	.byte	0x66
 	call	R_Set_Addr
-	addr16
+	.byte	0x67
 	movl	%es:24(%edi), %eax
-	addr16
+	.byte	0x67
 	movl	%eax, (%ebx)
-	addr16
+	.byte	0x67
 	movl	%es:30(%edi), %eax
-	addr16
+	.byte	0x67
 	movl	%eax, 2(%ebx)
 
 no_monitor:
-	data16
+	.byte	0x66
 	ret
-#endif /* MB1 */
+#endif
 
-/* ********************************************************************* */
-/* */
-/* R_Virt_to_Phys: */
-/* This procedure takes a 32 bit virtual address and */
-/* converts it to a linear physical address by looking */
-/* it up in the kernel page table. */
-/* */
-/* Input: */
-/* %eax -- virtual address. */
-/* */
-/* Output: */
-/* %eax -- physical address. */
-/* */
-/* ********************************************************************* */
+#* ********************************************************************* */
+#* */
+#* R_Virt_to_Phys: */
+#* This procedure takes a 32 bit virtual address and */
+#* converts it to a linear physical address by looking */
+#* it up in the kernel page table. */
+#* */
+#* Input: */
+#* %eax -- virtual address. */
+#* */
+#* Output: */
+#* %eax -- physical address. */
+#* */
+#* ********************************************************************* */
 R_Virt_to_Phys:
-	data16
+	.byte	0x66
 	pushl	%ebx
-	data16
+	.byte	0x66
 	movl	%eax, %ebx		# Save virtual address in %ebx
-	data16
+	.byte	0x66
 	subl	$KVSBASE, %eax		# If address is below KVSBASE,
 	jb	vtop_done		#   assume it's physical
 
-	data16
+	.byte	0x66
 	shrl	$12-2, %eax		# Convert to page table offset
-	data16
+	.byte	0x66
 	andl	$0xffc, %eax
 
-	data16
-	addr16
+	.byte	0x66
+	.byte	0x67
 	movl	%fs:KPTBL_LOC(%eax), %eax  # Get physical page address
-	data16
+	.byte	0x66
 	andl	$0xfffff000, %eax
 
-	data16
+	.byte	0x66
 	andl	$0xfff, %ebx		# Get virtual page offset
 
-	data16
+	.byte	0x66
 	addl	%eax, %ebx		# Compute final virtual address
 
 vtop_done:
-	data16
+	.byte	0x66
 	movl	%ebx, %eax
-	data16
+	.byte	0x66
 	popl	%ebx
-	data16
+	.byte	0x66
 	ret
 
-/* ********************************************************************* */
-/* */
-/* R_Set_Addr: */
-/* This procedure takes a 32 bit address and sets up ds:bx */
-/* from it.  In the process, it will cut it down into */
-/* the first megabyte. */
-/* */
-/* Input: */
-/* %eax -- 32-bit physical address. */
-/* */
-/* Output: */
-/* %ds:%ebx -- real-mode address. */
-/* [ %eax not preserved ] */
-/* */
-/* ********************************************************************* */
+#* ********************************************************************* */
+#* */
+#* R_Set_Addr: */
+#* This procedure takes a 32 bit address and sets up ds:bx */
+#* from it.  In the process, it will cut it down into */
+#* the first megabyte. */
+#* */
+#* Input: */
+#* %eax -- 32-bit physical address. */
+#* */
+#* Output: */
+#* %ds:%ebx -- real-mode address. */
+#* [ %eax not preserved ] */
+#* */
+#* ********************************************************************* */
 R_Set_Addr:
-	data16
+	.byte	0x66
 	call	R_Virt_to_Phys	# Convert to a physical (linear) address.
 	movw	%ax, %bx	# Remember the addr for the offset portion.
 	shrw	$4, %ax		# Turn the address into a real mode selector.
 	movw	%ax, %ds
 
-	data16
+	.byte	0x66
 	andl	$0xF, %ebx	# Now the offset portion
 
-	data16
+	.byte	0x66
 	ret
