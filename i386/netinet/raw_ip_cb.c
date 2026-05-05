@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/systm.h>

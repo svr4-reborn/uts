@@ -60,7 +60,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -84,7 +84,7 @@
 #include <netinet/ip_var.h>
 #ifdef SYSV
 #include <sys/cmn_err.h>
-#endif SYSV
+#endif /* SYSV */
 #include <sys/kmem.h>
 
 #define ipdevnum(q) (((struct ip_pcb *) ((q)->q_ptr)) - ip_pcb)
@@ -134,6 +134,9 @@ extern int ipcnt;
 extern int ipprovcnt;
 
 static int	ipversprinted;
+
+/* local function forward declarations */
+static void ifconf(queue_t *q, mblk_t *bp);
 
 /* ARGSUSED */
 ipopen(q, dev, flag, sflag)
@@ -208,7 +211,7 @@ ipclose(q)
 		cmn_err(CE_WARN, "ipclose: null q_qptr");
 #else
 		printf ("ipclose: null q_qptr");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	((struct ip_pcb *) (q->q_ptr))->ip_state &= ~IPOPEN;
@@ -513,10 +516,8 @@ ipioctl(q, bp)
 	}
 }
 
-static
-ifconf(q, bp)
-	queue_t        *q;
-	mblk_t         *bp;
+static void
+ifconf(queue_t *q, mblk_t *bp)
 {
 	struct iocblk  *ioc = (struct iocblk *) bp->b_rptr;
 	register struct ifreq *ifr;
@@ -698,7 +699,7 @@ iplrput(q, bp)
 		printf (
 		    "IP: Fatal error (%d) on interface %s, marking down.\n",
 		    (int) *bp->b_rptr, prov->name);
-#endif SYSV
+#endif /* SYSV */
 		freemsg(bp);
 		break;
 	}
@@ -774,4 +775,4 @@ strlog (mid, sid, level, flags, fmt, a0, a1, a2, a3, a4, a5, a6,a7, a8, a9)
 		printf ("\n");
 	}
 }
-#endif SYSV
+#endif /* SYSV */

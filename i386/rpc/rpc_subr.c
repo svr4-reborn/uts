@@ -71,5 +71,5 @@ struct vnode *vp;
 			RPCLOG(1, "poptimod: I_POP strioctl error %d\n", error);
 	}
 }
-#endif _KERNEL
+#endif /* _KERNEL */
 		

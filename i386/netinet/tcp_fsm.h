@@ -86,7 +86,7 @@
 					    ))
 #else
 #define	TCPS_HAVERCVDFIN(s)	((s) >= TCPS_TIME_WAIT)
-#endif STRNET
+#endif /* STRNET */
 
 #ifdef	TCPOUTFLAGS
 /*

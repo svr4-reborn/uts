@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -69,7 +69,7 @@
 #else
 #include <nettli/tihdr.h>
 #include <nettli/tiuser.h>
-#endif SYSV
+#endif /* SYSV */
 #include <netinet/nihdr.h>
 #include <sys/socket.h>
 #include <sys/socketvar.h>
@@ -212,8 +212,8 @@ rip_output(q, bp0)
 	/*
 	 * Fill in IP header as needed.
 	 */
-	ip = (struct ip *) bp0->b_rptr =
-		(struct ip *) (bp0->b_datap->db_lim - sizeof(struct ip));
+	ip = (struct ip *) (bp0->b_datap->db_lim - sizeof(struct ip));
+	bp0->b_rptr = (unsigned char *) ip;
 	bp0->b_wptr = bp0->b_datap->db_lim;
 	bp0->b_cont = bp;
 	bp = bp0;

@@ -85,7 +85,7 @@ struct	arphdr {
 	u_char	ar_spa[];	/* sender protocol address */
 	u_char	ar_tha[];	/* target hardware address */
 	u_char	ar_tpa[];	/* target protocol address */
-#endif	notdef
+#endif	/* notdef */
 };
 
 /*

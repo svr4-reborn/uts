@@ -53,7 +53,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -89,7 +89,7 @@
 #ifdef SYSV
 #include <sys/cmn_err.h>
 #endif
-#endif SYSV
+#endif /* SYSV */
 
 /*
  * Initial options. 

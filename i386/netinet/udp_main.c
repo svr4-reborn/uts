@@ -60,7 +60,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -83,7 +83,7 @@
 #else
 #include <nettli/tiuser.h>
 #include <nettli/tihdr.h>
-#endif SYSV
+#endif /* SYSV */
 #include <sys/timod.h>
 #include <netinet/nihdr.h>
 #include <sys/socket.h>
@@ -212,7 +212,7 @@ udpopen(q, dev, flag, sflag)
 	if (suser(u.u_cred) != 0) {
 #else
 	if (suser() != 0) {
-#endif SYSV
+#endif /* SYSV */
 		inp->inp_state |= SS_PRIV;
 	} else {
 		setuerror(0);

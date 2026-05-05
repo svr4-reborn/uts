@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -84,7 +84,7 @@
 #include <sys/proc.h>
 #include <sys/user.h>
 #include <sys/cmn_err.h>
-#endif SYSV
+#endif /* SYSV */
 #include <netinet/nihdr.h>
 #ifdef SYSV
 #include <sys/tiuser.h>
@@ -92,7 +92,7 @@
 #else
 #include <nettli/tiuser.h>
 #include <nettli/tihdr.h>
-#endif SYSV
+#endif /* SYSV */
 #include <netinet/ip_str.h>
 #include <netinet/ip_var.h>
 #include <netinet/tcp.h>
@@ -235,7 +235,7 @@ icmpopen(q, dev, flag, sflag)
 	if (suser(u.u_cred) != 0) {
 #else
 	if (suser() != 0) {
-#endif SYSV
+#endif /* SYSV */
 		inp->inp_state |= SS_PRIV;
 	} else {
 		setuerror(0);
@@ -846,7 +846,7 @@ icmp_error(oip, type, code, q, dest)
 			type, ICMP_MAXTYPE);
 #else
 		panic ("icmp_error");
-#endif SYSV
+#endif /* SYSV */
 	icmpstat.icps_outhist[type]++;
 	icp->icmp_type = type;
 	if (type == ICMP_REDIRECT)

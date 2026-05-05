@@ -426,7 +426,7 @@ prfastmapin(p, addr, writing)
 		splx(s);
 		return(NULL);
 	}
-	retval = phystokv(ctob(ptp->pgm.pg_pfn) + PAGOFF(addr));
+	retval = (paddr_t)phystokv(ctob(ptp->pgm.pg_pfn) + PAGOFF(addr));
 	ASSERT(page_numtopp(ptp->pgm.pg_pfn));
 	PAGE_HOLD(page_numtopp(ptp->pgm.pg_pfn));
 done:

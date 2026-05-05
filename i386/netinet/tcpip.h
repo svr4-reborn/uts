@@ -64,7 +64,7 @@ struct tcpiphdr {
 #define ti_mblk		ti_i.ih_mblk
 #else
 #define	ti_prev		ti_i.ih_prev
-#endif STRNET
+#endif /* STRNET */
 #define	ti_x1		ti_i.ih_x1
 #define	ti_pr		ti_i.ih_pr
 #define	ti_len		ti_i.ih_len

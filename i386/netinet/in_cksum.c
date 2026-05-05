@@ -54,14 +54,14 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/stream.h>
 #include <netinet/in.h>
 #ifdef SYSV
 #include <sys/cmn_err.h>
-#endif SYSV
+#endif /* SYSV */
 
 in_cksum(mp, len)
 	mblk_t         *mp;
@@ -122,7 +122,7 @@ in_cksum(mp, len)
 #else
 		printf ("in_cksum: message block not long enough for cksum");
 		panic ("in_cksum");
-#endif SYSV
+#endif /* SYSV */
 	}
 	if (fswap)
 		sum = ((sum & 0xff) << 8) | sum >> 8;

@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -64,7 +64,7 @@
 #include <sys/errno.h>
 #ifdef SYSV
 #include <sys/cmn_err.h>
-#endif SYSV
+#endif /* SYSV */
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/protosw.h>
@@ -494,7 +494,7 @@ dup_range(bp, off, len)
 			cmn_err(CE_PANIC, "dup_range");
 #else
 			panic ("dup_range");
-#endif SYSV
+#endif /* SYSV */
 		}
 	}
 	while (len) {
@@ -518,7 +518,7 @@ dup_range(bp, off, len)
 			cmn_err(CE_PANIC, "dup_range 2");
 #else
 			panic ("dup_range 2");
-#endif SYSV
+#endif /* SYSV */
 		}
 	}
 	return (head);

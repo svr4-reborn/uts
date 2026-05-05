@@ -158,7 +158,7 @@ struct	arptab {
 	mblk_t	*at_hold;	/* last packet until resolved/timeout */
 #else
 	struct	mbuf *at_hold;	/* last packet until resolved/timeout */
-#endif STRNET
+#endif /* STRNET */
 };
 
 # define at_enaddr at_union.atu_enaddr

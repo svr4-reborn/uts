@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -88,7 +88,7 @@
 #else
 #include <nettli/tiuser.h>
 #include <nettli/tihdr.h>
-#endif SYSV
+#endif /* SYSV */
 #include <netinet/ip_str.h>
 
 /*extern void     bcopy();*/
@@ -161,7 +161,7 @@ ripopen(q, dev, flag, sflag)
 	if (!suser(u.u_cred)) {
 #else
 	if (!suser()) {
-#endif SYSV
+#endif /* SYSV */
 		setuerror(EACCES);
 		return (OPENFAIL);
 	}

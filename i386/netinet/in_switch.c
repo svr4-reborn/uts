@@ -58,7 +58,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -73,7 +73,7 @@
 #include <sys/errno.h>
 #ifdef SYSV
 #include <sys/cmn_err.h>
-#endif SYSV
+#endif /* SYSV */
 
 #include <sys/stream.h>
 #include <sys/stropts.h>
@@ -150,7 +150,7 @@ rtswitch(ro, flags)
 			printf ("rtswitch recursion, dest %x gateway %x\n",
 				satosin(&rt->rt_dst)->sin_addr.s_addr, 
 				satosin(&rt->rt_gateway)->sin_addr.s_addr);
-#endif SYSV
+#endif /* SYSV */
 			ro->ro_rt = 0;
 			return (RT_FAIL);
 		}
@@ -195,7 +195,7 @@ rtswitch(ro, flags)
 #else
 			printf ("rtswitch: bad state %x\n",
 				rt->rt_flags);
-#endif SYSV
+#endif /* SYSV */
 			ro->ro_rt = 0;
 			return (RT_FAIL);
 		}
@@ -226,7 +226,7 @@ rtswitch(ro, flags)
 		cmn_err(CE_WARN, "rtswitch: bad state %x\n", rt->rt_flags);
 #else
 		printf ("rtswitch: bad state %x\n", rt->rt_flags);
-#endif SYSV
+#endif /* SYSV */
 		ro->ro_rt = 0;
 		return (RT_FAIL);
 	}
@@ -253,7 +253,7 @@ rtunswitch(rt)
 		cmn_err(CE_WARN, "rtunswitch: bad state %x\n", rt->rt_flags);
 #else
 		printf ("rtunswitch: bad state %x\n", rt->rt_flags);
-#endif SYSV
+#endif /* SYSV */
 		break;
 	}
 }
@@ -355,7 +355,7 @@ sldocall(addr)
 		cmn_err(CE_WARN, "switched slip: dropping request\n");
 #else
 		printf ("switched slip: dropping request\n");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	if ((m = allocb(sizeof(struct sockaddr_in), BPRI_MED)) == NULL) {
@@ -364,7 +364,7 @@ sldocall(addr)
 		cmn_err(CE_WARN, "switched slip: no space\n");
 #else
 		printf ("switched slip: no space\n");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	m->b_wptr += sizeof(struct sockaddr_in);
@@ -391,7 +391,7 @@ slhangup(rt)
 		cmn_err(CE_WARN, "rtunswitch: null pointer");
 #else
 		printf ("rtunswitch: null pointer");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	putnext(rt->rt_prov->qbot, rt->rt_prov->unswitch);
@@ -535,7 +535,7 @@ sldefer(routine, a0, a1, a2, a3, a4, a5, a6, a7)
 		cmn_err(CE_WARN, "switched slip: dropping deferral\n");
 #else
 		printf ("switched slip: dropping deferral\n");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	if ((m = allocb(sizeof(struct defstruct), BPRI_MED)) == NULL) {
@@ -543,7 +543,7 @@ sldefer(routine, a0, a1, a2, a3, a4, a5, a6, a7)
 		cmn_err(CE_WARN, "switched slip: no space\n");
 #else
 		printf ("switched slip: no space\n");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	m->b_wptr += sizeof(struct defstruct);
@@ -626,7 +626,7 @@ caddr_t         arg;
 		cmn_err(CE_WARN, "switched slip: dropping timeout\n");
 #else
 		printf ("switched slip: dropping timeout\n");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	if ((m = allocb(sizeof(struct slevent), BPRI_MED)) == NULL) {
@@ -635,7 +635,7 @@ caddr_t         arg;
 		cmn_err(CE_WARN, "switched slip: no space\n");
 #else
 		printf ("switched slip: no space\n");
-#endif SYSV
+#endif /* SYSV */
 		return;
 	}
 	m->b_wptr += sizeof *sep;

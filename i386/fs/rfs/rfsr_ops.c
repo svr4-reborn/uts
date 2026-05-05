@@ -2085,7 +2085,7 @@ rfsr_ustat(stp, ctrlp)
 			*cp2 = '\0';
 		}
 	}
-	while (cp++ != '\0' && i < sizeof(statvfs.f_fstr) - 
+	while (*cp++ != '\0' && i < sizeof(statvfs.f_fstr) - 
 	  sizeof(usp->f_fpack)) {
 		i++;
 	}

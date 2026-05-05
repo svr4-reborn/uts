@@ -137,7 +137,6 @@ enum nfsftype {
  * This struct is only used to find the size of the data field in the
  * fhandle structure below.
  */
-static
 struct fhsize {
 	fsid_t	f1;
 	u_short	f2;

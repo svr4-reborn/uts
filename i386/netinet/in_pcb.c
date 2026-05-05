@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -66,10 +66,10 @@
 #ifdef SYSV
 #include <sys/tihdr.h>
 #include <sys/tiuser.h>
-#else SYSV
+#else /* SYSV */
 #include <sys/nettli/tihdr.h>
 #include <sys/nettli/tiuser.h>
-#endif SYSV
+#endif /* SYSV */
 #include <sys/socket.h>
 #include <sys/socketvar.h>
 #include <sys/sockio.h>

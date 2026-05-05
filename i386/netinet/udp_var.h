@@ -65,7 +65,7 @@ struct	udpiphdr {
 #define ui_mblk		ui_i.ih_mblk
 #else
 #define	ui_prev		ui_i.ih_prev
-#endif STRNET
+#endif /* STRNET */
 #define	ui_x1		ui_i.ih_x1
 #define	ui_pr		ui_i.ih_pr
 #define	ui_len		ui_i.ih_len

@@ -46,67 +46,36 @@
 
 #elif defined(i386)
 
-/*
- *	unsigned long htonl( hl )
- *	long hl;
- *	reverses the byte order of 'long hl'
- */
-
-asm unsigned long htonl( hl )
+static unsigned long
+htonl(hl)
+	unsigned long hl;
 {
-%mem	hl;	
-	movl	hl, %eax
-	xchgb	%ah, %al
-	rorl	$16, %eax
-	xchgb	%ah, %al
-	clc
+	return ((hl & 0x000000ffUL) << 24)
+		| ((hl & 0x0000ff00UL) << 8)
+		| ((hl & 0x00ff0000UL) >> 8)
+		| ((hl & 0xff000000UL) >> 24);
 }
 
-/*
- *	unsigned long ntohl( nl )
- *	unsigned long nl;
- *	reverses the byte order of 'ulong nl'
- */
-
-asm unsigned long ntohl( nl )
+static unsigned long
+ntohl(nl)
+	unsigned long nl;
 {
-%mem	nl;
-	movl	nl, %eax
-	xchgb	%ah, %al
-	rorl	$16, %eax
-	xchgb	%ah, %al
-	clc
+	return htonl(nl);
 }
 
-/*
- *	unsigned short htons( hs )
- *	short hs;
- *
- *	reverses the byte order in hs.
- */
-
-asm unsigned short htons( hs )
+static unsigned short
+htons(hs)
+	unsigned short hs;
 {
-%mem	hs;
-	movl	hs, %eax
-	xchgb	%ah, %al
-	clc
+	return (unsigned short)(((hs & 0x00ffU) << 8)
+		| ((hs & 0xff00U) >> 8));
 }
 
-/*
- *	unsigned short ntohs( ns )
- *	unsigned short ns;
- *
- *	reverses the bytes in ns.
- */
-
-
-asm unsigned short ntohs( ns )
+static unsigned short
+ntohs(ns)
+	unsigned short ns;
 {
-%mem	ns;
-	movl	ns, %eax
-	xchgb	%ah, %al
-	clc
+	return htons(ns);
 }
 
 #elif !defined(ntohl)  /* little-endian, not i386 */

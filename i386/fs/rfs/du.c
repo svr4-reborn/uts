@@ -2440,7 +2440,7 @@ du_fs_to_vfs(sfp, svp, vfsp)
 			*cp2 = '\0';
 		}
 	}
-	while (cp++ != '\0' && i < sizeof(svp->f_fstr) - 
+	while (*cp++ != '\0' && i < sizeof(svp->f_fstr) - 
 	  sizeof(sfp->f_fpack)) {
 		i++;
 	}
@@ -3814,7 +3814,7 @@ dusr_cstatfs(stp, vfsp, len, fstyp, csbp)
 				*cp2 = '\0';
 			}
 		}
-		while (cp++ != '\0' && i < sizeof(statvfs.f_fstr) - 
+		while (*cp++ != '\0' && i < sizeof(statvfs.f_fstr) - 
 		  sizeof(sbp->f_fpack)) {
 			i++;
 		}

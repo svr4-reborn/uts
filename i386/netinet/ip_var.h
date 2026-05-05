@@ -62,7 +62,7 @@ struct ipovly {
 	mblk_t *ih_mblk;
 #else
 	caddr_t ih_prev;
-#endif STRNET
+#endif /* STRNET */
 	u_char	ih_x1;			/* (unused) */
 	u_char	ih_pr;			/* protocol */
 	short	ih_len;			/* protocol length */
@@ -112,7 +112,7 @@ struct	ipasfrag {
 	mblk_t	*ipf_mblk;	/* The mblk header for this data */
 #else
 	struct	ipasfrag *ipf_prev;	/* previous fragment */
-#endif STRNET
+#endif /* STRNET */
 };
 
 #ifdef STRNET
@@ -121,7 +121,7 @@ struct	ipasfrag {
 #define IPHDR(ip) ((struct ip *) (ip))
 #define IPASFRAG(ip) ((struct ipasfrag *) (ip))
 
-#endif STRNET
+#endif /* STRNET */
 
 
 /*
@@ -166,6 +166,6 @@ u_short	ip_id;				/* ip packet ctr, for ids */
 mblk_t	*ip_srcroute();
 #else
 struct	mbuf *ip_srcroute();
-#endif STRNET
+#endif /* STRNET */
 #endif
 #endif	/* _NETINET_IP_VAR_H */

@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -75,7 +75,7 @@
 #include <net/route.h>
 #ifdef SYSV
 #include <sys/cmn_err.h>
-#endif SYSV
+#endif /* SYSV */
 
 #include <netinet/ip_str.h>
 

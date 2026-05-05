@@ -158,7 +158,7 @@ typedef struct prpsinfo {
 #define	pr_ttydev	pr_ottydev
 #endif	
 
-#define	PRNODEV	(dev_t)(-1)	/* non-existent device */
+#define	PRNODEV	-1	/* non-existent device */
 
 /* Optional actions to take when process continues */
 

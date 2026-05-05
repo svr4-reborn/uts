@@ -42,7 +42,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -67,7 +67,7 @@
 #include <netinet/in_pcb.h>
 #ifdef SYSV
 #include <sys/cmn_err.h>
-#endif SYSV
+#endif /* SYSV */
 #include <sys/kmem.h>
 #include <sys/timod.h>
 

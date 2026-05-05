@@ -54,7 +54,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -605,7 +605,7 @@ ip_slowtimo()
 		}
 	}
 newtimer:
-	iptimerid = timeout(ip_slowtimo, (caddr_t) 0, HZ / 2);
+	iptimerid = timeout((void (*)())ip_slowtimo, (caddr_t) 0, HZ / 2);
 }
 
 /*
@@ -930,7 +930,7 @@ ip_stripoptions(bp, moptbp)
 		 */
 
 		if (moptbp->b_wptr == moptbp->b_rptr) {
-			bcopy(&ip->ip_dst, moptbp->b_wptr, sizeof(struct in_addr));
+			bcopy((caddr_t)&ip->ip_dst, (caddr_t)moptbp->b_wptr, sizeof(struct in_addr));
 			moptbp->b_wptr += sizeof(struct in_addr);
 		}
 

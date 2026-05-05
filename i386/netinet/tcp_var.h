@@ -82,11 +82,11 @@ struct tcpcb {
 #define TF_NEEDIN       0x40
 #define TF_NEEDOUT      0x80
 #define	TF_NEEDTIMER	0x0100
-#endif STRNET
+#endif /* STRNET */
 	struct	tcpiphdr *t_template;	/* skeletal packet for transmit */
 #ifdef STRNET
         mblk_t	*t_tmplhdr;		/* template back-pointer for dealloc */
-#endif STRNET
+#endif /* STRNET */
 	struct	inpcb *t_inpcb;		/* back pointer to internet pcb */
 /*
  * The following fields are used as in the protocol specification.
@@ -161,7 +161,7 @@ struct tcpcb {
 	int	t_iqurp;		/* offset of urgent byte on input q */
 	mblk_t	*t_inq;			/* pending input */
 	short	t_linger;		/* linger flag */
-#endif STRNET
+#endif /* STRNET */
 };
 
 #define	intotcpcb(ip)	((struct tcpcb *)(ip)->inp_ppcb)
@@ -169,7 +169,7 @@ struct tcpcb {
 #define qtotcpcb(q) ((struct tcpcb *) ((struct inpcb *) (q)->q_ptr)->inp_ppcb)
 #else
 #define	sototcpcb(so)	(intotcpcb(sotoinpcb(so)))
-#endif STRNET
+#endif /* STRNET */
 
 /*
  * TCP statistics.
@@ -237,8 +237,8 @@ char	*tli_primitives[] = {"CONNECT", "ACCEPT", "DISCONNECT", "DATA",
 			     "EX_DATA", "INFORMATION", "BIND", "UNBIND",
 			     "UNITDATA", "OPTIONS", "ORDERLY RELEASE",
 			     };
-#endif TLI_PRIMS
-#endif STRNET
+#endif /* TLI_PRIMS */
+#endif /* STRNET */
 
 #ifdef _KERNEL
 extern struct	inpcb tcb;		/* head of queue of active tcpcb's */

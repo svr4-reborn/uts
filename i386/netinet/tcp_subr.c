@@ -53,7 +53,7 @@
 
 #ifdef INET
 #include <netinet/symredef.h>
-#endif INET
+#endif /* INET */
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -70,13 +70,13 @@
 #include <sys/tihdr.h>
 #else
 #include <nettli/tihdr.h>
-#endif SYSV
+#endif /* SYSV */
 #include <netinet/nihdr.h>
 #ifdef SYSV
 #ifdef SYSV
 #include <sys/cmn_err.h>
 #endif
-#endif SYSV
+#endif /* SYSV */
 
 #include <netinet/in.h>
 #include <netinet/in_var.h>
