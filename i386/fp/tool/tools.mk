@@ -9,6 +9,7 @@
 
 #ident	"@(#)kern-fp:tool/tools.mk	1.1"
 
+SETFILTER_SCRIPT = ../../../../tools/legacy_setfilter.py
 
 all:  setfilter
 
@@ -19,7 +20,8 @@ clobber: clean
 	-/bin/rm setfilter
 
 setfilter: setfilter.c
-	cc -O -s -I${INCRT} -o setfilter setfilter.c
+	cp ${SETFILTER_SCRIPT} setfilter
+	chmod 755 setfilter
 
 install:
 

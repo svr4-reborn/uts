@@ -15,6 +15,8 @@
 
 #ident	"@(#)boot:boot/at386/tool/tools.mk	1.1.2.1"
 
+RMHDR_SCRIPT = ../../../../../tools/boot_rmhdr.py
+SETFILTER_SCRIPT = ../../../../../tools/legacy_setfilter.py
 
 all:  rmhdr setfilter
 
@@ -27,12 +29,12 @@ clobber: clean
 	-/bin/rm setfilter
 
 rmhdr:
-	PATH=/usr/ccs/bin:/bin:${PATH} \
-		cc -O -s -I${INCRT} -o rmhdr rmhdr.c
+	cp ${RMHDR_SCRIPT} rmhdr
+	chmod 755 rmhdr
 
 setfilter:
-	PATH=/usr/ccs/bin:/bin:${PATH} \
-		cc -O -s -I${INCRT} -o setfilter setfilter.c
+	cp ${SETFILTER_SCRIPT} setfilter
+	chmod 755 setfilter
 
 install:
 
