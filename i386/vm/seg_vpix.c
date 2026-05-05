@@ -1370,6 +1370,9 @@ segvpix_modscan(seg, vpage, npages)
 
 #else	/* VPIX */
 
+#include "sys/types.h"
+#include "sys/errno.h"
+
 int
 segvpix_create(seg, argsp)
 	struct seg *seg;

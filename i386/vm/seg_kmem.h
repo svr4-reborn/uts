@@ -58,7 +58,7 @@ extern void sptfree(caddr_t, int, int);
  * For segkmem_create, the argsp is actually a pointer to the
  * optional array of pte's used to map the given segment.
  */
-extern int segkmem_create(struct seg *, void *);
+extern int segkmem_create(struct seg *, caddr_t);
 
 extern caddr_t kseg(int);
 extern void unkseg(caddr_t);

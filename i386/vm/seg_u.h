@@ -132,7 +132,7 @@ extern struct seg	*segu;
  * Public routine declarations not part of the segment ops vector go here.
  */
 #if defined(__STDC__)
-extern int segu_create(struct seg *, void *);
+extern int segu_create(struct seg *, caddr_t);
 extern addr_t segu_get(struct proc *, int);
 extern void segu_release(struct proc *);
 #else

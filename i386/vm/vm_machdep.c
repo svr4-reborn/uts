@@ -225,29 +225,11 @@ findvaddr(p)
  *		     who had changed it should restore it. %ecx is not saved -
  *		     since it is a throw away register.
  */
-
-#if defined(lint)
-
-#define inlinecopy(src, dest, len)	bcopy(src, dest, len)
-
-#else
-int	asm
-inlinecopy(src, dest, len)
+inline void
+inlinecopy(caddr_t src, caddr_t dest, u_int len)
 {
-%mem	src, dest, len;
-	pushl	%esi
-	pushl	%edi
-	movl	src, %esi
-	movl	dest, %edi
-	movl	len, %ecx
-	shrl	$2, %ecx
-	repz
-	smovl
-	popl	%edi
-	popl	%esi
+	bcopy(src, dest, len);
 }
-
-#endif
 
 /*
  * Copy the data from the physical page represented by "frompp" to

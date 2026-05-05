@@ -93,12 +93,12 @@
 #include "vm/seg_u.h"
 
 #if defined(__STDC__)
-STATIC int segu_getslot(struct seg *, addr_t, u_int);
+static int segu_getslot(struct seg *, addr_t, u_int);
 #else
-STATIC int segu_getslot();
+static int segu_getslot();
 #endif
 
-STATIC int segu_debug = 0;		/* patchable for debugging */
+static int segu_debug = 0;		/* patchable for debugging */
 
 #define UPAGE_PROT	(PROT_READ | PROT_WRITE)
 
@@ -115,16 +115,16 @@ extern void	anon_decref();	/* XXX */
 
 extern char	runout;
 
-STATIC	faultcode_t segu_fault(/* seg, addr, type, rw */);
-STATIC	int segu_checkprot(/* seg, addr, len, prot */);
-STATIC	int segu_getprot(/* seg, addr, len, prot */);
-STATIC	off_t segu_getoffset(/* seg, addr */);
-STATIC	int segu_gettype(/* seg, addr */);
-STATIC	int segu_getvp(/* seg, addr, vpp */);
-STATIC	int segu_kluster(/* seg, addr, delta */);
-STATIC	void segu_badop();
+static faultcode_t segu_fault(/* seg, addr, type, rw */);
+static int segu_checkprot(/* seg, addr, len, prot */);
+static int segu_getprot(/* seg, addr, len, prot */);
+static off_t segu_getoffset(/* seg, addr */);
+static int segu_gettype(/* seg, addr */);
+static int segu_getvp(/* seg, addr, vpp */);
+static int segu_kluster(/* seg, addr, delta */);
+static void segu_badop();
 
-STATIC struct	seg_ops segu_ops = {
+static struct	seg_ops segu_ops = {
 	(int(*)())segu_badop,		/* dup */
 	(int(*)())segu_badop,		/* unmap */
 	segu_badop,			/* free */
@@ -145,15 +145,15 @@ STATIC struct	seg_ops segu_ops = {
 };
 
 #ifdef __STDC__
-STATIC int segu_softunload(struct seg *, addr_t, u_int, int, u_int);
-STATIC int segu_softload(struct seg *, addr_t, u_int, int, u_int);
+static int segu_softunload(struct seg *, addr_t, u_int, int, u_int);
+static int segu_softload(struct seg *, addr_t, u_int, int, u_int);
 #else
-STATIC int segu_softunload();
-STATIC int segu_softload();
+static int segu_softunload();
+static int segu_softload();
 #endif
 
 
-STATIC void
+static void
 segu_badop()
 {
 	cmn_err(CE_PANIC, "seg_badop");
@@ -167,7 +167,7 @@ segu_badop()
  * For seg_u we always "approve" of this action from our standpoint.
  */
 /* ARGSUSED */
-STATIC int
+static int
 segu_kluster(seg, addr, delta)
 	struct seg	*seg;
 	addr_t		addr;
@@ -374,7 +374,7 @@ ub_rele(p)
  * slots in the segu segment.
  */
 /* ARGSUSED */
-STATIC faultcode_t
+static faultcode_t
 segu_fault(seg, vaddr, len, type, rw)
 	struct seg	*seg;
 	addr_t		vaddr;
@@ -503,7 +503,7 @@ segu_fault(seg, vaddr, len, type, rw)
  * We let segu_getslot do all the dirty work.
  */
 /* ARGSUSED */
-STATIC int
+static int
 segu_checkprot(seg, vaddr, len, prot)
 	struct seg	*seg;
 	addr_t		vaddr;
@@ -868,7 +868,7 @@ segu_release(p)
  * within the mapped part of a single allocated slot.  If so, return
  * the slot's index; otherwise return -1.
  */
-STATIC int
+static int
 segu_getslot(seg, vaddr, len)
 	register struct seg	*seg;
 	addr_t			vaddr;
@@ -925,7 +925,7 @@ segu_getslot(seg, vaddr, len)
  * part of the slot given as argument and that the slot itself is
  * allocated.
  */
-STATIC int
+static int
 segu_softunload(seg, vaddr, len, slot, locked)
 	struct seg	*seg;
 	addr_t		vaddr;
@@ -965,7 +965,7 @@ segu_softunload(seg, vaddr, len, slot, locked)
  * within the mapped part of the slot given as argument and that the
  * slot itself is allocated.
  */
-STATIC int
+static int
 segu_softload(seg, vaddr, len, slot, lock)
 	struct seg	*seg;
 	addr_t		vaddr;
