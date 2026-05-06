@@ -164,6 +164,7 @@ newproc(cond, pidp, perror)
 	register proc_t *pp, *cp; 
 	register int n;
 	proc_t *cpp;
+	int procdup_result;
 	pid_t newpid;
 	file_t *fp;
 
@@ -335,14 +336,25 @@ newproc(cond, pidp, perror)
 	/*
 	 * Copy process.
 	 */
-	switch (procdup(cp, pp, (cond & (NP_VFORK|NP_SHARE)),
-				(cond & NP_SYSPROC))) {
+	procdup_result = procdup(cp, pp, (cond & (NP_VFORK|NP_SHARE)),
+				(cond & (NP_SYSPROC | NP_INIT)));
+	asm volatile ("" : "+r" (procdup_result) : : "memory");
+	switch (procdup_result) {
 	case 0:
+		/*
+		 * The child resumes here through resume(), not a normal C return.
+		 * Detect that path explicitly so modern compilers do not fold it into
+		 * the parent fallthrough when they analyze procdup().
+		 */
+		if (u.u_procp == cp)
+			goto child_return;
 		/* Successful copy */
 		break;
 	case -1:
 		if (!(cond & NP_FAILOK))
-			cmn_err(CE_PANIC, "newproc - fork failed\n");
+			cmn_err(CE_PANIC,
+			    "newproc - fork failed cond=%x pid=%d ppid=%d\n",
+			    cond, cp->p_pid, pp->p_pid);
 
 		/* Reset all incremented counts. */
 
@@ -397,25 +409,31 @@ newproc(cond, pidp, perror)
 			*pidp = -1;
 		return -1;
 	case 1:
-		/* Child resumes here */
-		if ((u.u_procp->p_flag & SPROCTR) == 0) {
-			/*
-			 * /proc tracing flags have not been
-			 * inherited; clear syscall flags.
-			 */
-			u.u_systrap = 0;
-			premptyset(&u.u_entrymask);
-			premptyset(&u.u_exitmask);
+	child_return:
+		{
+			proc_t *childp = u.u_procp;
+			proc_t *parentp = childp->p_parent;
+
+			/* Child resumes here */
+			if ((childp->p_flag & SPROCTR) == 0) {
+				/*
+				* /proc tracing flags have not been
+				* inherited; clear syscall flags.
+				*/
+				u.u_systrap = 0;
+				premptyset(&u.u_entrymask);
+				premptyset(&u.u_exitmask);
+			}
+			if (pidp)
+				*pidp = childp->p_ppid;
+
+			if (xsemfork())
+				return -1;
+			if (parentp->p_sdp)
+				*perror = xsdfork(childp, parentp);
+
+			return 1;
 		}
-		if (pidp)
-			*pidp = cp->p_ppid;
-
-		if (xsemfork())
-			return -1;
-		if (pp->p_sdp)
-			*perror = xsdfork(cp, pp);
-
-		return 1;
 	}
 
 	if (u.u_nshmseg)
