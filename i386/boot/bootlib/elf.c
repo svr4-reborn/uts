@@ -164,6 +164,7 @@ struct bootsect *bsect;
 						switch (elfphdr.p_flags &
 						       (PF_R | PF_W | PF_X)) {
 							case (PF_R | PF_W | PF_X):
+							case (PF_R | PF_W):
 								bsect_array[i].type = DLOAD;
 								break;
 							case (PF_R | PF_X):
