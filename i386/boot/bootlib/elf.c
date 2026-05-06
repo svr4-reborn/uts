@@ -142,6 +142,7 @@ struct bootsect *bsect;
 		
 				bsect_array[i].addr = coffsect.s_vaddr;
 				bsect_array[i].size = coffsect.s_size;
+				bsect_array[i].memsize = coffsect.s_size;
 				bsect_array[i].offset = coffsect.s_scnptr;
 			}
 			b_array_valid=TRUE;
@@ -182,6 +183,7 @@ struct bootsect *bsect;
 				}
 				bsect_array[i].addr = elfphdr.p_vaddr;
 				bsect_array[i].size = elfphdr.p_filesz;
+				bsect_array[i].memsize = elfphdr.p_memsz;
 				bsect_array[i].offset = elfphdr.p_offset;
 			}
 			b_array_valid=TRUE;
@@ -194,6 +196,7 @@ struct bootsect *bsect;
 	bsect->type=bsect_array[sec_cnt].type;
 	bsect->addr=bsect_array[sec_cnt].addr;
 	bsect->size=bsect_array[sec_cnt].size;
+	bsect->memsize=bsect_array[sec_cnt].memsize;
 	bsect->offset=bsect_array[sec_cnt].offset;
 	sec_cnt++;
 	return(0);

@@ -35,6 +35,18 @@ extern off_t disk_file_offset;
 #define RESERVED_SIZE	0x3000L
 #define DBUFSIZ	1024			/* used in scan_to() */
 
+static void
+zero_load_tail(addr, count)
+paddr_t addr;
+ulong count;
+{
+	char *target;
+
+	target = (char *)(addr - physaddr(0));
+	while (count--)
+		*target++ = 0;
+}
+
 /* standard error message; the 0L is the 'error' return code */
 #define ERROR(msg, arg)	(printf("\nboot: Cannot load %s: %s\n", arg, msg), 0L)
 
@@ -159,7 +171,7 @@ paddr_t	loadaddr;
 	/* if enforce, check for BKI version;  abort if BKI is wrong or absent */
 
 	for (bsect.size = 0, nsect = 0; nsect < bhdr.nsect; ) {
-		if (bsect.size == 0) {
+		if (bsect.memsize == 0) {
 			/* getsect returns with next sec/segment */
 			if (getsect (&bsect) == 0) {
 			scan_to(disk_file_offset, bsect.offset);
@@ -186,6 +198,10 @@ paddr_t	loadaddr;
 			break;
 		   case TLOAD:
 		   case DLOAD:
+			{
+			long read_size;
+			long zero_size;
+
 			foundload = TRUE;
 			/* calculate size of segment we have room to load */
 			if (enforce) {
@@ -196,17 +212,23 @@ paddr_t	loadaddr;
 					loadaddr = binfo.memavail[availseg].base;
 					endseg = loadaddr + binfo.memavail[availseg].extent;
 				}
-				if (size > bsect.size)
-					size = bsect.size;
+				if (size > bsect.memsize)
+					size = bsect.memsize;
 			} else
-				size = bsect.size;
+				size = bsect.memsize;
+
+			read_size = MIN(size, bsect.size);
+			zero_size = size - read_size;
 
 			/* load text or data, as much as we have room for */
 			/* loadaddr is already phys, bread will phyaddr again */
-				
-			BL_file_read(loadaddr-physaddr(0), ourDS, size, &actual, &status);
-			if (actual != size)
-				return (0); /* key pressed ! */
+			if (read_size > 0) {
+				BL_file_read(loadaddr-physaddr(0), ourDS, read_size, &actual, &status);
+				if (actual != read_size)
+					return (0); /* key pressed ! */
+			}
+			if (zero_size > 0)
+				zero_load_tail(loadaddr + read_size, zero_size);
 
 			debug(printf("loaded segment/section at %lx, extent %lx from x%lx\n", loadaddr, size, bsect.offset)); 
 			/* check if start address in this seg */
@@ -225,13 +247,20 @@ paddr_t	loadaddr;
 
 			loadaddr = ctob(btoc(loadaddr + size));
 
-			if ((bsect.size -= size) > 0) {
+			bsect.memsize -= size;
+			if (bsect.size > read_size)
+				bsect.size -= read_size;
+			else
+				bsect.size = 0;
+			if (bsect.memsize > 0) {
 				bsect.addr += size;
-				bsect.offset += size;
+				bsect.offset += read_size;
 			}
 			break;
+			}
 
 		   default:
+			bsect.memsize = 0;
 			bsect.size = 0;
 			break;
 		}
