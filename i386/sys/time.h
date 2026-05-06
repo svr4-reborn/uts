@@ -100,9 +100,6 @@ int adjtime(struct timeval *, struct timeval *);
 int getitimer(int, struct itimerval *);
 int setitimer(int, struct itimerval *, struct itimerval *);
 #endif /* __STDC__ */
-// #if !defined(_XOPEN_SOURCE)
-// #include <time.h>
-// #endif
 #endif /* _KERNEL */
 
 
