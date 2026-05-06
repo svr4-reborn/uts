@@ -446,6 +446,10 @@ k_trap(r0ptr)
 	 * is to display registers and panic.
 	 */
 	default:
+		if (vector == PGFLT)
+			cmn_err(CE_CONT,
+			    "Kernel page fault: cr2=%x eip=%x err=%x\n",
+			    _cr2(), r0ptr[EIP], r0ptr[ERR]);
 		snap(r0ptr,"PANIC");
 		cmn_err(CE_PANIC, "Kernel mode trap. Type 0x%x", vector);
 	}
