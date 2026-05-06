@@ -105,22 +105,28 @@ extern char	sbss[];		/* Start of kernel bss. */
 extern char	edata, end;
 
 extern ulong	egafontptr[5];
-unchar	*egafont_p[5] = { 0 };
+unchar	*egafont_p[5] __attribute__((section(".data"))) = { 0 };
 
 			/* Chunks of physical memory that are NOT used for 
 			 * kernel text and data.  We start allocating kernel
 			 * bss from memNOTused[], so eventually entries in
 			 * memNOTused[] actually refer to "used" memory.
 			 *
-			 * Note that memNOTused[] cannot be in bss.
+			 * Note that this startup state cannot be in bss,
+			 * because mlsetup() records it before the later bss clear.
 			 */
-struct	bootmem	memNOTused[B_MAXARGS + B_MAXARGS] = {0,0,0};
-unsigned		memNOTusedcnt = 0;
+struct	bootmem	memNOTused[B_MAXARGS + B_MAXARGS]
+	__attribute__((section(".data"))) = {0,0,0};
+unsigned		memNOTusedcnt __attribute__((section(".data"))) = 0;
 
-unsigned		memused_idx = 0;
+unsigned		memused_idx __attribute__((section(".data"))) = 0;
 unsigned		minkpclick;	  /* min click for kernel page pool */
 
-int			checksumOK = 0;	  /* flag for checksum */ 
+/*
+ * mlsetup() records these before the later kernel bss clear, so keep them
+ * out of bss alongside the other early-startup state.
+ */
+int			checksumOK __attribute__((section(".data"))) = 0;	  /* flag for checksum */ 
 
 /* This is handy for debugging changes to mlsetup() */
 #define CKPT(c)	{int i; short *vid = (short *)0xd00b809e; *vid = c+0x700; \
@@ -881,6 +887,13 @@ proc0_fail:
 #ifdef	STARTUP_DEBUG_1
 	dispstring("got seg_u for proc0 ");
 #endif
+
+	/*
+	 * seg_u can replace the page table backing &u, so refresh the common
+	 * usertable window from the live PDE before installing proc 0's PTEs.
+	 */
+	usertable = (pte_t *)phystokv(ctob(kpd0[ptnum(&u)].pgm.pg_pfn)) +
+		pnum(&u);
 
 	/* Copy the ublock page table into usertable, so we can use &u */
 	bcopy((caddr_t)pp->p_ubptbl, (caddr_t)usertable,
