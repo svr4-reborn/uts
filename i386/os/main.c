@@ -343,8 +343,10 @@ char	*argv[];
  		 * Make a text segment for icode
  		 */
 
- 		(void) as_map(p->p_as, UVTEXT,
- 		    szicode, segvn_create, zfod_argsp);
+		error = as_map(p->p_as, UVTEXT,
+		    szicode, segvn_create, zfod_argsp);
+		if (error != 0)
+			cmn_err(CE_PANIC, "main - as_map of icode failed %d", error);
 
  		if (copyout((caddr_t)icode, (caddr_t)(UVTEXT), szicode))
 			cmn_err(CE_PANIC, "main - copyout of icode failed");
