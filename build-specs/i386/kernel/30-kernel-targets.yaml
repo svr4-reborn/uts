@@ -1,0 +1,411 @@
+targets:
+  os-at386:
+    description: Compile the core operating-system sources under uts/i386/os.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - os-at386
+        cwd: os
+        output_dir: "{obj_root}/os"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  vm-at386:
+    description: Compile the virtual-memory subsystem sources under uts/i386/vm.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - vm-at386
+        cwd: vm
+        output_dir: "{obj_root}/vm"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  disp-at386:
+    description: Compile the scheduling and dispatcher classes under uts/i386/disp.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - disp-at386
+        cwd: disp
+        output_dir: "{obj_root}/disp"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  vx-at386:
+    description: Compile the VP/ix support driver sources under uts/i386/vx.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - vx-at386
+        cwd: vx
+        output_dir: "{obj_root}/vx"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  exec-at386:
+    description: Compile all executable-loader families under uts/i386/exec.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - exec-at386
+        cwd: exec
+        output_dir: "{obj_root}/exec"
+        continue_on_error: false
+        parallel: true
+        discover:
+          recursive: true
+          extensions:
+            - .c
+
+  io-core-at386:
+    description: Compile the generic and flat AT386 overlay driver sources under uts/i386/io, excluding ws, kd, and kdvm subtrees.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - io-at386
+        cwd: io
+        output_dir: "{obj_root}/io/core"
+        continue_on_error: false
+        parallel: true
+        discover:
+          recursive: true
+          extensions:
+            - .c
+            - .s
+          exclude_dirs:
+            - ws
+            - kd
+            - kdvm
+
+  io-ws-at386:
+    description: Compile the workstation stream driver subtree under uts/i386/io/ws.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - io-at386
+        cwd: io/ws
+        output_dir: "{obj_root}/io/ws"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  io-kd-at386:
+    description: Compile the AT386 keyboard and display driver subtree under uts/arch/at/i386/io/kd.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - io-at386
+        cwd: io/kd
+        output_dir: "{obj_root}/io/kd"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  io-kdvm-at386:
+    description: Compile the AT386 KD virtual-memory companion driver under uts/arch/at/i386/io/kdvm.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - io-at386
+        cwd: io/kdvm
+        output_dir: "{obj_root}/io/kdvm"
+        continue_on_error: false
+        discover:
+          extensions:
+            - .c
+
+  io-at386:
+    description: Aggregate the generic, workstation, and AT386-specific driver subtrees.
+    depends_on:
+      - io-core-at386
+      - io-ws-at386
+      - io-kd-at386
+      - io-kdvm-at386
+
+  ml-at386:
+    description: Build the low-level machine-layer objects, including the generated locore/start/syms kernel inputs.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_ml_build.py
+          - --workspace-root
+          - "{workspace_root}"
+          - --obj-root
+          - "{obj_root}/ml"
+          - --pack-root
+          - "{pack_root}/kernel"
+          - --cc
+          - "{cc}"
+          - --cpp
+          - "{cpp}"
+          - --ld
+          - "{ld}"
+          - --cflag=-std=gnu89
+          - --cflag=-m32
+          - --cflag=-fcommon
+          - --cflag=-fno-builtin
+          - --cflag=-O2
+          - --cflag=-I..
+          - --cflag=-D_KERNEL
+          - --cflag=-DAT386
+          - --cflag=-DVPIX
+          - --cflag=-DWEITEK
+          - --cflag=-DWEITEK_EMULATOR
+          - --cpp-flag=-P
+          - --cpp-flag=-I..
+          - --cpp-flag=-D_KERNEL
+          - --cpp-flag=-DLOCORE
+          - --cpp-flag=-DAT386
+          - --cpp-flag=-DVPIX
+          - --cpp-flag=-DWEITEK
+          - --cpp-flag=-DWEITEK_EMULATOR
+
+  fs-at386:
+    description: Compile the full filesystem stack, including nested filesystem types, under uts/i386/fs.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - fs-at386
+        cwd: fs
+        output_dir: "{obj_root}/fs"
+        continue_on_error: false
+        parallel: true
+        discover:
+          recursive: true
+          extensions:
+            - .c
+
+  des-at386:
+    description: Compile the kernel DES sources under uts/i386/des.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - netmod-at386
+        cwd: des
+        output_dir: "{obj_root}/des"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  rpc-at386:
+    description: Compile the kernel RPC sources under uts/i386/rpc.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - netmod-at386
+        cwd: rpc
+        output_dir: "{obj_root}/rpc"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  ktli-at386:
+    description: Compile the kernel TLI sources under uts/i386/ktli.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - netmod-at386
+        cwd: ktli
+        output_dir: "{obj_root}/ktli"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  klm-at386:
+    description: Compile the kernel lock-manager sources under uts/i386/klm.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - netmod-at386
+        cwd: klm
+        output_dir: "{obj_root}/klm"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  netinet-at386:
+    description: Compile the TCP/IP stack sources under uts/i386/netinet.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - netinet-at386
+        cwd: netinet
+        output_dir: "{obj_root}/netinet"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  network-at386:
+    description: Aggregate the network-facing kernel modules that historical nonet builds excluded.
+    depends_on:
+      - des-at386
+      - rpc-at386
+      - ktli-at386
+      - klm-at386
+      - netinet-at386
+
+  kdb-core-at386:
+    description: Compile the in-kernel debugger core under uts/i386/kdb/kdb.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - kdb-at386
+        cwd: kdb/kdb
+        output_dir: "{obj_root}/kdb/core"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  kdb-gdebugger-at386:
+    description: Compile the graphical debugger companion sources under uts/i386/kdb/gdebugger.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - kdb-at386
+        cwd: kdb/gdebugger
+        output_dir: "{obj_root}/kdb/gdebugger"
+        continue_on_error: false
+        discover:
+          extensions:
+            - .c
+
+  kdb-util-at386:
+    description: Compile the in-kernel debugger support sources under uts/i386/kdb/kdb-util.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - kdb-at386
+        cwd: kdb/kdb-util
+        output_dir: "{obj_root}/kdb/kdb-util"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
+  kdb-at386:
+    description: Aggregate the kernel debugger families that participate in the AT386 kernel build tree.
+    depends_on:
+      - kdb-core-at386
+      - kdb-gdebugger-at386
+      - kdb-util-at386
+
+  kernel-core-at386:
+    description: Aggregate the non-network kernel subsystems that form the AT386 kernel proper.
+    depends_on:
+      - config-at386
+      - os-at386
+      - vm-at386
+      - disp-at386
+      - vx-at386
+      - exec-at386
+      - io-at386
+      - ml-at386
+      - fs-at386
+
+  kernel-at386-nonet:
+    description: Full AT386 kernel build graph without the network-facing subsystems.
+    depends_on:
+      - kernel-core-at386
+      - kdb-at386
+
+  kernel-at386:
+    description: Full AT386 kernel build graph across the complete uts/i386 tree, including network and debugger subsystems.
+    depends_on:
+      - kernel-core-at386
+      - network-at386
+      - kdb-at386
+
+  kernel-system-at386:
+    description: Full AT386 kernel graph plus the historical platform families and manifest-driven system-build phases.
+    depends_on:
+      - kernel-at386
+      - historical-platform-at386
+      - master-tree-at386
+      - idbuild-at386

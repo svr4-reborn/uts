@@ -1,0 +1,360 @@
+targets:
+  prepare-layout:
+    description: Create the full AT386 kernel object and conf tree roots used by the YAML-driven build graph.
+    steps:
+      - kind: mkdirs
+        paths:
+          - "{conf_root}"
+          - "{cf_dir}"
+          - "{pack_root}"
+          - "{obj_root}"
+          - "{init_root}"
+          - "{mfsys_root}"
+          - "{node_root}"
+          - "{rc_root}"
+          - "{sd_root}"
+          - "{mdevice_root}"
+          - "{sdevice_root}"
+          - "{sfsys_root}"
+
+  config-at386:
+    description: Materialize the top-level preprocessed kernel configuration inputs that feed the final system build.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: preprocess
+        source_view: uts-at386
+        use:
+          - kernmap-at386
+        cwd: .
+        source: kernmap
+        output: "{cf_dir}/kernmap"
+
+      - kind: preprocess
+        source_view: uts-at386
+        use:
+          - kernmap-at386
+        cwd: .
+        source: vuifile
+        output: "{cf_dir}/vuifile"
+
+  master-tree-at386:
+    description: Stage the historical uts/i386/master.d and uts/arch/at/i386/master.d metadata into the synthetic conf tree.
+    depends_on:
+      - config-at386
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_stage_master_at386.py
+          - --workspace-root
+          - "{workspace_root}"
+          - --conf-root
+          - "{conf_root}"
+          - --cpp
+          - "{cpp}"
+          - --cpp-flag=-P
+          - --cpp-flag=-DAT386
+          - --cpp-flag=-DWEITEK
+          - --cpp-flag=-DWEITEK_EMULATOR
+
+  simple-idconfig-at386:
+    description: Generate a modern config.h and configuration manifest from the staged AT386 conf metadata without using the legacy idtools.
+    depends_on:
+      - master-tree-at386
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_idconfig.py
+          - --conf-root
+          - "{conf_root}"
+          - --output-dir
+          - "{cf_dir}"
+          - --manifest
+          - "{simple_idconfig_manifest}"
+          - --obj-root
+          - "{obj_root}"
+
+  simple-idconfig-at386-floppy:
+    description: Generate a reduced AT386 config and manifest for a floppy-sized kernel by excluding non-essential modules from the staged historical metadata.
+    depends_on:
+      - master-tree-at386
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_idconfig.py
+          - --conf-root
+          - "{conf_root}"
+          - --output-dir
+          - "{floppy_cf_dir}"
+          - --manifest
+          - "{floppy_idconfig_manifest}"
+          - --obj-root
+          - "{obj_root}"
+          - --enable-module
+          - ramd
+          - --exclude-module
+          - bfs
+          - --exclude-module
+          - fdfs
+          - --exclude-module
+          - hd
+          - --exclude-module
+          - i286x
+          - --exclude-module
+          - intp
+          - --exclude-module
+          - kdb
+          - --exclude-module
+          - kdb-util
+          - --exclude-module
+          - arp
+          - --exclude-module
+          - ip
+          - --exclude-module
+          - krpc
+          - --exclude-module
+          - ktli
+          - --exclude-module
+          - prf
+          - --exclude-module
+          - raio
+          - --exclude-module
+          - rawip
+          - --exclude-module
+          - RFS
+          - --exclude-module
+          - rt
+          - --exclude-module
+          - sockmod
+          - --exclude-module
+          - tcp
+          - --exclude-module
+          - ticlts
+          - --exclude-module
+          - ticots
+          - --exclude-module
+          - ptm
+          - --exclude-module
+          - pts
+          - --exclude-module
+          - sem
+          - --exclude-module
+          - shm
+          - --exclude-module
+          - ticotsor
+          - --exclude-module
+          - sxt
+          - --exclude-module
+          - timod
+          - --exclude-module
+          - ufs
+          - --exclude-module
+          - udp
+          - --exclude-module
+          - vx
+          - --exclude-module
+          - xnamfs
+          - --exclude-module
+          - xout
+          - --exclude-module
+          - xt
+
+  driver-packages-at386:
+    description: Compose pack.d/<module>/Driver.o files from the YAML-driven object tree and the generated uts_idconfig manifest.
+    depends_on:
+      - kernel-at386
+      - simple-idconfig-at386
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_driver_compose.py
+          - --manifest
+          - "{simple_idconfig_manifest}"
+          - --workspace-root
+          - "{workspace_root}"
+          - --cc
+          - "{cc}"
+          - --ld
+          - "{ld}"
+          - --cflag=-std=gnu89
+          - --cflag=-fcommon
+          - --cflag=-fno-builtin
+          - --cflag=-fno-tree-vectorize
+          - --cflag=-O2
+          - --cflag=-m32
+          - --cflag=-mno-mmx
+          - --cflag=-mno-sse
+          - --cflag=-mno-sse2
+          - --cflag=-D_KERNEL
+          - --cflag=-DAT386
+          - --cflag=-DWEITEK
+          - --cflag=-DWEITEK_EMULATOR
+          - --cflag=-DVPIX
+          - --cflag=-DSYSV
+          - --cflag=-DSVR40
+          - --include-dir={cf_dir}
+          - --include-dir={kernel_root}/arch/at/i386
+          - --include-dir={kernel_root}/i386
+          - --report
+          - "{driver_compose_report}"
+
+  driver-packages-at386-floppy:
+    description: Compose the reduced pack.d/<module>/Driver.o set for the floppy-sized AT386 kernel.
+    depends_on:
+      - kernel-core-at386
+      - simple-idconfig-at386-floppy
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_driver_compose.py
+          - --manifest
+          - "{floppy_idconfig_manifest}"
+          - --workspace-root
+          - "{workspace_root}"
+          - --cc
+          - "{cc}"
+          - --ld
+          - "{ld}"
+          - --cflag=-std=gnu89
+          - --cflag=-fcommon
+          - --cflag=-fno-builtin
+          - --cflag=-fno-tree-vectorize
+          - --cflag=-O2
+          - --cflag=-m32
+          - --cflag=-mno-mmx
+          - --cflag=-mno-sse
+          - --cflag=-mno-sse2
+          - --cflag=-D_KERNEL
+          - --cflag=-DAT386
+          - --cflag=-DWEITEK
+          - --cflag=-DWEITEK_EMULATOR
+          - --cflag=-DRAMD_BOOT
+          - --cflag=-DVPIX
+          - --cflag=-DSYSV
+          - --cflag=-DSVR40
+          - --include-dir={floppy_cf_dir}
+          - --include-dir={kernel_root}/arch/at/i386
+          - --include-dir={kernel_root}/i386
+          - --report
+          - "{floppy_driver_compose_report}"
+
+  idbuild-at386:
+    description: Build the final AT386 unix image with the Python idbuild/idmkunix replacements over the generated manifest and pack.d tree.
+    depends_on:
+      - driver-packages-at386
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_idbuild.py
+          - --manifest
+          - "{simple_idconfig_manifest}"
+          - --cc
+          - "{cc}"
+          - --ld
+          - "{ld}"
+          - --output
+          - "{cf_dir}/unix"
+          - --cflag
+          - -std=gnu89
+          - --cflag
+          - -fcommon
+          - --cflag
+          - -fno-builtin
+          - --cflag
+          - -fno-tree-vectorize
+          - --cflag
+          - -O2
+          - --cflag
+          - -m32
+          - --cflag
+          - -mno-mmx
+          - --cflag
+          - -mno-sse
+          - --cflag
+          - -mno-sse2
+          - --cflag
+          - -D_KERNEL
+          - --cflag
+          - -DAT386
+          - --cflag
+          - -DWEITEK
+          - --cflag
+          - -DWEITEK_EMULATOR
+          - --cflag
+          - -DRAMD_BOOT
+          - --cflag
+          - -DVPIX
+          - --cflag
+          - -DSYSV
+          - --cflag
+          - -DSVR40
+          - --include-dir
+          - "{cf_dir}"
+          - --include-dir
+          - "{kernel_root}/arch/at/i386"
+          - --include-dir
+          - "{kernel_root}/i386"
+
+  idbuild-at386-floppy:
+    description: Build the reduced AT386 unix image intended to fit on the boot floppy filesystem.
+    depends_on:
+      - driver-packages-at386-floppy
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_idbuild.py
+          - --manifest
+          - "{floppy_idconfig_manifest}"
+          - --cc
+          - "{cc}"
+          - --ld
+          - "{ld}"
+          - --output
+          - "{floppy_unix}"
+          - --cflag
+          - -std=gnu89
+          - --cflag
+          - -fcommon
+          - --cflag
+          - -fno-builtin
+          - --cflag
+          - -fno-tree-vectorize
+          - --cflag
+          - -O2
+          - --cflag
+          - -m32
+          - --cflag
+          - -mno-mmx
+          - --cflag
+          - -mno-sse
+          - --cflag
+          - -mno-sse2
+          - --cflag
+          - -D_KERNEL
+          - --cflag
+          - -DAT386
+          - --cflag
+          - -DWEITEK
+          - --cflag
+          - -DWEITEK_EMULATOR
+          - --cflag
+          - -DRAMD_BOOT
+          - --cflag
+          - -DVPIX
+          - --cflag
+          - -DSYSV
+          - --cflag
+          - -DSVR40
+          - --include-dir
+          - "{floppy_cf_dir}"
+          - --include-dir
+          - "{kernel_root}/arch/at/i386"
+          - --include-dir
+          - "{kernel_root}/i386"

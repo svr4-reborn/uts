@@ -1,0 +1,295 @@
+targets:
+  boot-floppy-kernel-at386:
+    description: Strip the reduced AT386 unix image into the floppy replacement artifact.
+    depends_on:
+      - idbuild-at386-floppy
+    steps:
+      - kind: mkdir
+        path: "{builddir}/boot-media"
+      - kind: command
+        argv:
+          - sh
+          - -eu
+          - -c
+          - |
+              cp "{floppy_unix}" "{boot_kernel_stripped}"
+              strip -s "{boot_kernel_stripped}"
+
+  boot-at386:
+    description: Build and stage the historical AT386 bootstrap family under uts/i386/boot into the synthetic system-root.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: command
+        argv:
+          - sh
+          - -eu
+          - -c
+          - |
+              legacy_bin="{builddir}/uts/i386/tools/legacy-host/bin"
+              mkdir -p "$legacy_bin" "{system_root}/etc"
+              cat >"$legacy_bin/cc" <<'EOF'
+              #!/bin/sh
+              out=
+              src=
+              prev=
+              for arg in "$@"; do
+                if [ "$prev" = "-o" ]; then
+                  out="$arg"
+                fi
+                prev="$arg"
+                src="$arg"
+              done
+              if [ "${{src##*/}}" = "rmhdr.c" ] && [ -n "$out" ]; then
+                cat >"$out" <<'EOS'
+              #!/bin/sh
+              set -eu
+              objcopy -O binary "$1" "$2"
+              EOS
+                chmod 755 "$out"
+                exit 0
+              fi
+              exec "{cc}" -m32 -std=gnu89 -fcommon -fno-builtin -fno-tree-vectorize -mno-mmx -mno-sse -mno-sse2 "$@"
+              EOF
+              chmod 755 "$legacy_bin/cc"
+              cat >"$legacy_bin/as" <<'EOF'
+              #!/bin/sh
+              set -eu
+              exec as --32 "$@"
+              EOF
+              chmod 755 "$legacy_bin/as"
+              cp "{kernel_root}/tools/legacy_ld.py" "$legacy_bin/ld"
+              chmod 755 "$legacy_bin/ld"
+              stage_root="{legacy_stage_root}"
+              mkdir -p "$stage_root/uts/i386"
+              rm -rf "$stage_root/tools" "{boot_stage_root}"
+              cp -a "{kernel_root}/tools" "$stage_root/"
+              cp -a "{kernel_root}/i386/boot" "$stage_root/uts/i386/"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_boot_symvals.py
+          - --workspace-root
+          - "{workspace_root}"
+          - --boot-root
+          - "{boot_stage_at386_root}"
+          - --cc
+          - "{cc}"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_build_boot.py
+          - --workspace-root
+          - "{workspace_root}"
+          - --boot-root
+          - "{boot_stage_root}"
+          - --build-root
+          - "{builddir}/uts/i386/boot/build"
+          - --system-root
+          - "{system_root}"
+          - --cc
+          - "{cc}"
+          - --cpp
+          - "{cpp}"
+          - --as
+          - as
+          - --strip
+          - strip
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_boot_initprog.py
+          - --workspace-root
+          - "{workspace_root}"
+          - --boot-root
+          - "{boot_stage_root}"
+          - --build-root
+          - "{builddir}/uts/i386/boot/at386/initprog"
+          - --system-root
+          - "{system_root}"
+          - --cc
+          - "{cc}"
+          - --cpp
+          - "{cpp}"
+          - --as
+          - as
+          - --ld
+          - "{ld}"
+
+  boot-floppy-hybrid-at386:
+    description: Build a hybrid AT386 boot floppy image by combining the locally built fdboot with the official reference floppy filesystem and kernel payload.
+    depends_on:
+      - boot-at386
+    steps:
+      - kind: mkdir
+        path: "{builddir}/boot-media"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/boot_floppy_image.py
+          - build-hybrid
+          - --reference-image
+          - "{reference_boot_floppy}"
+          - --bootloader
+          - "{builddir}/uts/i386/boot/build/fdboot"
+          - --output
+          - "{hybrid_boot_floppy}"
+          - --report-json
+          - "{hybrid_boot_report}"
+
+  boot-floppy-hybrid-at386-labeled:
+    description: Build a hybrid AT386 boot floppy image and apply the repo-owned named replacement set from the boot floppy manifest.
+    depends_on:
+      - boot-at386
+    steps:
+      - kind: mkdir
+        path: "{builddir}/boot-media"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/boot_floppy_image.py
+          - build-hybrid
+          - --reference-image
+          - "{reference_boot_floppy}"
+          - --bootloader
+          - "{builddir}/uts/i386/boot/build/fdboot"
+          - --output
+          - "{hybrid_boot_labeled_floppy}"
+          - --report-json
+          - "{hybrid_boot_labeled_report}"
+          - --replacement-manifest
+          - "{hybrid_boot_replacement_manifest}"
+          - --replacement-set
+          - "{hybrid_boot_replacement_set}"
+
+  boot-floppy-at386:
+    description: Build an AT386 boot floppy image with the locally built fdboot and unix kernel while preserving the rest of the reference floppy filesystem as the rootfs.
+    depends_on:
+      - boot-at386
+      - boot-floppy-kernel-at386
+    steps:
+      - kind: mkdir
+        path: "{builddir}/boot-media"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/boot_floppy_image.py
+          - build-hybrid
+          - --reference-image
+          - "{reference_boot_floppy}"
+          - --bootloader
+          - "{builddir}/uts/i386/boot/build/fdboot"
+          - --output
+          - "{boot_floppy}"
+          - --report-json
+          - "{boot_report}"
+          - --replacement-manifest
+          - "{hybrid_boot_replacement_manifest}"
+          - --replacement-set
+          - "{boot_replacement_set}"
+
+  boot-floppy-at386-labeled:
+    description: Build the AT386 boot floppy image with the locally built fdboot and unix kernel, then apply the repo-owned labeled replacement set.
+    depends_on:
+      - boot-at386
+      - boot-floppy-kernel-at386
+    steps:
+      - kind: mkdir
+        path: "{builddir}/boot-media"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/boot_floppy_image.py
+          - build-hybrid
+          - --reference-image
+          - "{reference_boot_floppy}"
+          - --bootloader
+          - "{builddir}/uts/i386/boot/build/fdboot"
+          - --output
+          - "{boot_labeled_floppy}"
+          - --report-json
+          - "{boot_labeled_report}"
+          - --replacement-manifest
+          - "{hybrid_boot_replacement_manifest}"
+          - --replacement-set
+          - "{boot_labeled_replacement_set}"
+
+  boot-floppy-validate-replacements-at386:
+    description: Validate the local-kernel boot floppy replacement set against the reference image without writing a new floppy image.
+    depends_on:
+      - boot-floppy-kernel-at386
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/boot_floppy_image.py
+          - validate-replacements
+          - --image
+          - "{reference_boot_floppy}"
+          - --replacement-manifest
+          - "{hybrid_boot_replacement_manifest}"
+          - --replacement-set
+          - "{boot_replacement_set}"
+
+  boot-floppy-validate-replacements-at386-labeled:
+    description: Validate the repo-owned named boot floppy replacement set against the reference image without writing a hybrid image.
+    steps:
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/boot_floppy_image.py
+          - validate-replacements
+          - --image
+          - "{reference_boot_floppy}"
+          - --replacement-manifest
+          - "{hybrid_boot_replacement_manifest}"
+          - --replacement-set
+          - "{hybrid_boot_replacement_set}"
+
+  fp-at386:
+    description: Build and stage the historical floating-point emulator family under uts/i386/fp into the synthetic system-root.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: command
+        argv:
+          - sh
+          - -eu
+          - -c
+          - |
+              stage_root="{legacy_stage_root}"
+              mkdir -p "$stage_root/uts/i386"
+              rm -rf "{fp_stage_root}"
+              cp -a "{kernel_root}/i386/fp" "$stage_root/uts/i386/"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_fp_symvals.py
+          - --workspace-root
+          - "{workspace_root}"
+          - --fp-root
+          - "{fp_stage_root}"
+          - --cc
+          - "{cc}"
+      - kind: command
+        argv:
+          - python3
+          - uts/tools/uts_build_fp.py
+          - --workspace-root
+          - "{workspace_root}"
+          - --fp-root
+          - "{fp_stage_root}"
+          - --build-root
+          - "{builddir}/uts/i386/fp/build"
+          - --system-root
+          - "{system_root}"
+          - --cpp
+          - "{cpp}"
+          - --ld
+          - "{ld}"
+
+  historical-platform-at386:
+    description: Aggregate the historically separate bootstrap and floating-point emulator build families.
+    depends_on:
+      - boot-at386
+      - fp-at386

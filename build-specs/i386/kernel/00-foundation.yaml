@@ -1,0 +1,160 @@
+toolchain:
+  cc: gcc
+  cpp: cpp
+  ld: ld
+  cflags:
+    - -std=gnu89
+    - -fcommon
+    - -fno-builtin
+    - -fno-tree-vectorize
+    - -fno-unwind-tables
+    - -fno-asynchronous-unwind-tables
+    - -O2
+    - -m32
+    - -mgeneral-regs-only
+    - -mno-mmx
+    - -mno-sse
+    - -mno-sse2
+    - -nostdinc
+    - -nostdlib
+    - -Werror
+    - -DREL="4"
+    - -DVER="2.1"
+    - -DSYSV
+  cppflags:
+    - -P
+  ldflags: []
+
+variables:
+  system_root: "{builddir}/uts/i386/system-root"
+  conf_root: "{builddir}/uts/i386/conf"
+  cf_dir: "{conf_root}/cf.d"
+  pack_root: "{conf_root}/pack.d"
+  obj_root: "{builddir}/uts/i386/obj"
+  legacy_stage_root: "{builddir}/legacy-src"
+  boot_stage_root: "{legacy_stage_root}/uts/i386/boot"
+  boot_stage_at386_root: "{boot_stage_root}/at386"
+  reference_boot_floppy: "{workspace_root}/original_diskettes/Base 01 (2.1a).img"
+  hybrid_boot_floppy: "{builddir}/boot-media/base01-hybrid.img"
+  hybrid_boot_report: "{builddir}/boot-media/base01-hybrid-layout.json"
+  hybrid_boot_replacement_manifest: "{kernel_root}/build-specs/i386/boot-floppy-replacements.json"
+  hybrid_boot_replacement_set: "label-hybrid"
+  hybrid_boot_labeled_floppy: "{builddir}/boot-media/base01-hybrid-labeled.img"
+  hybrid_boot_labeled_report: "{builddir}/boot-media/base01-hybrid-labeled-layout.json"
+  boot_floppy: "{builddir}/boot-media/base01-boot.img"
+  boot_report: "{builddir}/boot-media/base01-boot-layout.json"
+  boot_replacement_set: "kernel-at386"
+  boot_labeled_floppy: "{builddir}/boot-media/base01-boot-labeled.img"
+  boot_labeled_report: "{builddir}/boot-media/base01-boot-labeled-layout.json"
+  boot_labeled_replacement_set: "kernel-at386-labeled"
+  floppy_cf_dir: "{conf_root}/cf.d.floppy"
+  floppy_idconfig_manifest: "{floppy_cf_dir}/simple-idconfig.json"
+  floppy_driver_compose_report: "{floppy_cf_dir}/driver-compose-report.json"
+  floppy_unix: "{floppy_cf_dir}/unix"
+  boot_kernel_stripped: "{builddir}/boot-media/unix.at386.floppy"
+  fp_stage_root: "{legacy_stage_root}/uts/i386/fp"
+  simple_idconfig_manifest: "{cf_dir}/simple-idconfig.json"
+  driver_compose_report: "{cf_dir}/driver-compose-report.json"
+  init_root: "{conf_root}/init.d"
+  mfsys_root: "{conf_root}/mfsys.d"
+  node_root: "{conf_root}/node.d"
+  rc_root: "{conf_root}/rc.d"
+  sd_root: "{conf_root}/sd.d"
+  mdevice_root: "{conf_root}/mdevice.d"
+  sdevice_root: "{conf_root}/sdevice.d"
+  sfsys_root: "{conf_root}/sfsys.d"
+
+source_views:
+  uts-at386:
+    roots:
+      - "{kernel_root}/arch/at/i386"
+      - "{kernel_root}/i386"
+
+profiles:
+  kernmap-at386:
+    flags:
+      - -I.
+      - -D_KERNEL
+      - -DAT386
+      - -DWEITEK
+      - -DWEITEK_EMULATOR
+
+  os-at386:
+    flags:
+      - -I..
+      - -D_KERNEL
+      - -DAT386
+      - -DWEITEK
+
+  vm-at386:
+    flags:
+      - -I..
+      - -D_KERNEL
+      - -Dnotnow
+      - -DAT386
+
+  exec-at386:
+    flags:
+      - -I../..
+      - -D_KERNEL
+      - -DAT386
+
+  io-at386:
+    include_source_view_roots: true
+    flags:
+      - -I..
+      - -I../..
+      - -D_KERNEL
+      - -DSYSV
+      - -DSVR40
+      - -DWEITEK
+      - -DAT386
+
+  fs-at386:
+    flags:
+      - -I..
+      - -I../..
+      - -D_KERNEL
+      - -DQUOTA
+      - -DAT386
+
+  disp-at386:
+    flags:
+      - -I..
+      - -D_KERNEL
+      - -DAT386
+
+  vx-at386:
+    flags:
+      - -I..
+      - -D_KERNEL
+      - -DAT386
+
+  netmod-at386:
+    flags:
+      - -I..
+      - -D_KERNEL
+      - -DSYSV
+      - -DAT386
+
+  netinet-at386:
+    flags:
+      - -I..
+      - -D_KERNEL
+      - -DSYSV
+      - -Di386
+      - -DAT386
+
+  kdb-at386:
+    flags:
+      - -I../..
+      - -D_KERNEL
+      - -DAT386
+
+  ml-at386:
+    flags:
+      - -I..
+      - -D_KERNEL
+      - -DAT386
+      - -DWEITEK
+      - -DWEITEK_EMULATOR

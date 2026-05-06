@@ -1,0 +1,26 @@
+{
+  "sets": {
+    "kernel-at386": [
+      {
+        "target": "/unix",
+        "source": "../../../build/boot-media/unix.at386.floppy"
+      }
+    ],
+    "kernel-at386-labeled": [
+      {
+        "target": "/unix",
+        "source": "../../../build/boot-media/unix.at386.floppy"
+      },
+      {
+        "target": "/LABEL",
+        "source": "../../../tools/boot-media/label.hybrid"
+      }
+    ],
+    "label-hybrid": [
+      {
+        "target": "/LABEL",
+        "source": "../../../tools/boot-media/label.hybrid"
+      }
+    ]
+  }
+}

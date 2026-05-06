@@ -1,0 +1,5 @@
+includes:
+  - kernel/00-foundation.yaml
+  - kernel/10-config-and-link.yaml
+  - kernel/20-platform-and-boot.yaml
+  - kernel/30-kernel-targets.yaml
