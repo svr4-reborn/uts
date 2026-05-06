@@ -66,6 +66,8 @@ SECTIONS {
 	.text : {
 		stext = .;
 		../pack.d/kernel/start.o(.text)
+		*(.text)
+		*(.text.*)
 		etext = .;
 		} > kv_loadsite :text
 
@@ -76,6 +78,8 @@ SECTIONS {
 			. = .+0x400;
 #endif
 		../pack.d/kernel/locore.o(.data)
+		*(.data)
+		*(.data.*)
 #ifdef WEITEK_EMULATOR
 		__fltused = .;
 		. += 4;
@@ -95,6 +99,9 @@ SECTIONS {
 	.bss ALIGN(0x1000) : {
 		sbss = .;
 		../pack.d/kernel/locore.o(.bss)
+		*(.bss)
+		*(.bss.*)
+		*(COMMON)
 		end = .;
 		_end = .;
 		} > kv_loadsite :data
