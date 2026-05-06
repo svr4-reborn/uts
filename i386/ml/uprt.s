@@ -266,6 +266,7 @@ hex8_out:
 	popl    %ebx
 	ret
 
+	#ifdef EARLY_BOOT_DEBUG
 	/*
 	 * Macro: DBG_PRINT_REG
 	 *  - Usage: DBG_PRINT_REG "VALUE:", %eax
@@ -417,6 +418,22 @@ hex8_out:
 		popl    %eax
 		popf
 	.endm
+	#else
+	.macro DBG_PRINT_REG str, reg
+	.endm
+
+	.macro DBG_PRINT_REG32 str, reg
+	.endm
+
+	.macro DBG_PRINT_REG16 str, reg
+	.endm
+
+	.macro DBG_PRINT_REG8 str, reg
+	.endm
+
+	.macro DBG_PRINT str
+	.endm
+	#endif
 
 
 	.align	8
