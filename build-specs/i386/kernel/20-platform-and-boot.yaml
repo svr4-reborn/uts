@@ -68,7 +68,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_boot_symvals.py
+          - "{kernel_root}/tools/uts_boot_symvals.py"
           - --workspace-root
           - "{workspace_root}"
           - --boot-root
@@ -78,7 +78,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_build_boot.py
+          - "{kernel_root}/tools/uts_build_boot.py"
           - --workspace-root
           - "{workspace_root}"
           - --boot-root
@@ -98,7 +98,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_boot_initprog.py
+          - "{kernel_root}/tools/uts_boot_initprog.py"
           - --workspace-root
           - "{workspace_root}"
           - --boot-root
@@ -126,7 +126,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/boot_floppy_image.py
+          - "{kernel_root}/tools/boot_floppy_image.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -147,7 +147,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/boot_floppy_image.py
+          - "{kernel_root}/tools/boot_floppy_image.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -173,7 +173,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/boot_floppy_image.py
+          - "{kernel_root}/tools/boot_floppy_image.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -199,7 +199,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/boot_floppy_image.py
+          - "{kernel_root}/tools/boot_floppy_image.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -222,7 +222,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/boot_floppy_image.py
+          - "{kernel_root}/tools/boot_floppy_image.py"
           - validate-replacements
           - --image
           - "{reference_boot_floppy}"
@@ -237,7 +237,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/boot_floppy_image.py
+          - "{kernel_root}/tools/boot_floppy_image.py"
           - validate-replacements
           - --image
           - "{reference_boot_floppy}"
@@ -264,7 +264,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_fp_symvals.py
+          - "{kernel_root}/tools/uts_fp_symvals.py"
           - --workspace-root
           - "{workspace_root}"
           - --fp-root
@@ -274,7 +274,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_build_fp.py
+          - "{kernel_root}/tools/uts_build_fp.py"
           - --workspace-root
           - "{workspace_root}"
           - --fp-root

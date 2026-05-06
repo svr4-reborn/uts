@@ -8,6 +8,11 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+try:
+    from .pathing import resolve_kernel_root
+except ImportError:
+    from pathing import resolve_kernel_root
+
 
 ID_DIRS = [
     "init.d",
@@ -196,7 +201,7 @@ def _refresh_cf_mdevice(conf_root: Path) -> None:
 
 
 def _stage_common_modules(workspace_root: Path, conf_root: Path, cpp: str, cpp_flags: list[str]) -> None:
-    master_root = workspace_root / "uts/i386/master.d"
+    master_root = resolve_kernel_root(workspace_root) / "i386/master.d"
     cf_dir = conf_root / "cf.d"
 
     for name in CFFILES:
@@ -239,7 +244,7 @@ def _stage_common_modules(workspace_root: Path, conf_root: Path, cpp: str, cpp_f
 
 
 def _stage_at386_overlay(workspace_root: Path, conf_root: Path, cpp: str, cpp_flags: list[str]) -> None:
-    overlay_root = workspace_root / "uts/arch/at/i386/master.d"
+    overlay_root = resolve_kernel_root(workspace_root) / "arch/at/i386/master.d"
     for module in AT386MODS:
         source_dir = overlay_root / module
         if not source_dir.is_dir():

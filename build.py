@@ -20,7 +20,7 @@ except ImportError:  # pragma: no cover - exercised by runtime setup, not tests.
     yaml = None
 
 
-DEFAULT_UTS_CONFIG = Path('uts/build-specs/i386/kernel.yaml')
+DEFAULT_UTS_CONFIG = Path('build-specs/i386/kernel.yaml')
 MERGEABLE_BUILD_SPEC_SECTIONS = (
     'toolchain',
     'variables',
@@ -87,8 +87,9 @@ class CompileCommand:
 
 
 class BuildRunner:
-    def __init__(self, workspace_root: Path, builddir: Path, toolchain: Toolchain, variables: dict[str, str], profiles: dict[str, dict[str, Any]], source_views: dict[str, dict[str, Any]], dry_run: bool = False, parallel_enabled: bool = True, compile_commands_path: Path | None = None):
+    def __init__(self, workspace_root: Path, repo_root: Path, builddir: Path, toolchain: Toolchain, variables: dict[str, str], profiles: dict[str, dict[str, Any]], source_views: dict[str, dict[str, Any]], dry_run: bool = False, parallel_enabled: bool = True, compile_commands_path: Path | None = None):
         self.workspace_root = workspace_root
+        self.repo_root = repo_root
         self.builddir = builddir
         self.toolchain = toolchain
         self.profiles = profiles
@@ -100,7 +101,8 @@ class BuildRunner:
         self.failures: list[str] = []
         self.variables = {
             'workspace_root': str(self.workspace_root),
-            'kernel_root': str((self.workspace_root / 'uts').resolve()),
+            'repo_root': str(self.repo_root),
+            'kernel_root': str(self.workspace_root),
             'builddir': str(self.builddir),
             'cc': self.toolchain.cc,
             'cpp': self.toolchain.cpp,
@@ -591,9 +593,11 @@ class BuildRunner:
 
 
 class UTSBuilder:
-    def __init__(self, workspace_root: Path, builddir: str, config_path: str | None, dry_run: bool = False, parallel_enabled: bool = True, compile_commands_path: str | None = None):
+    def __init__(self, workspace_root: Path, repo_root: Path, output_root: Path, builddir: str, config_path: str | None, dry_run: bool = False, parallel_enabled: bool = True, compile_commands_path: str | None = None):
         self.workspace_root = workspace_root
-        self.builddir = (workspace_root / builddir).resolve()
+        self.repo_root = repo_root
+        self.output_root = output_root
+        self.builddir = (output_root / builddir).resolve()
         self.config_path = self._resolve_config_path(config_path)
         self.dry_run = dry_run
         self.parallel_enabled = parallel_enabled
@@ -603,6 +607,7 @@ class UTSBuilder:
         plan = _load_build_plan(self.config_path)
         runner = BuildRunner(
             workspace_root=self.workspace_root,
+            repo_root=self.repo_root,
             builddir=self.builddir,
             toolchain=plan.toolchain,
             variables=plan.variables,
@@ -639,7 +644,7 @@ class UTSBuilder:
         candidate = Path(output_path)
         if candidate.is_absolute():
             return candidate
-        return (self.workspace_root / candidate).resolve()
+        return (self.output_root / candidate).resolve()
 
 
 def _load_build_plan(config_path: Path) -> BuildPlan:
@@ -797,15 +802,19 @@ def main() -> int:
     args = _parse_args()
     script_root = Path(__file__).resolve().parent
     if (script_root / 'i386').exists() and (script_root / 'build-specs').exists():
-        workspace_root = script_root.parent
+        workspace_root = script_root
     else:
         workspace_root = script_root
+    repo_root = workspace_root.parent if (workspace_root.parent / 'original_diskettes').exists() else workspace_root
+    output_root = Path.cwd()
 
     if args.subsystem != 'uts':
         raise BuildSpecError(f'Unknown subsystem: {args.subsystem}')
 
     builder = UTSBuilder(
         workspace_root=workspace_root,
+        repo_root=repo_root,
+        output_root=output_root,
         builddir=args.builddir,
         config_path=args.config,
         dry_run=args.dry_run,

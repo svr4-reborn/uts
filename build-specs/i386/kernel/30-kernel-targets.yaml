@@ -174,7 +174,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_ml_build.py
+          - "{kernel_root}/tools/uts_ml_build.py"
           - --workspace-root
           - "{workspace_root}"
           - --obj-root

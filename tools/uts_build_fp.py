@@ -9,6 +9,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    from .pathing import resolve_kernel_root
+except ImportError:
+    from pathing import resolve_kernel_root
+
 
 FP_SOURCES = [
     'dcode.s',
@@ -45,6 +50,7 @@ def run(command: list[str], cwd: Path | None = None) -> None:
 
 
 def compile_source(workspace_root: Path, fp_root: Path, build_root: Path, cpp: str, assembler: str, source_name: str) -> Path:
+    kernel_root = resolve_kernel_root(workspace_root)
     source_path = fp_root / source_name
     stem = source_path.stem
     preprocessed = build_root / f'{stem}.i'
@@ -53,7 +59,7 @@ def compile_source(workspace_root: Path, fp_root: Path, build_root: Path, cpp: s
     run([
         cpp,
         *CPP_DEFINES,
-        f'-I{workspace_root / "uts/i386"}',
+        f'-I{kernel_root / "i386"}',
         f'-I{fp_root}',
         '-P',
         str(source_path),
@@ -65,10 +71,11 @@ def compile_source(workspace_root: Path, fp_root: Path, build_root: Path, cpp: s
 
 
 def link_emulator(workspace_root: Path, fp_root: Path, build_root: Path, ld: str, object_paths: list[Path]) -> Path:
+    kernel_root = resolve_kernel_root(workspace_root)
     output_path = build_root / 'emulator.rel1'
     command = [
         sys.executable,
-        str(workspace_root / 'uts/tools/legacy_ld.py'),
+        str(kernel_root / 'tools/legacy_ld.py'),
         '-M' + str(fp_root / 'mapfile'),
         '-dn',
         '-s',
@@ -106,7 +113,8 @@ def install_emulator(system_root: Path, emulator_path: Path) -> None:
 def main() -> int:
     args = parse_args()
     workspace_root = Path(args.workspace_root).resolve()
-    fp_root = Path(args.fp_root).resolve() if args.fp_root else workspace_root / 'uts/i386/fp'
+    kernel_root = resolve_kernel_root(workspace_root)
+    fp_root = Path(args.fp_root).resolve() if args.fp_root else kernel_root / 'i386/fp'
     build_root = Path(args.build_root).resolve()
     system_root = Path(args.system_root).resolve()
 

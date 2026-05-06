@@ -34,7 +34,7 @@ variables:
   legacy_stage_root: "{builddir}/legacy-src"
   boot_stage_root: "{legacy_stage_root}/uts/i386/boot"
   boot_stage_at386_root: "{boot_stage_root}/at386"
-  reference_boot_floppy: "{workspace_root}/original_diskettes/Base 01 (2.1a).img"
+  reference_boot_floppy: "{repo_root}/original_diskettes/Base 01 (2.1a).img"
   hybrid_boot_floppy: "{builddir}/boot-media/base01-hybrid.img"
   hybrid_boot_report: "{builddir}/boot-media/base01-hybrid-layout.json"
   hybrid_boot_replacement_manifest: "{kernel_root}/build-specs/i386/boot-floppy-replacements.json"

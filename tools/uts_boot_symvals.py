@@ -8,6 +8,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
+try:
+    from .pathing import resolve_kernel_root
+except ImportError:
+    from pathing import resolve_kernel_root
+
 
 OFFSET_FIELDS = ['hdp_ncyl', 'hdp_nhead', 'hdp_nsect', 'hdp_precomp', 'hdp_lz']
 HEADER_LINE_TOKENS = [
@@ -106,9 +111,10 @@ def write_offset_program(source_path: Path) -> None:
 def main() -> int:
     args = parse_args()
     workspace_root = Path(args.workspace_root).resolve()
-    boot_root = Path(args.boot_root).resolve() if args.boot_root else workspace_root / 'uts/i386/boot/at386'
+    kernel_root = resolve_kernel_root(workspace_root)
+    boot_root = Path(args.boot_root).resolve() if args.boot_root else kernel_root / 'i386/boot/at386'
     boot_dir = boot_root
-    temp_dir = workspace_root / 'build/uts/i386/boot/at386/bsymvals'
+    temp_dir = boot_root / '.bsymvals-build'
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -127,7 +133,7 @@ def main() -> int:
         '-DAT386',
         '-DWEITEK',
         '-DWEITEK_EMULATOR',
-        f'-I{workspace_root / "uts/i386"}',
+        f'-I{kernel_root / "i386"}',
         str(program_source),
         '-o',
         str(program_binary),
@@ -136,11 +142,11 @@ def main() -> int:
     (boot_dir / 'bsymvals.s').write_text(offsets, encoding='utf-8')
 
     header_lines = collect_header_lines([
-        workspace_root / 'uts/i386/sys/bootinfo.h',
-        workspace_root / 'uts/i386/sys/fdisk.h',
-        workspace_root / 'uts/i386/boot/sys/boot.h',
-        workspace_root / 'uts/i386/sys/hd.h',
-        workspace_root / 'uts/i386/sys/kd.h',
+        kernel_root / 'i386/sys/bootinfo.h',
+        kernel_root / 'i386/sys/fdisk.h',
+        kernel_root / 'i386/boot/sys/boot.h',
+        kernel_root / 'i386/sys/hd.h',
+        kernel_root / 'i386/sys/kd.h',
     ])
     (boot_dir / 'bsymvals.h').write_text('\n'.join(header_lines) + '\n', encoding='utf-8')
     return 0

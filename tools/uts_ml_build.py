@@ -10,6 +10,11 @@ import subprocess
 from pathlib import Path
 
 try:
+    from .pathing import resolve_kernel_root
+except ImportError:
+    from pathing import resolve_kernel_root
+
+try:
     from .legacy_as import normalize_legacy_assembly
 except ImportError:
     from legacy_as import normalize_legacy_assembly
@@ -154,7 +159,7 @@ def write_setfilter_wrapper(work_ml_root: Path, workspace_root: Path) -> None:
     tool_dir = work_ml_root / 'tool'
     tool_dir.mkdir(parents=True, exist_ok=True)
     wrapper = tool_dir / 'setfilter'
-    target = workspace_root / 'tools' / 'legacy_setfilter.py'
+    target = resolve_kernel_root(workspace_root) / 'tools' / 'legacy_setfilter.py'
     wrapper.write_text(
         '#!/usr/bin/env python3\n'
         'import os\n'
@@ -386,9 +391,10 @@ def prepare_worktree(source_root: Path, obj_root: Path) -> Path:
 def main() -> int:
     args = parse_args()
     workspace_root = Path(args.workspace_root).resolve()
+    kernel_root = resolve_kernel_root(workspace_root)
     obj_root = Path(args.obj_root).resolve()
     pack_root = Path(args.pack_root).resolve()
-    uts_root = workspace_root / 'uts' / 'i386'
+    uts_root = kernel_root / 'i386'
     ml_root = uts_root / 'ml'
 
     obj_root.mkdir(parents=True, exist_ok=True)

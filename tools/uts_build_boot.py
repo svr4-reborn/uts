@@ -9,6 +9,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    from .pathing import resolve_kernel_root
+except ImportError:
+    from pathing import resolve_kernel_root
+
 
 BOOT_SOURCES = [
     'start.s',
@@ -185,9 +190,10 @@ def compile_variant_objects(source_dir: Path, source_names: list[str], *, worksp
 
 
 def link_boot_image(workspace_root: Path, mapfile: Path, output_path: Path, object_paths: list[Path]) -> None:
+    kernel_root = resolve_kernel_root(workspace_root)
     run([
         sys.executable,
-        str(workspace_root / 'uts/tools/legacy_ld.py'),
+        str(kernel_root / 'tools/legacy_ld.py'),
         '-M' + str(mapfile),
         '-dn',
         '-o',
@@ -215,12 +221,13 @@ def install_boot_artifacts(system_root: Path, fdboot: Path, hdboot: Path, defaul
 def main() -> int:
     args = parse_args()
     workspace_root = Path(args.workspace_root).resolve()
-    boot_root = Path(args.boot_root).resolve() if args.boot_root else workspace_root / 'uts/i386/boot'
+    kernel_root = resolve_kernel_root(workspace_root)
+    boot_root = Path(args.boot_root).resolve() if args.boot_root else kernel_root / 'i386/boot'
     build_root = Path(args.build_root).resolve()
     system_root = Path(args.system_root).resolve()
     boot_at386_root = boot_root / 'at386'
     bootlib_root = boot_root / 'bootlib'
-    include_root = workspace_root / 'uts/i386'
+    include_root = kernel_root / 'i386'
     bsymvals = boot_at386_root / 'bsymvals.s'
 
     if not bsymvals.exists():
@@ -248,7 +255,7 @@ def main() -> int:
     run([args.strip, str(hdboot_path)])
 
     fdboot_binary = build_root / 'fdboot'
-    run([sys.executable, str(workspace_root / 'uts/tools/boot_rmhdr.py'), str(fdboot_path), str(fdboot_binary)])
+    run([sys.executable, str(kernel_root / 'tools/boot_rmhdr.py'), str(fdboot_path), str(fdboot_binary)])
 
     install_boot_artifacts(system_root, fdboot_binary, hdboot_path, boot_at386_root / 'default')
     return 0

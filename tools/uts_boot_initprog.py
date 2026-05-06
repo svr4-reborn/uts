@@ -8,6 +8,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
+try:
+    from .pathing import resolve_kernel_root
+except ImportError:
+    from pathing import resolve_kernel_root
+
 
 PROGRAM_SOURCES: dict[str, list[str]] = {
     'compaq': ['compaq.s'],
@@ -161,11 +166,12 @@ def install_programs(programs: list[Path], destination: Path) -> None:
 def main() -> int:
     args = parse_args()
     workspace_root = Path(args.workspace_root).resolve()
-    boot_root = Path(args.boot_root).resolve() if args.boot_root else workspace_root / 'uts/i386/boot'
+    kernel_root = resolve_kernel_root(workspace_root)
+    boot_root = Path(args.boot_root).resolve() if args.boot_root else kernel_root / 'i386/boot'
     build_root = Path(args.build_root).resolve()
     system_root = Path(args.system_root).resolve()
     source_dir = boot_root / 'at386/initprog'
-    include_root = workspace_root / 'uts/i386'
+    include_root = kernel_root / 'i386'
 
     if not (source_dir.parent / 'bsymvals.h').exists():
         raise SystemExit('error: expected uts/i386/boot/at386/bsymvals.h to exist before building initprog')

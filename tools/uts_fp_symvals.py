@@ -8,6 +8,11 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+try:
+    from .pathing import resolve_kernel_root
+except ImportError:
+    from pathing import resolve_kernel_root
+
 
 SYMBOL_LABELS = {
     'sym_u_fps': 'u_fps',
@@ -26,6 +31,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def compile_probe(workspace_root: Path, compiler: str) -> str:
+    kernel_root = resolve_kernel_root(workspace_root)
     source = '\n'.join([
         '#include "sys/types.h"',
         '#include "sys/user.h"',
@@ -49,7 +55,7 @@ def compile_probe(workspace_root: Path, compiler: str) -> str:
                 '-fno-builtin',
                 '-D_KERNEL',
                 '-nostdinc',
-                f'-I{workspace_root / "uts/i386"}',
+                f'-I{kernel_root / "i386"}',
                 '-S',
                 str(source_path),
                 '-o',
@@ -104,9 +110,10 @@ def write_symvals(fp_root: Path, values: dict[str, int], user_fp_define: str) ->
 def main() -> int:
     args = parse_args()
     workspace_root = Path(args.workspace_root).resolve()
-    fp_root = Path(args.fp_root).resolve() if args.fp_root else workspace_root / 'uts/i386/fp'
+    kernel_root = resolve_kernel_root(workspace_root)
+    fp_root = Path(args.fp_root).resolve() if args.fp_root else kernel_root / 'i386/fp'
     values = extract_values(compile_probe(workspace_root, args.cc))
-    user_fp_define = find_user_fp_define(workspace_root / 'uts/i386/sys/seg.h')
+    user_fp_define = find_user_fp_define(kernel_root / 'i386/sys/seg.h')
     write_symvals(fp_root, values, user_fp_define)
     return 0
 

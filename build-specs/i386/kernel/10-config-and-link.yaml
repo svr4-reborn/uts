@@ -46,7 +46,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_stage_master_at386.py
+          - "{kernel_root}/tools/uts_stage_master_at386.py"
           - --workspace-root
           - "{workspace_root}"
           - --conf-root
@@ -66,7 +66,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_idconfig.py
+          - "{kernel_root}/tools/uts_idconfig.py"
           - --conf-root
           - "{conf_root}"
           - --output-dir
@@ -84,7 +84,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_idconfig.py
+          - "{kernel_root}/tools/uts_idconfig.py"
           - --conf-root
           - "{conf_root}"
           - --output-dir
@@ -171,7 +171,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_driver_compose.py
+          - "{kernel_root}/tools/uts_driver_compose.py"
           - --manifest
           - "{simple_idconfig_manifest}"
           - --workspace-root
@@ -211,7 +211,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_driver_compose.py
+          - "{kernel_root}/tools/uts_driver_compose.py"
           - --manifest
           - "{floppy_idconfig_manifest}"
           - --workspace-root
@@ -251,7 +251,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_idbuild.py
+          - "{kernel_root}/tools/uts_idbuild.py"
           - --manifest
           - "{simple_idconfig_manifest}"
           - --cc
@@ -309,7 +309,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - uts/tools/uts_idbuild.py
+          - "{kernel_root}/tools/uts_idbuild.py"
           - --manifest
           - "{floppy_idconfig_manifest}"
           - --cc
