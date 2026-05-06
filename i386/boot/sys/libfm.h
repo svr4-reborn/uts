@@ -25,6 +25,7 @@ struct bootsect {
 	lfsect_t type;		/* type of section */
 	ulong addr;		/* virtual address to load section */
 	ulong size;		/* size of section */
+	ulong memsize;		/* in-memory size, including zero-fill tail */
 	off_t offset;		/* offset in file */
 };
 
