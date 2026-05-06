@@ -631,10 +631,13 @@ fpkreset( )
 savefp( addr )
 	int *addr;
 {
-	asm( "  clts                    " );    /* clear TS bit in CR0  */
-	asm( "  movl    8(%ebp), %eax   " );    /* load save address    */
-	asm( "  fnsave  (%eax)          " );    /* save state           */
-	asm( "  fwait                   " );    /* wait for completeion */
+	asm volatile (
+	    "clts\n\t"
+	    "fnsave (%0)\n\t"
+	    "fwait"
+	    :
+	    : "r" (addr)
+	    : "memory");
 }
 
 /*
@@ -645,10 +648,13 @@ savefp( addr )
 restorefp( addr )
 	int *addr;
 {
-	asm( "  clts                    " );    /* clear TS bit in CR0  */
-	asm( "  movl    8(%ebp), %eax   " );    /* load restore address */
-	asm( "  frstor  (%eax)          " );    /* restore state        */
-	asm( "  fwait                   " );    /* wait for completeion */
+	asm volatile (
+	    "clts\n\t"
+	    "frstor (%0)\n\t"
+	    "fwait"
+	    :
+	    : "r" (addr)
+	    : "memory");
 }
 
 /*
@@ -657,9 +663,13 @@ restorefp( addr )
 */
 setts()
 {
-	asm( "  movl    %cr0, %eax      " );    /* get CR0              */
-	asm( "  orl     $0x08, %eax     " );    /* OR in the TS bit     */
-	asm( "  movl    %eax, %cr0      " );    /* load CR0             */
+	asm volatile (
+	    "movl %%cr0, %%eax\n\t"
+	    "orl $0x08, %%eax\n\t"
+	    "movl %%eax, %%cr0"
+	    :
+	    :
+	    : "eax", "memory");
 }
 
 

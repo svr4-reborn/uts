@@ -36,8 +36,9 @@
 int
 get87 ()
 {
-        asm ("subl $2, %esp");		/*  Make Space on the stack */
-        asm ("fnstsw -2(%ebp)");	/* Save the Status word on the stack */
-        asm ("movswl -2(%ebp), %eax");	/* Load the return value */
+        short status;
+
+        asm volatile ("fnstsw %0" : "=m" (status) : : "memory");
+        return (int)status;
 }
 #endif /* WEITEK */
