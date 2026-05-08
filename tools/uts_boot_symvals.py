@@ -46,6 +46,7 @@ CAST_PATTERNS = [
     re.compile(r'\(\(paddr_t\)\s*([^\)]+)\)'),
 ]
 LONG_SUFFIX_PATTERN = re.compile(r'(?<![A-Za-z0-9_])([0-9A-Fa-fx]+)[Ll](?![A-Za-z0-9_])')
+SET_LINE_PATTERN = re.compile(r'^\s*\.set\s+([A-Za-z_][A-Za-z0-9_]*)\s*,\s*(-?(?:0[xX][0-9A-Fa-f]+|[0-9]+))\s*$')
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,7 +60,15 @@ def parse_args() -> argparse.Namespace:
 def run(command: list[str], cwd: Path | None = None) -> str:
     rendered = ' '.join(command)
     print(rendered)
-    completed = subprocess.run(command, cwd=cwd, check=True, text=True, capture_output=True)
+    try:
+        completed = subprocess.run(command, cwd=cwd, check=True, text=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        print(f'Command failed with exit code {e.returncode}: {rendered}')
+        if e.stdout:
+            print(e.stdout, end='')
+        if e.stderr:
+            print(e.stderr, end='')
+        raise
     if completed.stdout:
         print(completed.stdout, end='')
     if completed.stderr:
@@ -88,24 +97,40 @@ def collect_header_lines(header_paths: list[Path]) -> list[str]:
     return output
 
 
-def write_offset_program(source_path: Path) -> None:
+def write_offset_assembly_source(source_path: Path) -> None:
     lines = [
         '#include <stddef.h>',
-        '#include <stdio.h>',
         '#include "sys/types.h"',
         '#include "sys/bootinfo.h"',
         '#include "boot/sys/boot.h"',
         '',
-        'int main(void) {',
+        'void emit_boot_offsets(void) {',
     ]
     for field in OFFSET_FIELDS:
-        lines.append(f'    printf("\\t.set\\t{field},\\t%zu\\n", offsetof(struct hdparams, {field}));')
+        lines.append(f'    __asm__ volatile ("\\t.set\\t{field},\\t%c0" : : "i" (offsetof(struct hdparams, {field})));')
     lines.extend([
-        '    return 0;',
         '}',
         '',
     ])
     source_path.write_text('\n'.join(lines), encoding='utf-8')
+
+
+def extract_offset_lines(assembly_path: Path) -> str:
+    offsets: dict[str, str] = {}
+    for raw_line in assembly_path.read_text(encoding='utf-8', errors='replace').splitlines():
+        match = SET_LINE_PATTERN.match(raw_line)
+        if not match:
+            continue
+        symbol, value = match.groups()
+        if symbol in OFFSET_FIELDS:
+            offsets[symbol] = value
+
+    missing = [field for field in OFFSET_FIELDS if field not in offsets]
+    if missing:
+        missing_list = ', '.join(missing)
+        raise SystemExit(f'error: failed to extract offsets for: {missing_list} from {assembly_path}')
+
+    return ''.join(f'\t.set\t{field},\t{offsets[field]}\n' for field in OFFSET_FIELDS)
 
 
 def main() -> int:
@@ -120,8 +145,8 @@ def main() -> int:
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     program_source = temp_dir / 'boot_offsets.c'
-    program_binary = temp_dir / 'boot_offsets'
-    write_offset_program(program_source)
+    assembly_output = temp_dir / 'boot_offsets.s'
+    write_offset_assembly_source(program_source)
 
     run([
         args.cc,
@@ -129,6 +154,7 @@ def main() -> int:
         '-fcommon',
         '-fno-builtin',
         '-O2',
+        '-S',
         '-D_KERNEL',
         '-DAT386',
         '-DWEITEK',
@@ -136,9 +162,9 @@ def main() -> int:
         f'-I{kernel_root / "i386"}',
         str(program_source),
         '-o',
-        str(program_binary),
+        str(assembly_output),
     ])
-    offsets = run([str(program_binary)])
+    offsets = extract_offset_lines(assembly_output)
     (boot_dir / 'bsymvals.s').write_text(offsets, encoding='utf-8')
 
     header_lines = collect_header_lines([
