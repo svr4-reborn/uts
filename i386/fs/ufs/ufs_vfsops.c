@@ -56,6 +56,7 @@
 #include <sys/mount.h>
 #include <sys/swap.h>
 #include <sys/errno.h>
+#include <sys/cmn_err.h>
 #include <sys/debug.h>
 #include "fs/fs_subr.h"
 
@@ -323,8 +324,10 @@ mountfs(vfsp, why, dev, path, cr, isroot)
 		 */
 		error = VOP_OPEN(&devvp,
 		    (vfsp->vfs_flag & VFS_RDONLY) ? FREAD : FREAD|FWRITE, cr);
-		if (error)
+		if (error) {
+			cmn_err(CE_WARN, "ufs_mountroot: VOP_OPEN dev=0x%x error=%d\n", dev, error);
 			return (error);
+		}
 		needclose = 1;
 
 		/*
@@ -365,6 +368,8 @@ mountfs(vfsp, why, dev, path, cr, isroot)
 
 	tp = bread(dev, BBSIZE/SBSIZE, SBSIZE);
 	if (tp->b_flags & B_ERROR) {
+		cmn_err(CE_WARN, "ufs_mountroot: bread superblock dev=0x%x blk=%d flags=0x%x error=%d\n",
+		    dev, BBSIZE/SBSIZE, tp->b_flags, tp->b_error);
 		goto out;
 	}
 
@@ -374,6 +379,9 @@ mountfs(vfsp, why, dev, path, cr, isroot)
 	if (fsp->fs_magic != FS_MAGIC || fsp->fs_bsize > MAXBSIZE ||
 	    fsp->fs_frag > MAXFRAG ||	
 	    fsp->fs_bsize < sizeof (struct fs) || fsp->fs_bsize < PAGESIZE/2) {
+		cmn_err(CE_WARN,
+		    "ufs_mountroot: bad superblock dev=0x%x magic=0x%x bsize=%ld frag=%ld sbsize=%ld\n",
+		    dev, fsp->fs_magic, fsp->fs_bsize, fsp->fs_frag, fsp->fs_sbsize);
 		error = EINVAL;	/* also needs translation */
 		goto out;
 	}

@@ -1,7 +1,7 @@
 toolchain:
-  cc: gcc
-  cpp: cpp
-  ld: ld
+  cc: i686-svr4-mlibc-gcc
+  cpp: i686-svr4-mlibc-cpp
+  ld: i686-svr4-mlibc-ld
   cflags:
     - -std=gnu89
     - -fcommon

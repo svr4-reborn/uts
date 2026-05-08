@@ -309,7 +309,9 @@ char	*argv[];
 
 	spl0();
 
+	cmn_err(CE_CONT, "The kernel is starting processes.\n");
  	if (newproc(NP_INIT, NULL, &error)) {
+		cmn_err(CE_CONT, "Loading init process.\n");
 		register struct dscr *ldt, *ldta;
 		register struct gate_desc *gldt;
 		extern struct gate_desc scall_dscr, sigret_dscr;
