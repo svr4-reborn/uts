@@ -553,11 +553,8 @@ unix_start:	.long	0
 /  ----------------- < end  commented-out section> -------------------
 /
 /  ----------------- < begin replacement code > ----------------------
-#ifndef	WINI
 	. = ZERO + 510
-#else
-	. = ZERO + 506
-#endif
+
 /  ----------------- < end  replacement code > -----------------------
 	.byte 0x55
 	.byte 0xaa
