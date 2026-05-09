@@ -114,7 +114,13 @@ int setid;
 
 
 	if ((error = getelfhead(&ehdrp, &phdrbase, &phdrsize, ehdp)) != 0)
+	{
+		if (pp->p_pid == 1)
+			cmn_err(CE_CONT,
+				"getelfhead failed with exec on pid 1, error=%d level=%d\n",
+				error, level);
 		return error;
+	}
 
 	/* determine aux size now so that stack can be built
 	 * in one shot (except actual copyout of aux image)
@@ -153,11 +159,28 @@ int setid;
 #endif
 
 	if ((error = remove_proc(args)) != 0)
+	{
+		if (pp->p_pid == 1)
+			cmn_err(CE_CONT,
+				"initexec: remove_proc failed error=%d level=%d\n",
+				error, level);
 		return error;
+	}
 
 	if ((error = mapelfexec(vp, ehdrp, phdrbase, &uphdr, &dyphdr, &stphdr, 
 				&base, &voffset, execsz)) != 0)
+	{
+		if (pp->p_pid == 1)
+			cmn_err(CE_CONT,
+				"initexec: mapelfexec main failed error=%d entry=%x voffset=%x\n",
+				error, ehdrp->e_entry, voffset);
 			goto bad;
+	}
+	if (pp->p_pid == 1)
+		cmn_err(CE_CONT,
+			"initexec: main ELF mapped entry=%x voffset=%x interp=%d phdr=%d\n",
+			ehdrp->e_entry + voffset, voffset, dyphdr != NULL,
+			uphdr != NULL);
 
 	if (stphdr != NULL){
 		/* call coff stuff. */
@@ -173,7 +196,13 @@ int setid;
 		dlnsize = dyphdr->p_filesz;
 
 		if (dlnsize > MAXPATHLEN || dlnsize <= 0)
+		{
+			if (pp->p_pid == 1)
+				cmn_err(CE_CONT,
+					"initexec: invalid PT_INTERP size=%d\n",
+					dlnsize);
 			goto bad;
+		}
 
 		error = exhd_getmap(ehdp,
 			dyphdr->p_offset,
@@ -181,14 +210,38 @@ int setid;
 			EXHD_NOALIGN,
 			(caddr_t) &dlnp);
 		if (error)
+		{
+			if (pp->p_pid == 1)
+				cmn_err(CE_CONT,
+					"initexec: PT_INTERP map failed error=%d offset=%x size=%x\n",
+					error, dyphdr->p_offset, dyphdr->p_filesz);
 			goto bad;
+		}
 
 		if (dlnp[dlnsize - 1] != '\0')
+		{
+			if (pp->p_pid == 1)
+				cmn_err(CE_CONT,
+					"initexec: PT_INTERP path missing terminator size=%d\n",
+					dlnsize);
 			goto bad;
+		}
+		if (pp->p_pid == 1)
+			cmn_err(CE_CONT,
+				"initexec: PT_INTERP path=%s\n", dlnp);
 
 		if (error = lookupname(dlnp, UIO_SYSSPACE, FOLLOW,
 			NULLVPP, &nvp))
+			{
+				if (pp->p_pid == 1)
+					cmn_err(CE_CONT,
+						"initexec: lookupname failed path=%s error=%d\n",
+						dlnp, error);
 				goto bad;
+			}
+		if (pp->p_pid == 1)
+			cmn_err(CE_CONT,
+				"initexec: interpreter vnode=%x path=%s\n", nvp, dlnp);
 
 
 		aux = elfargs;
@@ -217,12 +270,20 @@ int setid;
 		}
 
 		if ((error = execpermissions(nvp, &vattr, &dehdr, args)) != 0) {
+			if (pp->p_pid == 1)
+				cmn_err(CE_CONT,
+					"initexec: interpreter execpermissions failed path=%s error=%d\n",
+					dlnp, error);
 			VN_RELE(nvp);
 			goto bad;
 		}
 
 		if ((error = getelfhead(&ehdrp, &phdrbase,
 				&phdrsize, &dehdr)) != 0){
+			if (pp->p_pid == 1)
+				cmn_err(CE_CONT,
+					"initexec: interpreter getelfhead failed path=%s error=%d\n",
+					dlnp, error);
 			exhd_release(&dehdr);
 			VN_RELE(nvp);
 			goto bad;
@@ -232,11 +293,21 @@ int setid;
 				&junk, &base, &voffset, execsz);
 		exhd_release(&dehdr);
 		VN_RELE(nvp);
+		if (pp->p_pid == 1)
+			cmn_err(CE_CONT,
+				"initexec: interpreter mapelfexec path=%s error=%d voffset=%x\n",
+				dlnp, error, voffset);
 		if (error)
 			goto bad;
 
 		if (junk != NULL)
+		{
+			if (pp->p_pid == 1)
+				cmn_err(CE_CONT,
+					"initexec: interpreter had unexpected PT_INTERP path=%s\n",
+					dlnp);
 			goto bad;
+		}
 
 		*aux++ = AT_BASE;
 #ifdef i386
@@ -297,12 +368,20 @@ int setid;
 		exenv.ex_vp = vp;
 		setexecenv(&exenv);
 	}
+	if (pp->p_pid == 1)
+		cmn_err(CE_CONT,
+			"initexec: elfexec success entry=%x voffset=%x base=%x execsz=%ld\n",
+			ehdrp->e_entry + voffset, voffset, base, *execsz);
 
 	return 0;
 
 bad:
 	if (fd != -1)		/* did we open the a.out yet */
 		(void)execclose(fd);
+	if (pp->p_pid == 1)
+		cmn_err(CE_CONT,
+			"initexec: elfexec bad error=%d level=%d\n",
+			error ? error : ENOEXEC, level);
 
 	psignal(pp,SIGKILL);
 
@@ -416,7 +495,15 @@ long *execsz;
 
 			if (error = execmap(vp, addr, phdr->p_filesz, 
 					     zfodsz, phdr->p_offset, prot))
+				{
+					if (pp->p_pid == 1)
+						cmn_err(CE_CONT,
+							"initexec: mapelfexec %s PT_LOAD[%d] failed error=%d addr=%x off=%x filesz=%x memsz=%x prot=%x\n",
+							ehdr->e_type == ET_DYN ? "interp" : "main",
+							i, error, addr, phdr->p_offset,
+							phdr->p_filesz, phdr->p_memsz, prot);
 					goto bad;
+				}
 
 #ifdef i386
 			if (phdr->p_flags & PF_W) {

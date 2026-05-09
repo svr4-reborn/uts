@@ -235,6 +235,11 @@ int what;
 
 	rv = wstat(why, what);
 
+	if (p->p_pid == 1)
+		cmn_err(CE_CONT,
+		    "init process exited: why=%d what=%d rv=0x%x\n",
+		    why, what, rv);
+
 	ev_exit(p, rv); /* Let the events VFS clean up. */
 
 	acct(rv & 0xff);
