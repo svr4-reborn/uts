@@ -615,6 +615,8 @@ segu_get(cp, no_swap)
 		if (availrmem - usize < tune.t_minarmem ||
 		    availsmem - usize < tune.t_minasmem) {
 			nomemmsg("segu_get", usize, 0, 0);
+			sup->su_next = sdp->usd_free;
+			sdp->usd_free = sup;
 			return(NULL);
 		}
 		availrmem -= usize;
@@ -742,8 +744,13 @@ segu_get(cp, no_swap)
 
 	/*
 	 * Finally, mark this slot as allocated and locked.
+	 * A freshly built u-area has HAT_LOCK mappings, so it starts
+	 * life fault-free and pinned in memory.
 	 */
 	sup->su_flags = SEGU_ALLOCATED | SEGU_LOCKED;
+	/* Remember whether release must refund resident memory directly. */
+	if (no_swap)
+		sup->su_flags |= SEGU_NOSWAP;
 	sup->su_proc = cp;
 
 	/*
@@ -810,7 +817,7 @@ segu_release(p)
 	}
 	p->p_ubptbl = (pte_t *)NULL;
 
-	if (p->p_flag & SSYS) {
+	if (sup->su_flags & SEGU_NOSWAP) {
 		availrmem += usize;
 		availsmem += usize;
 		pages_pp_kernel -= usize;
@@ -841,8 +848,10 @@ segu_release(p)
 
 	/*
 	 * Mark the slot as unallocated and put it back on the free list.
+	 * Clear the no-swap bookkeeping so the next user of the slot does
+	 * not inherit accounting state from this one.
 	 */
-	sup->su_flags &= ~SEGU_ALLOCATED;
+	sup->su_flags &= ~(SEGU_ALLOCATED | SEGU_NOSWAP);
 	sup->su_next = sdp->usd_free;
 	sdp->usd_free = sup;
 

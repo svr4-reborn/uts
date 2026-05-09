@@ -123,6 +123,7 @@ struct segu_data {
  */
 #define	SEGU_ALLOCATED	0x01		/* slot is in use */
 #define	SEGU_LOCKED	0x02		/* slot's resources locked */
+#define	SEGU_NOSWAP	0x04		/* slot was allocated without swap */
 
 
 #ifdef	_KERNEL
