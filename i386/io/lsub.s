@@ -16,9 +16,9 @@
         .text
         .align  4
 
+	.set	ans,4
 	.set	lop,8
 	.set	rop,16
-	.set	ans,0
 
 lsub:
 
@@ -26,7 +26,8 @@ lsub:
 	subl	rop(%esp),%ecx
 	movl	lop+4(%esp),%edx
 	sbbl	rop+4(%esp),%edx
-	movl	%ecx,ans(%eax)
-	movl	%edx,ans+4(%eax)
+	movl	ans(%esp),%eax
+	movl	%ecx,0(%eax)
+	movl	%edx,4(%eax)
 
 	ret	$4

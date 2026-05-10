@@ -16,11 +16,11 @@
         .text
         .align  4
 
-	.set	arg,12
-	.set	cnt,20
-	.set	ans,0
+	.set	ans,4
+	.set	arg,8
+	.set	cnt,16
 
-lshiftl:	pushl	%eax
+lshiftl:
 	movl	arg(%esp),%eax
 	movl	arg+4(%esp),%edx
 	movl	cnt(%esp),%ecx
@@ -48,9 +48,9 @@ lshiftl:	pushl	%eax
 / We are done.
 
 .lshiftld:
-	movl	%eax,%ecx
-	popl	%eax
-	movl	%ecx,ans(%eax)
-	movl	%edx,ans+4(%eax)
+	movl	ans(%esp),%ecx
+	movl	%eax,0(%ecx)
+	movl	%edx,4(%ecx)
+	movl	%ecx,%eax
 
 	ret	$4
