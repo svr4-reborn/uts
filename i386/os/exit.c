@@ -474,10 +474,13 @@ waitid(idtype, id, ip, options)
 			return 0;
 		}
 		
-		if (idtype == P_PID)
-			sleep((caddr_t)cp, PWAIT);
-		else
-			sleep((caddr_t)pp, PWAIT);
+		if (idtype == P_PID) {
+			if (sleep((caddr_t)cp, PWAIT|PCATCH))
+				return EINTR;
+		} else {
+			if (sleep((caddr_t)pp, PWAIT|PCATCH))
+				return EINTR;
+		}
 	}
 	return ECHILD;
 }

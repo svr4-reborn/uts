@@ -23,7 +23,8 @@
 
 int	access(), alarm(), brk(), chdir(), chmod(), chown(), chroot();
 int	close(), creat(), dup(), exec(), exece(), fcntl(), fork(), fstat();
-int	fsync(), getgid(), getpid(), getuid(), gtime(), gtty(), ioctl();
+int	fsync(), getgid(), getpid(), getresgid(), getresuid(), getuid();
+int	gtime(), gtty(), ioctl();
 int	kill(), link(), lock_mem(), lseek(), mknod(), msgsys(), mknod();
 int	mount(), msgsys(), nice(), nosys(), open();
 int	pipe(), profil(), ptrace(), read(), rename();
@@ -47,6 +48,7 @@ int	statvfs(), fstatvfs();
 int	async(), async_cancel();
 int	ev_evsys(), ev_evtrapret();
 int	hrtsys();
+int	ppoll();
 int	priocntlsys();
 int	waitsys();
 int	sigsendsys();
@@ -219,6 +221,9 @@ struct sysent sysent[] = {
 	3, 0, systeminfo,		/* 139 = systeminfo */
 	0, 0, nosys,			/* 140 = reserved */
 	1, 0, seteuid,			/* 141 = seteuid */
+	3, 0, getresuid,		/* 142 = getresuid */
+	3, 0, getresgid,		/* 143 = getresgid */
+	4, SETJUMP, ppoll,		/* 144 = ppoll */
 };
 
 unsigned sysentsize = sizeof(sysent)/sizeof(struct sysent);

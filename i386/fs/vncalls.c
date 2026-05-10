@@ -1817,6 +1817,7 @@ fcntl(uap, rvp)
 	vnode_t *vp;
 	off_t offset;
 	int flag, fd;
+	file_t *dupfp;
 	struct flock bf;
 	struct o_flock obf;
 	char flags;
@@ -1834,16 +1835,48 @@ fcntl(uap, rvp)
 	switch (uap->cmd) {
 
 	case F_DUPFD:
+	case F_DUP2FD:
+	case F_DUP2FD_CLOEXEC:
 		if ((i = uap->arg) < 0 
 		  || i >= u.u_rlimit[RLIMIT_NOFILE].rlim_cur)
 			error = EINVAL;
-		else if ((error = ufalloc(i, &fd)) == 0) {
+		else if (uap->cmd == F_DUPFD) {
+			if ((error = ufalloc(i, &fd)) == 0) {
+				setf(fd, fp);
+				flags = getpof(fd);
+				flags = flags & ~FCLOSEXEC;
+				setpof(fd, flags);
+				fp->f_count++;
+				rvp->r_val1 = fd;
+				break;
+			}
+		} else {
+			fd = i;
+			if (fd == uap->fdes) {
+				if (uap->cmd == F_DUP2FD_CLOEXEC)
+					setpof(fd, getpof(fd) | FCLOSEXEC);
+				rvp->r_val1 = fd;
+				break;
+			}
+
+			if (fd >= u.u_nofiles) {
+				if ((error = ufalloc(fd, &fd)) != 0)
+					break;
+			} else if ((error = getf(fd, &dupfp)) == 0) {
+				(void)closef(dupfp);
+				setf(fd, NULLFP);
+			} else if (error != EBADF) {
+				break;
+			}
+
 			setf(fd, fp);
-			flags = getpof(fd);
-			flags = flags & ~FCLOSEXEC;
-			setpof(fd, flags);
+			if (uap->cmd == F_DUP2FD_CLOEXEC)
+				setpof(fd, FCLOSEXEC);
+			else
+				setpof(fd, 0);
 			fp->f_count++;
 			rvp->r_val1 = fd;
+			error = 0;
 			break;
 		}
 		break;
@@ -2223,6 +2256,77 @@ struct polla {
 	unsigned long nfds;
 	long	timo;
 };
+
+struct ppolla {
+	struct pollfd *fdp;
+	unsigned long nfds;
+	timestruc_t *tsp;
+	sigset_t *sigmask;
+};
+
+int
+ppoll(uap, rvp)
+	register struct ppolla *uap;
+	rval_t *rvp;
+{
+	struct polla poll_args;
+	k_sigset_t old_mask;
+	k_sigset_t new_mask;
+	timestruc_t timeout;
+	label_t saveq;
+	int have_mask = 0;
+	int error;
+
+	poll_args.fdp = uap->fdp;
+	poll_args.nfds = uap->nfds;
+	poll_args.timo = -1;
+
+	if (uap->tsp) {
+		if (copyin((caddr_t)uap->tsp, (caddr_t)&timeout, sizeof(timeout)))
+			return EFAULT;
+		if (timeout.tv_sec < 0 || timeout.tv_nsec < 0 || timeout.tv_nsec >= 1000000000L)
+			return EINVAL;
+
+		if (timeout.tv_sec >= LONG_MAX / 1000)
+			poll_args.timo = LONG_MAX;
+		else {
+			long timeout_ms = (timeout.tv_nsec + 999999) / 1000000;
+			if (timeout.tv_sec > (LONG_MAX - timeout_ms) / 1000)
+				poll_args.timo = LONG_MAX;
+			else
+				poll_args.timo = timeout.tv_sec * 1000 + timeout_ms;
+		}
+	}
+
+	if (uap->sigmask) {
+		sigset_t set;
+		if (copyin((caddr_t)uap->sigmask, (caddr_t)&set, sizeof(set)))
+			return EFAULT;
+		sigutok(&set, &new_mask);
+		sigdiffset(&new_mask, &cantmask);
+		old_mask = u.u_procp->p_hold;
+		u.u_procp->p_hold = new_mask;
+		have_mask = 1;
+	}
+
+	saveq = u.u_qsav;
+	if (setjmp(&u.u_qsav)) {
+		if (have_mask)
+			u.u_procp->p_hold = old_mask;
+		u.u_qsav = saveq;
+		if (u.u_error)
+			return u.u_error;
+		return EINTR;
+	}
+
+	error = poll(&poll_args, rvp);
+	if (error == 0 && rvp->r_val1 == 0 && ISSIG(u.u_procp, FORREAL))
+		error = EINTR;
+	if (have_mask)
+		u.u_procp->p_hold = old_mask;
+	u.u_qsav = saveq;
+	return error;
+}
 
 int
 poll(uap, rvp)

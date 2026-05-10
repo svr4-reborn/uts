@@ -280,6 +280,31 @@ getuid(uap, rvp)
 	return 0;
 }
 
+struct getresuida {
+	uid_t	*ruid;
+	uid_t	*euid;
+	uid_t	*suid;
+};
+
+/* ARGSUSED */
+int
+getresuid(uap, rvp)
+	register struct getresuida *uap;
+	rval_t *rvp;
+{
+	uid_t ruid = u.u_cred->cr_ruid;
+	uid_t euid = u.u_cred->cr_uid;
+	uid_t suid = u.u_cred->cr_suid;
+
+	if (copyout((caddr_t)&ruid, (caddr_t)uap->ruid, sizeof(ruid)))
+		return EFAULT;
+	if (copyout((caddr_t)&euid, (caddr_t)uap->euid, sizeof(euid)))
+		return EFAULT;
+	if (copyout((caddr_t)&suid, (caddr_t)uap->suid, sizeof(suid)))
+		return EFAULT;
+	return 0;
+}
+
 struct setgida {
 	gid_t	gid;
 };
@@ -342,6 +367,31 @@ getgid(uap, rvp)
 {
 	rvp->r_val1 = u.u_cred->cr_rgid;
 	rvp->r_val2 = u.u_cred->cr_gid;
+	return 0;
+}
+
+struct getresgida {
+	gid_t	*rgid;
+	gid_t	*egid;
+	gid_t	*sgid;
+};
+
+/* ARGSUSED */
+int
+getresgid(uap, rvp)
+	register struct getresgida *uap;
+	rval_t *rvp;
+{
+	gid_t rgid = u.u_cred->cr_rgid;
+	gid_t egid = u.u_cred->cr_gid;
+	gid_t sgid = u.u_cred->cr_sgid;
+
+	if (copyout((caddr_t)&rgid, (caddr_t)uap->rgid, sizeof(rgid)))
+		return EFAULT;
+	if (copyout((caddr_t)&egid, (caddr_t)uap->egid, sizeof(egid)))
+		return EFAULT;
+	if (copyout((caddr_t)&sgid, (caddr_t)uap->sgid, sizeof(sgid)))
+		return EFAULT;
 	return 0;
 }
 

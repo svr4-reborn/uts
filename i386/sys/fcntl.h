@@ -85,6 +85,8 @@
 
 #define	F_GETOWN	23	/* Get owner (socket emulation) */
 #define	F_SETOWN	24	/* Set owner (socket emulation) */
+#define	F_DUP2FD	25	/* Duplicate fildes to an exact descriptor */
+#define	F_DUP2FD_CLOEXEC 26	/* Duplicate fildes with close-on-exec */
 #endif /* !defined(_POSIX_SOURCE) */
 
 
