@@ -63,6 +63,21 @@
 #include "sys/immu.h"
 #include "vm/cpu.h"
 
+extern int	anon_memtrace_enabled;
+extern int	anon_memtrace_pid;
+
+STATIC int
+map_addr_memtrace_matches()
+{
+	register struct proc *p = u.u_procp;
+
+	if (anon_memtrace_enabled == 0 || p == NULL)
+		return (0);
+	if (anon_memtrace_pid != -1 && p->p_pid != anon_memtrace_pid)
+		return (0);
+	return (1);
+}
+
 /*
  * map_addr() is the routine called when the system is to
  * chose an address for the user.  We will  pick an address
@@ -117,8 +132,15 @@ map_addr(addrp, len, off, align)
 	 */
 	if (as_gap(as, len, &base, &slen, AH_LO, (addr_t)NULL) == 0)
 		*addrp = (addr_t)((u_int)base + PAGESIZE);
-        else
-                *addrp = NULL;  /* no more virtual space */
+	else {
+		if (map_addr_memtrace_matches()) {
+			cmn_err(CE_CONT,
+			    "as_memtrace: pid=%d op=map_addr len=%u failed reason=no gap base=%x span=%u as_size=%u\n",
+			    u.u_procp->p_pid, len, UVSHM, (u_int)((addr_t)UVEND -
+			    (addr_t)UVSHM), as->a_size);
+		}
+		*addrp = NULL;  /* no more virtual space */
+	}
 }
 
 /*

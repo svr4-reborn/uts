@@ -60,7 +60,41 @@
 #include "vm/page.h"
 #include "vm/seg_kmem.h"
 
+extern int	anon_memtrace_enabled;
+extern int	anon_memtrace_pid;
+
 extern int	valid_va_range();
+
+STATIC int
+as_memtrace_matches()
+{
+	register struct proc *p = u.u_procp;
+
+	if (anon_memtrace_enabled == 0 || p == NULL)
+		return (0);
+	if (anon_memtrace_pid != -1 && p->p_pid != anon_memtrace_pid)
+		return (0);
+	return (1);
+}
+
+STATIC void
+as_memtrace_fail(op, addr, size, reason, detail)
+	char *op;
+	addr_t addr;
+	u_int size;
+	char *reason;
+	int detail;
+{
+	register struct proc *p = u.u_procp;
+
+	// if (!as_memtrace_matches())
+	// 	return;
+
+	cmn_err(CE_CONT,
+	    "as_memtrace: pid=%d op=%s addr=%x size=%u failed reason=%s detail=%d as_size=%u vmem_limit=%u\n",
+	    p->p_pid, op, addr, size, reason, detail, p->p_as->a_size,
+	    u.u_rlimit[RLIMIT_VMEM].rlim_cur);
+}
 
 /*
  * Variables for maintaining the free list of address space structures.
@@ -517,12 +551,18 @@ as_map(as, addr, size, crfp, argsp)
 	raddr = (addr_t)((u_int)addr & PAGEMASK);
 	rsize = (((u_int)(addr + size) + PAGEOFFSET) & PAGEMASK) - (u_int)raddr;
 
-	if (as->a_size + rsize > u.u_rlimit[RLIMIT_VMEM].rlim_cur)
+	if (as->a_size + rsize > u.u_rlimit[RLIMIT_VMEM].rlim_cur) {
+		as_memtrace_fail("as_map", addr, size,
+		    "RLIMIT_VMEM exceeded", as->a_size + rsize);
 		return (ENOMEM);
+	}
 
 	seg = seg_alloc(as, addr, size);
-	if (seg == NULL)
+	if (seg == NULL) {
+		as_memtrace_fail("as_map", addr, size,
+		    "seg_alloc returned NULL", rsize);
 		return (ENOMEM);
+	}
 
 	/*
 	 * Remember that this was the most recently touched segment.

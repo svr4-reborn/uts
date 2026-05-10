@@ -93,6 +93,7 @@
 #include "sys/cmn_err.h"
 #include "sys/sysmacros.h"
 #include "sys/debug.h"
+#include "sys/user.h"
 
 #include "sys/proc.h"		/* XXX - needed for PREEMPT() */
 #include "sys/disp.h"		/* XXX - needed for PREEMPT() */
@@ -113,8 +114,79 @@ extern void	pagezero();
 
 struct	anoninfo anoninfo;
 
+int	anon_memtrace_enabled = 0;
+/* -1 means trace all processes */
+int	anon_memtrace_pid = -1;
+
 STATIC mon_t anon_lock;
 STATIC int npagesteal;
+
+int
+anon_memtrace_matches(p)
+	register struct proc *p;
+{
+	if (anon_memtrace_enabled == 0 || p == NULL)
+		return (0);
+	if (anon_memtrace_pid != -1 && p->p_pid != anon_memtrace_pid)
+		return (0);
+	return (1);
+}
+
+void
+anon_memtrace_log(p, op, addr, len, resv_delta, commit_delta)
+	register struct proc *p;
+	char *op;
+	caddr_t addr;
+	u_int len;
+	int resv_delta;
+	int commit_delta;
+{
+	u_int anon_used;
+	u_int anon_free;
+	u_int anon_reserved;
+	u_int mem_free;
+
+	if (!anon_memtrace_matches(p))
+		return;
+
+	anon_used = ctob(anoninfo.ani_max - anoninfo.ani_free);
+	anon_free = ctob(anoninfo.ani_free);
+	anon_reserved = ctob(anoninfo.ani_resv);
+	mem_free = ctob(availsmem);
+
+	cmn_err(CE_CONT,
+	    "anon_memtrace: pid=%d op=%s addr=%x len=%u resv=%d commit=%d anon_used=%u anon_free=%u anon_resv=%u mem_free=%u\n",
+	    p->p_pid, op, addr, len, resv_delta, commit_delta,
+	    anon_used, anon_free, anon_reserved, mem_free);
+}
+
+void
+anon_memtrace_fail(p, op, addr, len, reason, detail)
+	register struct proc *p;
+	char *op;
+	caddr_t addr;
+	u_int len;
+	char *reason;
+	int detail;
+{
+	u_int anon_used;
+	u_int anon_free;
+	u_int anon_reserved;
+	u_int mem_free;
+
+	// if (!anon_memtrace_matches(p))
+	// 	return;
+
+	anon_used = ctob(anoninfo.ani_max - anoninfo.ani_free);
+	anon_free = ctob(anoninfo.ani_free);
+	anon_reserved = ctob(anoninfo.ani_resv);
+	mem_free = ctob(availsmem);
+
+	cmn_err(CE_CONT,
+	    "anon_memtrace: pid=%d op=%s addr=%x len=%u failed reason=%s detail=%d anon_used=%u anon_free=%u anon_resv=%u mem_free=%u\n",
+	    p->p_pid, op, addr, len, reason, detail,
+	    anon_used, anon_free, anon_reserved, mem_free);
+}
 
 /*
  * Reserve anon space.
@@ -127,11 +199,15 @@ anon_resv(size)
 	register int pages = btopr(size);
 
 	if (availsmem - pages < tune.t_minasmem) {
+		anon_memtrace_fail(u.u_procp, "anon_reserve", 0, size,
+		    "availsmem would drop below t_minasmem", tune.t_minasmem);
 		nomemmsg("anon_resv", pages, 0, 0);
 		return 0;
 	}
 
 	if (anoninfo.ani_resv + pages > anoninfo.ani_max) {
+		anon_memtrace_fail(u.u_procp, "anon_reserve", 0, size,
+		    "ani_resv would exceed ani_max", anoninfo.ani_max);
 		return 0;
 	} 
 	anoninfo.ani_resv += pages;
@@ -173,6 +249,9 @@ anon_alloc()
 		ASSERT(ap->an_use == AN_NONE);
 		ap->an_use = AN_DATA;
 #endif
+	} else {
+		anon_memtrace_fail(u.u_procp, "anon_slot", 0, PAGESIZE,
+		    "swap_alloc returned NULL", anoninfo.ani_free);
 	}
 	mon_exit(&anon_lock);
 	return (ap);
@@ -193,6 +272,9 @@ anon_upalloc()
 		ap->an_flag = ALOCKED;
 		ASSERT(ap->an_use == AN_NONE);
 		ap->an_use = AN_UPAGE;
+	} else {
+		anon_memtrace_fail(u.u_procp, "anon_slot", 0, PAGESIZE,
+		    "swap_alloc returned NULL", anoninfo.ani_free);
 	}
 	mon_exit(&anon_lock);
 	return (ap);
@@ -586,6 +668,8 @@ anon_zero(seg, addr, app)
 	/* get a locked swap slot */
 	*app = ap = anon_alloc();
 	if (ap == NULL) {
+		anon_memtrace_fail(u.u_procp, "anon_commit", addr, PAGESIZE,
+		    "anon_alloc failed", 0);
 		rm_outofanon();
 		return ((page_t *)NULL);
 	}
@@ -618,6 +702,9 @@ again:
 	pp->p_mod = 1;		/* mark as modified so pageout writes back */
 	page_unlock(pp);
 	AUNLOCK(ap);
+	if (u.u_procp != NULL && seg->s_as == u.u_procp->p_as)
+		anon_memtrace_log(u.u_procp, "anon_commit", addr, PAGESIZE, 0,
+		    PAGESIZE);
 	return (pp);
 }
 
@@ -638,6 +725,8 @@ again:
 	/* get a locked swap slot */
 	*app = ap = anon_alloc();
 	if (ap == NULL) {
+		anon_memtrace_fail(u.u_procp, "anon_commit", addr, PAGESIZE,
+		    "anon_alloc failed", 0);
 		rm_outofanon();
 		while (unused_list != NULL) {
 			unused_list = (ap = unused_list)->un.an_next;
@@ -685,6 +774,9 @@ next_anon:
 	pp->p_mod = 1;		/* mark as modified so pageout writes back */
 	page_unlock(pp);
 	AUNLOCK(ap);
+	if (u.u_procp != NULL && seg->s_as == u.u_procp->p_as)
+		anon_memtrace_log(u.u_procp, "anon_commit", addr, PAGESIZE, 0,
+		    PAGESIZE);
 
 	while (unused_list != NULL) {
 		unused_list = (ap = unused_list)->un.an_next;
