@@ -262,11 +262,12 @@ struct socknewproto {
 
 /* defines for user/kernel interface */
 
-#if (INTEL == 31) || (ATT == 31)
-#define SOCKETSYS	88	/* MUST BE CHANGED DEPENDING ON OS/SYSENT.C!! */
-#else
-#define SOCKETSYS	83	/* MUST BE CHANGED DEPENDING ON OS/SYSENT.C!! */
-#endif
+/*
+ * Historical SOCKETSYS syscall numbers used to live here, but this tree's
+ * sysent table no longer exposes a socketsys syscall entry. New code should
+ * use the SIOCSOCKSYS ioctl interface from <sys/sockio.h> on the sock clone
+ * device instead.
+ */
 
 #define  SO_ACCEPT	1
 #define  SO_BIND	2
