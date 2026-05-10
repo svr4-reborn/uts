@@ -1058,10 +1058,12 @@ setexecenv(ep)
 	u.u_sigresethand = 0;
 	u.u_signodefer = 0;
 	u.u_sigonstack = 0;
+	u.u_sigreturning = 0;
 
 	u.u_sigaltstack.ss_sp = 0;
 	u.u_sigaltstack.ss_size = 0;
 	u.u_sigaltstack.ss_flags = SS_DISABLE;
+	bzero((caddr_t)u.u_sigactret, sizeof(u.u_sigactret));
 
 	/*
 	 * Any pending signals remain held, so don't clear p_hold and
@@ -1076,6 +1078,7 @@ setexecenv(ep)
 		if (u.u_signal[i-1] != SIG_DFL && u.u_signal[i-1] != SIG_IGN) {
 			ev_signal(p, i);
 			u.u_signal[i - 1] = SIG_DFL;
+			u.u_sigactret[i - 1] = NULL;
 			sigemptyset(&u.u_sigmask[i - 1]);
 			if (sigismember(&ignoredefault, i))
 				sigdelq(p, i);

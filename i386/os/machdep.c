@@ -259,6 +259,8 @@ setregs(args)
  	u.u_debugon = 0;
  
  	/* Clear the user return address for signals */
+	u.u_sigreturning = 0;
+	bzero((caddr_t)u.u_sigactret, sizeof(u.u_sigactret));
  	u.u_sigreturn = (void (*)()) NULL;
 
 	return 0;
@@ -513,7 +515,9 @@ sendsig(sig, sip, hdlr)
 					sizeof(struct compat_frame)) < 0) 
 			return 0;
 	} else {
-		argpframe.retadr = (void (*)())0xFFFFFFFF;
+		argpframe.retadr = u.u_sigactret[sig - 1]
+			? u.u_sigactret[sig - 1]
+			: (void (*)())0xFFFFFFFF;
 					/* Shouldn't return via this;
 					   if they do, fault. */
 		argpframe.signo = sig;
@@ -528,6 +532,7 @@ sendsig(sig, sip, hdlr)
 
 	/* push context */
 	u.u_oldcontext = argpframe.ucp;
+	u.u_sigreturning = old_style ? 1 : 2;
 
 	u.u_ar0[EIP] = (unsigned int) hdlr;
 	u.u_ar0[UESP] = (unsigned int) sp;
@@ -707,10 +712,26 @@ register int	*r0ptr;		/* registers on stack */
 	register struct compat_frame *cframe;
 	ucontext_t	uc, *ucp;
 
+	if (u.u_sigreturning == 2) {
+		ucp = u.u_oldcontext;
+		u.u_sigreturning = 0;
+		if (copyin((caddr_t)ucp, (caddr_t)&uc, sizeof(ucontext_t)) == -1) {
+			u.u_ar0 = r0ptr;
+			exit( (core("core", u.u_procp, u.u_cred,
+				u.u_rlimit[RLIMIT_CORE].rlim_cur, SIGSEGV) ?
+					CLD_DUMPED|CLD_KILLED : CLD_KILLED), SIGSEGV);
+			return;
+		}
+
+		restorecontext(&uc);
+		return;
+	}
+
 	/* The user's stack pointer currently points into compat_frame
 	 * on the user stack.  Adjust it to the base of compat_frame.
 	 */
 	cframe = (struct compat_frame *)(r0ptr[UESP] - 2 * sizeof(int));
+	u.u_sigreturning = 0;
 	
 	ucp = (ucontext_t *)(cframe + 1);
  

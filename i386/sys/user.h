@@ -272,6 +272,8 @@ typedef	struct	user {
 	k_sigset_t u_sigoldmask;	/* for sigsuspend */
 	k_sigset_t u_sigmask[MAXSIG];	/* signals held while in catcher */
 	void	(*u_signal[MAXSIG])();	/* Disposition of signals */
+	uchar_t	u_sigreturning;		/* current signal return frame style */
+	void	(*u_sigactret[MAXSIG])();	/* cleanup for sigaction handlers */
 	void	(*u_sigreturn)();	/* for cleanup (signal/sigset handlers)*/
 
 	struct prof {			/* profile arguments */

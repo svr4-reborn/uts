@@ -699,6 +699,7 @@ ssig(uap, rvp)
 	}
 
 	setsigact(sig, func, (k_sigset_t)0, flags);
+	u.u_sigactret[sig - 1] = (void (*)()) NULL;
 	sigaddset(&u.u_oldsig, sig);
 
 	return 0;
@@ -915,6 +916,11 @@ sigaction(uap, rvp)
 		oact.sa_handler = disp;
 		oact.sa_flags = flags;
 		sigktou(&set, &oact.sa_mask);
+		if (disp != SIG_DFL && disp != SIG_IGN)
+			oact.sa_resv[0] = (int)u.u_sigactret[sig - 1];
+		else
+			oact.sa_resv[0] = 0;
+		oact.sa_resv[1] = 0;
 
 		if (copyout((caddr_t)&oact, (caddr_t) uap->oact, sizeof(oact)))
 			return EFAULT;
@@ -923,6 +929,10 @@ sigaction(uap, rvp)
 	if (uap->act) {
 		sigutok(&act.sa_mask, &set);
 		setsigact(sig, act.sa_handler, set, act.sa_flags);
+		if (act.sa_handler == SIG_DFL || act.sa_handler == SIG_IGN)
+			u.u_sigactret[sig - 1] = (void (*)()) NULL;
+		else
+			u.u_sigactret[sig - 1] = (void (*)()) act.sa_resv[0];
 		sigdelset(&u.u_oldsig, sig);
 	}
 
