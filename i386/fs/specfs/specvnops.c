@@ -1474,6 +1474,7 @@ spec_map(vp, off, as, addrp, len, prot, maxprot, flags, cred)
 		vn_a.type = flags & MAP_TYPE;
 		vn_a.prot = (u_char)prot;
 		vn_a.maxprot = (u_char)maxprot;
+		vn_a.noreserve = 0;
 		vn_a.cred = cred;
 		vn_a.amp = NULL;
 

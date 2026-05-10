@@ -226,7 +226,7 @@ mmap(uap, rvp)
 	type = flags & MAP_TYPE;
 
 	if ((flags & ~(MAP_SHARED | MAP_PRIVATE | MAP_FIXED 
-	    | MAP_NORESERVE	/* not implemented, but don't fail here */
+	    | MAP_NORESERVE	/* handled by seg_vn for eligible mappings */
 	    /* | MAP_RENAME */	/* not yet implemented, let user know */
 	    )) != 0) {
 		return(EINVAL);

@@ -81,6 +81,10 @@ struct anoninfo {
 
 #ifdef _KERNEL
 extern	struct anoninfo anoninfo;
+extern	int anon_memtrace_enabled;
+extern	int anon_memtrace_pid;
+
+struct proc;
 
 struct	anon *anon_alloc();
 void	anon_dup(/* old, new, size */);
@@ -92,6 +96,9 @@ struct	page *anon_zero_aligned(/* seg, addr, app, align_mask, align_val */);
 void	anon_unloadmap(/* ap, ref, mod */);
 int	anon_resv(/* size */);
 void	anon_unresv(/* size */);
+int	anon_memtrace_matches(/* p */);
+void	anon_memtrace_log(/* p, op, addr, len, resv_delta, commit_delta */);
+void	anon_memtrace_fail(/* p, op, addr, len, reason, detail */);
 
 #define ALOCK(ap) { \
 	while ((ap)->an_flag & ALOCKED) { \

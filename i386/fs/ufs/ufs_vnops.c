@@ -2268,6 +2268,7 @@ ufs_map(vp, off, as, addrp, len, prot, maxprot, flags, cr)
 	vn_a.type = flags & MAP_TYPE;
 	vn_a.prot = prot;
 	vn_a.maxprot = maxprot;
+	vn_a.noreserve = 0;
 	vn_a.cred = cr;
 	vn_a.amp = NULL;
 

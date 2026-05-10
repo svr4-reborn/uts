@@ -2002,6 +2002,7 @@ rf_map(vp, off, as, addrp, len, prot, maxprot, flags, cred)
 	crargs.type = (u_char)(flags & MAP_TYPE);
 	crargs.prot = (u_char)prot;
 	crargs.maxprot = (u_char)maxprot;
+	crargs.noreserve = 0;
 	crargs.cred = cred;
 	crargs.amp = NULL;
 

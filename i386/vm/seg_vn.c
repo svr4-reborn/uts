@@ -47,6 +47,8 @@
 #include "sys/cmn_err.h"
 #include "sys/debug.h"
 #include "sys/cred.h"
+#include "sys/proc.h"
+#include "sys/user.h"
 #include "sys/swap.h"
 #include "sys/kmem.h"
 #include "sys/inline.h"
@@ -119,6 +121,7 @@ struct	segvn_crargs zfod_segvn_crargs = {
 	MAP_PRIVATE,
 	PROT_ALL,
 	PROT_ALL,
+	0,
 	(struct anon_map *)NULL,
 };
 
@@ -130,6 +133,7 @@ struct	segvn_crargs kzfod_segvn_crargs = {
 	MAP_PRIVATE,
 	PROT_ALL & ~PROT_USER,
 	PROT_ALL & ~PROT_USER,
+	0,
 	(struct anon_map *)NULL,
 };
 
@@ -152,6 +156,47 @@ STATIC	int segvn_extend_prev(/* seg1, seg2, a */);
 STATIC	int segvn_extend_next(/* seg1, seg2, a */);
 STATIC	void anonmap_alloc(/* seg, swresv */);
 STATIC	void segvn_vpage(/* seg */);
+STATIC	int segvn_is_private_anon(/* svd */);
+STATIC	int segvn_is_noreserve(/* svd */);
+STATIC	u_int segvn_anon_pages(/* seg, svd, addr, len */);
+
+STATIC int
+segvn_is_private_anon(svd)
+	register struct segvn_data *svd;
+{
+	return (svd->vp == NULL && svd->type == MAP_PRIVATE);
+}
+
+STATIC int
+segvn_is_noreserve(svd)
+	register struct segvn_data *svd;
+{
+	return (svd->type == MAP_PRIVATE && svd->noreserve != 0);
+}
+
+STATIC u_int
+segvn_anon_pages(seg, svd, addr, len)
+	register struct seg *seg;
+	register struct segvn_data *svd;
+	addr_t addr;
+	u_int len;
+{
+	register struct anon **app;
+	register u_int count;
+	register u_int pages;
+
+	if (svd->amp == NULL)
+		return (0);
+
+	app = &svd->amp->anon[svd->anon_index + btop(addr - seg->s_base)];
+	pages = btop(len);
+	count = 0;
+	while (pages-- != 0) {
+		if (*app++ != NULL)
+			count++;
+	}
+	return (count);
+}
 
 int
 segvn_create(seg, argsp)
@@ -162,6 +207,7 @@ segvn_create(seg, argsp)
 	register struct segvn_data *svd;
 	register u_int swresv = 0;
 	register struct cred *cred;
+	int noreserve;
 	int error;
 
 	if (a->type != MAP_PRIVATE && a->type != MAP_SHARED)
@@ -174,13 +220,20 @@ segvn_create(seg, argsp)
 	if (a->amp != NULL && a->vp != NULL)
 		cmn_err(CE_PANIC, "segvn_create anon_map");
 
+	noreserve = (a->type == MAP_PRIVATE && a->noreserve != 0);
+
 	/*
 	 * If segment may need private pages, reserve them now.
 	 */
-	if ((a->vp == NULL && a->amp == NULL)
-	  || (a->type == MAP_PRIVATE && (a->prot & PROT_WRITE))) {
-		if (anon_resv(seg->s_size) == 0)
+	if (!noreserve &&
+	    ((a->vp == NULL && a->amp == NULL) ||
+	    (a->type == MAP_PRIVATE && (a->prot & PROT_WRITE)))) {
+		if (anon_resv(seg->s_size) == 0) {
+			if (u.u_procp != NULL && seg->s_as == u.u_procp->p_as)
+				anon_memtrace_fail(u.u_procp, "anon_map", seg->s_base,
+				    seg->s_size, "anon_resv failed", a->prot);
 			return (EAGAIN);
+		}
 		swresv = seg->s_size;
 	}
 
@@ -193,6 +246,9 @@ segvn_create(seg, argsp)
 	error = hat_map(seg, a->vp, a->offset & PAGEMASK,
 			a->prot & ~PROT_WRITE, HAT_PRELOAD);
 	if (error != 0) {
+		if (u.u_procp != NULL && seg->s_as == u.u_procp->p_as)
+			anon_memtrace_fail(u.u_procp, "anon_map", seg->s_base,
+			    seg->s_size, "hat_map failed", error);
 		if (swresv != 0)
 			anon_unresv(swresv);
 		return(error);
@@ -277,6 +333,7 @@ segvn_create(seg, argsp)
 	svd->type = a->type;
 	svd->vpage = NULL;
 	svd->cred = cred;
+	svd->noreserve = noreserve;
 
 	if ((svd->amp = a->amp) == NULL) {
 		svd->anon_index = 0;
@@ -369,6 +426,10 @@ segvn_create(seg, argsp)
 			    seg->s_size);
 		}
 	}
+	if (swresv != 0 && a->vp == NULL && a->type == MAP_PRIVATE &&
+	    u.u_procp != NULL && seg->s_as == u.u_procp->p_as)
+		anon_memtrace_log(u.u_procp, "anon_reserve", seg->s_base,
+		    seg->s_size, (int)swresv, 0);
 
 	return (0);
 }
@@ -391,7 +452,7 @@ segvn_concat(seg1, seg2)
 	/* both segments exist, try to merge them */
 #define	incompat(x)	(svd1->x != svd2->x)
 	if (incompat(vp) || incompat(maxprot) || incompat(prot) ||
-	    incompat(type))
+	    incompat(type) || incompat(noreserve))
 		return (-1);
 	/* XXX - should also check cred */
 #undef incompat
@@ -435,7 +496,9 @@ segvn_extend_prev(seg1, seg2, a, swresv)
 	svd1 = (struct segvn_data *)seg1->s_data;
 	/* XXX - should also check cred */
 	if (svd1->vp != a->vp || svd1->maxprot != a->maxprot ||
-	    svd1->prot != a->prot || svd1->type != a->type)
+	    svd1->prot != a->prot || svd1->type != a->type ||
+	    svd1->noreserve != (u_char)(a->type == MAP_PRIVATE &&
+	    a->noreserve != 0))
 		return (-1);
 	/* vp == NULL implies zfod, offset doesn't matter */
 	if (svd1->vp != NULL &&
@@ -511,7 +574,9 @@ segvn_extend_next(seg1, seg2, a, swresv)
 	/* first segment is new, try to extend second */
 	/* XXX - should also check cred */
 	if (svd2->vp != a->vp || svd2->maxprot != a->maxprot ||
-	    svd2->prot != a->prot || svd2->type != a->type)
+	    svd2->prot != a->prot || svd2->type != a->type ||
+	    svd2->noreserve != (u_char)(a->type == MAP_PRIVATE &&
+	    a->noreserve != 0))
 		return (-1);
 	/* vp == NULL implies zfod, offset doesn't matter */
 	if (svd2->vp != NULL &&
@@ -606,7 +671,8 @@ segvn_dup(seg, newseg)
 	 * If segment has anon reserved,
 	 * reserve more for the new seg.
 	 */
-	if (svd->swresv && anon_resv(svd->swresv) == 0)
+	if (!segvn_is_noreserve(svd) && svd->swresv &&
+	    anon_resv(svd->swresv) == 0)
 			return (ENOMEM);
 	newsvd =
 	    (struct segvn_data *)kmem_fast_alloc((caddr_t *)&segvn_freelist,
@@ -626,6 +692,7 @@ segvn_dup(seg, newseg)
 	newsvd->cred = svd->cred;
 	crhold(newsvd->cred);
 	newsvd->swresv = svd->swresv;
+	newsvd->noreserve = svd->noreserve;
 	if ((newsvd->amp = svd->amp) == NULL) {
 		/*
 		 * Not attaching to a shared anon object.
@@ -731,6 +798,11 @@ segvn_unmap(seg, addr, len)
 	 * Check for beginning of segment
 	 */
 	if (addr == seg->s_base) {
+		if (segvn_is_private_anon(svd) && u.u_procp != NULL &&
+		    seg->s_as == u.u_procp->p_as)
+			anon_memtrace_log(u.u_procp, "anon_release", addr, len,
+			    svd->swresv ? -(int)len : 0,
+			    -(int)ctob(segvn_anon_pages(seg, svd, addr, len)));
 		if (svd->vpage != NULL) {
 			register uint nbytes;
 			register struct vpage *ovpage;
@@ -773,6 +845,11 @@ segvn_unmap(seg, addr, len)
 	 * Check for end of segment
 	 */
 	if (addr + len == seg->s_base + seg->s_size) {
+		if (segvn_is_private_anon(svd) && u.u_procp != NULL &&
+		    seg->s_as == u.u_procp->p_as)
+			anon_memtrace_log(u.u_procp, "anon_release", addr, len,
+			    svd->swresv ? -(int)len : 0,
+			    -(int)ctob(segvn_anon_pages(seg, svd, addr, len)));
 		if (svd->vpage != NULL) {
 			register uint nbytes;
 			register struct vpage *ovpage;
@@ -834,6 +911,7 @@ segvn_unmap(seg, addr, len)
 	nsvd->cred = svd->cred;
 	nsvd->offset = svd->offset + nseg->s_base - seg->s_base;
 	nsvd->swresv = 0;
+	nsvd->noreserve = svd->noreserve;
 	if (svd->vp != NULL) {
 		free_vp_pages(svd->vp, svd->offset + seg->s_size, len);
 		VN_HOLD(nsvd->vp);
@@ -878,6 +956,12 @@ segvn_unmap(seg, addr, len)
 
 		if (svd->amp->refcnt == 1 ||
 		    svd->type == MAP_PRIVATE) {
+			if (segvn_is_private_anon(svd) && u.u_procp != NULL &&
+			    seg->s_as == u.u_procp->p_as)
+				anon_memtrace_log(u.u_procp, "anon_release", addr, len,
+				    svd->swresv ? -(int)len : 0,
+				    -(int)ctob(segvn_anon_pages(seg, svd, addr,
+				    len)));
 			/*
 			 * Free up now unused parts of anon_map array
 			 */
@@ -912,6 +996,19 @@ segvn_free(seg)
 	register struct segvn_data *svd = (struct segvn_data *)seg->s_data;
 	register struct anon **app;
 	u_int npages = seg_pages(seg);
+	u_int committed_pages = 0;
+	int resv_delta = 0;
+	int commit_delta = 0;
+	int trace_private_anon;
+
+	trace_private_anon = segvn_is_private_anon(svd) && u.u_procp != NULL &&
+	    seg->s_as == u.u_procp->p_as;
+	if (trace_private_anon) {
+		committed_pages = segvn_anon_pages(seg, svd, seg->s_base,
+		    seg->s_size);
+		resv_delta = svd->swresv ? -(int)svd->swresv : 0;
+		commit_delta = -(int)ctob(committed_pages);
+	}
 
 	/*
 	 * Be sure to unlock pages. XXX Why do things get free'ed instead
@@ -969,6 +1066,9 @@ segvn_free(seg)
 	 */
 	if (svd->swresv)
 		anon_unresv(svd->swresv);
+	if (trace_private_anon)
+		anon_memtrace_log(u.u_procp, "anon_release", seg->s_base,
+		    seg->s_size, resv_delta, commit_delta);
 	/*
 	 * Release claim on vnode, credentials, and finally free the
 	 * private data.
@@ -1705,13 +1805,15 @@ segvn_setprot(seg, addr, len, prot)
 		return (EACCES);			/* violated maxprot */
 
 	/*
-	 * If it's a private mapping and we're making it writable
-	 * and no swap space has been reserved, have to reserve
-	 * it all now.  If it's private and we're removing write
-	 * permission for the whole mapping and we haven't 
-	 * modified any pages, we can release the swap space.
+	 * If it's a reserving private mapping and we're making it
+	 * writable and no swap space has been reserved, have to
+	 * reserve it all now.  Explicit MAP_NORESERVE mappings keep
+	 * their late-allocation behavior here.  If it's private and
+	 * we're removing write permission for the whole mapping and
+	 * we haven't modified any pages, we can release the swap space.
 	 */
 	if (svd->type == MAP_PRIVATE && (prot & PROT_WRITE) != 0
+	  && !segvn_is_noreserve(svd)
 	  && svd->swresv == 0) {
 		if (anon_resv(seg->s_size) == 0)
 			return (EAGAIN);

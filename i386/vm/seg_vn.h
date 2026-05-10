@@ -47,6 +47,7 @@ struct segvn_crargs {
 	u_char	type;		/* type of sharing done */
 	u_char	prot;		/* protections */
 	u_char	maxprot;	/* maximum protections */
+	u_char	noreserve;	/* true if MAP_NORESERVE should skip swap reserve */
 	struct	anon_map *amp;	/* anon mapping to map to */
 };
 
@@ -89,6 +90,7 @@ struct	segvn_data {
 	struct	vpage *vpage;	/* per-page information, if needed */
 	struct	cred *cred;	/* mapping credentials */
 	u_int	swresv;		/* swap space reserved for this segment */
+	u_char	noreserve;	/* true if this mapping skips upfront swap reserve */
 };
 
 #ifdef _KERNEL
