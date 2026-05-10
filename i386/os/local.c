@@ -25,6 +25,21 @@
 #include "sys/proc.h"
 #include "sys/user.h"
 #include "sys/errno.h"
+#include "sys/inline.h"
+
+#define DEBUGCON_PORT		0x00E9
+#define DEBUGCON_WRITE_CHUNK	128
+
+static const int clocal_debugcon_write = 1;
+
+struct dbgwritea {
+	char	*buf;
+	unsigned int len;
+	int	flags;
+	int	reserved;
+};
+
+int dbgwrite(struct dbgwritea *uap, rval_t *rvp);
 
 
 /*      local.c - Custom Local System Call(s)
@@ -76,8 +91,9 @@ int	tclocal();
 
 struct sysent clentry[] = {
 	4, 0, nosys,	/* 0 = template only */
+	4, 0, dbgwrite,	/* 1 = write bytes to debugcon */
 #ifdef TEST_CLOCAL
-	4, 0, tclocal,	/* 1 = test routine for clocal */
+	4, 0, tclocal,	/* 2 = test routine for clocal */
 #endif /* TEST_CLOCAL */
 };
 
@@ -88,6 +104,10 @@ int nclentry = sizeof(clentry)/sizeof(struct sysent);
 #ifndef NODEBUGGER
 char *clenames[] = {            /* names for CLOCAL debug printout */
 	"=ERROR=",              /* 0 */
+	"debugcon_write",       /* 1 */
+#ifdef TEST_CLOCAL
+	"test",                 /* 2 */
+#endif /* TEST_CLOCAL */
 };
 #endif /* NODEBUGGER */
 
@@ -106,10 +126,43 @@ clocal(uap, rvp)
 
 	/* args to clocal are already in uap; first arg is subfunction */
 	subfunc = *uap++; 
-	if (subfunc >= nclentry) 
+	if (subfunc < 0 || subfunc >= nclentry) 
 		return EINVAL;
 	callp = &clentry[subfunc]; /* real clocal system call */
 	return (*callp->sy_call)(uap, rvp);	/* do the system call */
+}
+
+int
+dbgwrite(struct dbgwritea *uap, rval_t *rvp)
+{
+	char chunk[DEBUGCON_WRITE_CHUNK];
+	unsigned int done;
+	unsigned int todo;
+	unsigned int i;
+
+	if (uap->flags != 0 || uap->reserved != 0)
+		return EINVAL;
+
+	if (uap->len != 0 && uap->buf == 0)
+		return EFAULT;
+
+	for (done = 0; done < uap->len; done += todo) {
+		todo = uap->len - done;
+		if (todo > sizeof(chunk))
+			todo = sizeof(chunk);
+
+		if (copyin(uap->buf + done, (caddr_t)chunk, todo) != 0)
+			return EFAULT;
+
+		for (i = 0; i < todo; i++)
+			outb(DEBUGCON_PORT, (unsigned char)chunk[i]);
+		
+		outb(DEBUGCON_PORT, (unsigned char)'\r');
+		outb(DEBUGCON_PORT, (unsigned char)'\n');
+	}
+
+	rvp->r_val1 = done;
+	return 0;
 }
 
 #ifdef TEST_CLOCAL 
