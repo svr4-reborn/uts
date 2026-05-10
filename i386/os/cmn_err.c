@@ -381,6 +381,8 @@ putchar(c)
 register int c;
 {
 	(*conssw.co)(c);
+	/* Also print it to e9 for qemu debugging */
+	outb(0xe9, c);
 }
 
 /*
