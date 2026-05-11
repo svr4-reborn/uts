@@ -31,12 +31,7 @@
 
 #include "sys/ddi.h"
 
-#ifdef __STDC__
-STATIC int mmrw(dev_t, struct uio *, struct cred *, enum uio_rw);
-#else
-STATIC int mmrw();
-#endif
-
+int mmrw(dev_t, struct uio *, struct cred *, enum uio_rw);
 
 #define	M_MEM		0	/* /dev/mem - physical main memory */
 #define	M_KMEM		1	/* /dev/kmem - virtual kernel memory & I/O */
@@ -54,56 +49,27 @@ int mmdevflag = 0;
 extern int memprobe();
 
 /* ARGSUSED */
-int
-mmopen(devp, flag, type, cr)
-        dev_t *devp;
-        int flag;
-	int type;
-        struct cred *cr;
-{
+int mmopen(dev_t devp, int flag, int type, struct cred *cr) {
         return 0;
 }
 
 /* ARGSUSED */
-int
-mmclose(dev, flag, cr)
-        dev_t dev;
-        int flag;
-        struct cred *cr;
-{
+int mmclose(dev_t dev, int flag, struct cred *cr) {
         return 0;
 }
 
 /* ARGSUSED */
-int
-mmioctl(dev, cmd, arg, flag, cr, rvalp)
-	dev_t dev;
-	int cmd;
-	int arg;
-	int flag;
-	struct cred *cr;
-	int *rvalp;
-{
+int mmioctl(dev_t dev, int cmd, int arg, int flag, struct cred *cr, int *rvalp) {
 	return ENODEV;
 }
 
 /* ARGSUSED */
-int
-mmread(dev, uiop, cr)
-        dev_t dev;
-        struct uio *uiop;
-        struct cred *cr;
-{
+int mmread(dev_t dev, struct uio *uiop, struct cred *cr) {
 	return (mmrw(dev, uiop, cr, UIO_READ));
 }
 
 /* ARGSUSED */
-int
-mmwrite(dev, uiop, cr)
-	dev_t dev;
-        struct uio *uiop;
-        struct cred *cr;
-{
+int mmwrite(dev_t dev, struct uio *uiop, struct cred *cr) {
 	return (mmrw(dev, uiop, cr, UIO_WRITE));
 }
 
@@ -117,13 +83,7 @@ mmwrite(dev, uiop, cr)
 static char zeroes[NZEROES];
 
 /* ARGSUSED */
-STATIC int
-mmrw(dev, uiop, cr, rw)
-dev_t dev;
-register struct uio *uiop;
-struct cred *cr;
-enum uio_rw rw;
-{
+int mmrw(dev_t dev, register struct uio *uiop, struct cred *cr, enum uio_rw rw) {
 	register off_t off, n;
 	register unsigned long po;
 	int error = 0;
@@ -207,10 +167,7 @@ enum uio_rw rw;
 
 
 /*ARGSUSED*/
-mmmmap(dev, off, prot)
-dev_t dev;
-register off_t off;
-{
+int mmmmap(dev_t dev, off_t off, int prot) {
 	u_int	m;
 
 	switch (m = getminor(dev)) {
@@ -250,17 +207,7 @@ register off_t off;
  * This function is called when a memory device is mmap'ed.
  * Set up the mapping to the correct device driver.
  */
-int
-mmsegmap(dev, off, as, addrp, len, prot, maxprot, flags, cred)
-dev_t dev;
-u_int off;
-struct as *as;
-addr_t *addrp;
-u_int len;
-u_int prot, maxprot;
-u_int flags;
-struct cred *cred;
-{
+int mmsegmap(dev_t dev, u_int off, struct as *as, addr_t *addrp, u_int len, u_int prot, u_int maxprot, u_int flags, struct cred *cred) {
 	struct segvn_crargs vn_a;
 
 	/*
