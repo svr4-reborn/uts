@@ -51,7 +51,7 @@ extern int memprobe();
 
 /* ARGSUSED */
 int mmopen(dev_t devp, int flag, int type, struct cred *cr) {
-	if (getminor(*devp) >= M_MAXMINORS || getminor(*devp) < 0)
+	if (getminor(devp) >= M_MAXMINORS || getminor(devp) < 0)
 		return ENXIO;
 	return 0;
 }
