@@ -228,12 +228,13 @@ mmap(uap, rvp)
 	if ((flags & ~(MAP_SHARED | MAP_PRIVATE | MAP_FIXED 
 	    | MAP_NORESERVE	/* handled by seg_vn for eligible mappings */
 	    /* | MAP_RENAME */	/* not yet implemented, let user know */
+		| MAP_ANONYMOUS
 	    )) != 0) {
-		return(EINVAL);
+		return EINVAL;
 	}
 
-        if (type != MAP_PRIVATE && type != MAP_SHARED) {
-		return(EINVAL);
+	if (type != MAP_PRIVATE && type != MAP_SHARED) {
+		return EINVAL;
 	}
 
 	len = uap->len;
@@ -245,26 +246,86 @@ mmap(uap, rvp)
 	 * since on some vnode types this might be appropriate.
 	 */
 	 if ((uap->pos & PAGEOFFSET) != 0) {
-		return(EINVAL);
+		return EINVAL;
 	}
-
-	if (error = getf(uap->fd, &fp))
-		return(error);
-
-	vp = fp->f_vnode;
 
 	maxprot = PROT_ALL;		/* start out allowing all accesses */
 	prot = uap->prot | PROT_USER;
 
-	if (type == MAP_SHARED && (fp->f_flag & FWRITE) == 0) {
-		/* no write access allowed */
-		maxprot &= ~PROT_WRITE;
-	}
 #ifdef i386
 	/* On the 386 write privileges imply read privileges */
 	if (prot & PROT_WRITE)
 		prot |= PROT_READ;
 #endif /* i386 */
+
+
+	/*
+	 * If the user specified an address, do some simple checks here
+	 */
+	if ((flags & MAP_FIXED) != 0) {
+		/*
+		 * Use the user address.  First verify that
+		 * the address to be used is page aligned.
+		 * Then make some simple bounds checks.
+		 */
+		if (((int)addr & PAGEOFFSET) != 0) {
+			return EINVAL;
+		}
+		if (valid_usr_range(addr, len) == 0) {
+			return ENOMEM;
+		}
+	}
+
+	/* Check if this is a anonymous mapping. */
+	if (flags & MAP_ANONYMOUS) {
+		/* Verify some arguments. */
+		if (type == MAP_SHARED) {
+			return EINVAL;
+		}
+		if (len == 0) {
+			return EINVAL;
+		}
+		if ((flags & MAP_FIXED) == 0) {
+			/* We did some basic checking earlier, but since we are doing the mapping right here, we need to resolve the address. */
+			map_addr(&addr, len, uap->pos, 0);
+			if (addr == NULL) {
+				return ENOMEM;
+			}
+		} else {
+			/* User specified address - remove any previous mappings first. */
+			(void) as_unmap(as, addr, len);
+		}
+	
+		/* Create the anonymous mapping by basically doing what /dev/zero does. There may be a better way to do this, I'll have to look into it later. */
+		struct segvn_crargs vn_a;
+
+		vn_a.vp = NULL;
+		vn_a.offset = 0;
+		vn_a.type = (flags & MAP_TYPE);
+		vn_a.prot = (u_char)prot;
+		vn_a.maxprot = (u_char)maxprot;
+		vn_a.noreserve = (flags & MAP_NORESERVE) != 0;
+		vn_a.cred = NULL;
+		vn_a.amp = NULL;
+
+		int error = as_map(as, addr, len, segvn_create, (caddr_t)&vn_a);
+		if (error) {
+			cmn_err(CE_CONT, "mmap: anonymous mapping failed for length %x at address %x with offset %ld, error=%d\n", len, addr, uap->pos, error);
+			return error;
+		}
+		rvp->r_val1 = (int)addr;	/* return starting address */
+		return 0;
+	}
+
+	if (error = getf(uap->fd, &fp))
+		return error;
+
+	vp = fp->f_vnode;
+
+	if (type == MAP_SHARED && (fp->f_flag & FWRITE) == 0) {
+		/* no write access allowed */
+		maxprot &= ~PROT_WRITE;
+	}
 
 	/*
 	 * XXX - Do we also adjust maxprot based on protections
@@ -283,24 +344,7 @@ mmap(uap, rvp)
 	 * the read from the file before the page can be written.
 	 */
 	if (((maxprot & prot) != prot) || (fp->f_flag & FREAD) == 0) {
-		return(EACCES);
-	}
-
-	/*
-	 * If the user specified an address, do some simple checks here
-	 */
-	if ((flags & MAP_FIXED) != 0) {
-		/*
-		 * Use the user address.  First verify that
-		 * the address to be used is page aligned.
-		 * Then make some simple bounds checks.
-		 */
-		if (((int)addr & PAGEOFFSET) != 0) {
-			return(EINVAL);
-		}
-		if (valid_usr_range(addr, len) == 0) {
-			return(ENOMEM);
-		}
+		return EACCES;
 	}
 
 	/*
@@ -308,10 +352,10 @@ mmap(uap, rvp)
 	 */
 	if (error = VOP_MAP(vp, uap->pos, as, &addr, len, prot, maxprot, flags,
 	    fp->f_cred))
-		return(error);
+		return error;
 
 	rvp->r_val1 = (int)addr;	/* return starting address */
-	return (0);
+	return 0;
 }
 
 struct munmapa {

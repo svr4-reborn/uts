@@ -40,9 +40,9 @@
 /* other flags to mmap (or-ed in to MAP_SHARED or MAP_PRIVATE) */
 #define	MAP_FIXED	0x10		/* user assigns address */
 
-/* these flags not yet implemented */
-#define	MAP_RENAME	0x20		/* rename private pages to file */
+#define	MAP_RENAME	0x20		/* rename private pages to file (not implemented yet) */
 #define	MAP_NORESERVE	0x40		/* don't reserve needed swap area */
+#define MAP_ANONYMOUS   0x80          /* ignore fd and create a anonymous memory mapping */
 
 /* these flags are used by memcntl */
 #define PROC_TEXT	(PROT_EXEC | PROT_READ)
