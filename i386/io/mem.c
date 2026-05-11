@@ -21,6 +21,7 @@
 #include "sys/proc.h"
 #include "sys/disp.h"
 #include "sys/debug.h"
+#include "sys/cmn_err.h"
 
 #include "sys/mman.h"
 #include "sys/kmem.h"
@@ -51,8 +52,6 @@ extern int memprobe();
 
 /* ARGSUSED */
 int mmopen(dev_t devp, int flag, int type, struct cred *cr) {
-	if (getminor(devp) >= M_MAXMINORS || getminor(devp) < 0)
-		return ENXIO;
 	return 0;
 }
 
