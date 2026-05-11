@@ -10,6 +10,8 @@
 #ifndef _SYS_SYSTM_H
 #define _SYS_SYSTM_H
 
+#include "sys/types.h"
+
 #ident	"@(#)head.sys:sys/systm.h	11.53.4.2"
 /*
  * Random set of variables used by more than one routine.
