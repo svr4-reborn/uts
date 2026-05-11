@@ -43,6 +43,7 @@ STATIC int mmrw();
 #define	M_NULL		2	/* /dev/null - EOF & Rathole */
 #define	M_PMEM		3	/* /dev/pmem - any physical memory */
 #define	M_ZERO		4	/* /dev/zero - source of private memory */
+#define M_URANDOM   5   /* /dev/urandom - non-blocking random source */
 
 int mmdevflag = 0;
 
@@ -168,9 +169,27 @@ enum uio_rw rw;
 						error = ENXIO;
 					break;
 				}
-				/* FALLTHROUGH */
+				goto discard_writes;
+
+			case M_URANDOM:
+				if (rw == UIO_READ) {
+					char random_data[256];
+					size_t to_read = n;
+					while (to_read > 0) {
+						size_t chunk_size = MIN(to_read, sizeof(random_data));
+						random_get_bytes(random_data, chunk_size);
+						if (uiomove(random_data, chunk_size, rw, uiop)) {
+							error = ENXIO;
+							break;
+						}
+						to_read -= chunk_size;
+					}
+					break;
+				}
+				goto discard_writes;
 
 			case M_NULL:
+				discard_writes:
 				if (rw == UIO_WRITE) {
 					uiop->uio_offset += uiop->uio_resid;
 					uiop->uio_resid = 0;

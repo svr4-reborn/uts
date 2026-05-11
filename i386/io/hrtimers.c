@@ -37,6 +37,7 @@
 #include "sys/hrtsys.h"
 #include "sys/time.h"
 #include "sys/cmn_err.h"
+#include "sys/random.h"
 
 #ifdef KPERF
 #include "sys/disp.h"
@@ -272,6 +273,13 @@ int	oldipl;
 		type++;
 	}
 	
+	/*
+	 * Add some entropy to the kernel randomness generator.
+	 */
+
+	ulong entropy[3] = { hr_lbolt, (ulong)pc, flags ^ (oldipl << 16) };
+	random_add_entropy(RANDSRC_CLOCK, entropy, sizeof(entropy));
+
 #ifndef	KPERF
 	/*
 	** See comment at the start of this routine....
