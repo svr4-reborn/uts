@@ -39,6 +39,7 @@ int mmrw(dev_t, struct uio *, struct cred *, enum uio_rw);
 #define	M_PMEM		3	/* /dev/pmem - any physical memory */
 #define	M_ZERO		4	/* /dev/zero - source of private memory */
 #define M_URANDOM   5   /* /dev/urandom - non-blocking random source */
+#define M_MAXMINORS 6
 
 int mmdevflag = 0;
 
@@ -50,12 +51,14 @@ extern int memprobe();
 
 /* ARGSUSED */
 int mmopen(dev_t devp, int flag, int type, struct cred *cr) {
-        return 0;
+	if (getminor(*devp) >= M_MAXMINORS || getminor(*devp) < 0)
+		return ENXIO;
+	return 0;
 }
 
 /* ARGSUSED */
 int mmclose(dev_t dev, int flag, struct cred *cr) {
-        return 0;
+	return 0;
 }
 
 /* ARGSUSED */
