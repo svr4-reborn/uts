@@ -53,12 +53,12 @@
 #include "sys/emap.h"		/* channel mapping include file from XENIX */
 
 
-#define SYS	"UNIX_System_V"
-#define XSYS	"UNIX_Sys"	/* For XENIX; must be <= 8 chars */
+#define SYS	"svr4"
+#define XSYS	"svr4"	/* For XENIX; must be <= 8 chars */
 #define NODE	"unix"
 #define REL	"4.0"
 #define VER	"3.0"
-#define MACH	"i386"
+#define MACH	"i686"
 #undef ARCHITECTURE
 #ifdef MB1
 #define ARCHITECTURE	"386/MB1"
