@@ -189,15 +189,9 @@ char	*argv[];
 #endif	/* EISA */
 
 
-	cmn_err(CE_CONT, "AT&T UNIX System V/386 Release %s Version %s\n",
+	cmn_err(CE_CONT, "SVr4 Reborn; reporting Release %s Version %s.\n"
+					 "For original copyright and licensing information, see LICENCE.md.\n\n",
 					utsname.release, utsname.version);
-	cmn_err(CE_CONT, "\nCopyright (c) 1984, 1986, 1987, 1988, 1989, 1990 AT&T\n");
-	cmn_err(CE_CONT, "Copyright (c) 1990 UNIX System Laboratories, Inc.\n");
-	cmn_err(CE_CONT, "Copyright (c) 1987, 1988 Microsoft Corp.\n");
-#if defined (MB1) || defined (MB2) || defined  (MB2AT)
-	cmn_err(CE_CONT, "Copyright (c) 1986, 1987, 1988, 1989, 1990 Intel Corp.\n");
-#endif /* MB1 || MB2 || MB2AT */
-	cmn_err(CE_CONT, "All Rights Reserved\n\n");
 
 	/* was the bootinfo structure OK when recieved from boot? */
 
@@ -309,9 +303,7 @@ char	*argv[];
 
 	spl0();
 
-	cmn_err(CE_CONT, "The kernel is starting processes.\n");
  	if (newproc(NP_INIT, NULL, &error)) {
-		cmn_err(CE_CONT, "Loading init process.\n");
 		register struct dscr *ldt, *ldta;
 		register struct gate_desc *gldt;
 		extern struct gate_desc scall_dscr, sigret_dscr;
