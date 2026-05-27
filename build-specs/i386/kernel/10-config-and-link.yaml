@@ -75,6 +75,34 @@ targets:
           - "{simple_idconfig_manifest}"
           - --obj-root
           - "{obj_root}"
+          - --enable-module
+          - app
+          - --enable-module
+          - arp
+          - --enable-module
+          - icmp
+          - --enable-module
+          - ip
+          - --enable-module
+          - llcloop
+          - --enable-module
+          - rawip
+          - --enable-module
+          - sockmod
+          - --enable-module
+          - tcp
+          - --enable-module
+          - ticlts
+          - --enable-module
+          - ticots
+          - --enable-module
+          - ticotsor
+          - --enable-module
+          - timod
+          - --enable-module
+          - tirdwr
+          - --enable-module
+          - udp
 
   simple-idconfig-at386-floppy:
     description: Generate a reduced AT386 config and manifest for a floppy-sized kernel by excluding non-essential modules from the staged historical metadata.

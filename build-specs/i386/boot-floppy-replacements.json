@@ -13,13 +13,13 @@
       },
       {
         "target": "/LABEL",
-        "source": "../../../tools/boot-media/label.hybrid"
+        "source": "../../tools/boot-media/label.hybrid"
       }
     ],
     "label-hybrid": [
       {
         "target": "/LABEL",
-        "source": "../../../tools/boot-media/label.hybrid"
+        "source": "../../tools/boot-media/label.hybrid"
       }
     ]
   }
