@@ -291,7 +291,7 @@ int pgmembers();
 #define	SUWANT	0x00080000	/* waiting for u-block swap to complete */
 #define SEXECED 0x00100000	/* this process has execed */
 #define SDETACHED 0x00200000	/* this process detached from ctty */
-/* unused 	0x00400000 */
+#define STHREAD 0x00400000	/* process is a thread sharing an address space */
 /* unused	0x00800000 */
 #define SJCTL	0x01000000	/* SIGCLD sent when children stop/continue */
 #define SNOWAIT 0x02000000	/* children never become zombies */
@@ -328,6 +328,7 @@ int pgmembers();
 #define	NP_INIT		0x08	/* this is init process */
 #define NP_VFORK	0x10	/* share address space - vfork */
 #define NP_SHARE	0x20	/* share address space - asyncio */
+#define NP_THREAD	0x40	/* shared-address-space user thread */
 
 /* Macro to convert proc table pointers to user block pointers */
 #define PTOU(p) ((struct user *)((p)->p_segu))

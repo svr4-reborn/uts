@@ -71,6 +71,29 @@ extern void semexit();
 extern void shmexit();
 extern void xsdexit();
 extern void hdeexit();
+extern void thread_exit_current();
+
+static void exit_threads();
+
+static void
+exit_threads(p)
+	register struct proc *p;
+{
+	register struct proc *q;
+	int found;
+
+	do {
+		found = 0;
+		for (q = p->p_child; q; q = q->p_sibling) {
+			if (!(q->p_flag & STHREAD))
+				continue;
+			found = 1;
+			psignal(q, SIGKILL);
+		}
+		if (found)
+			(void)sleep((caddr_t)p, PZERO);
+	} while (found);
+}
 
 /*
  * convert code/data pair into old style wait status
@@ -139,6 +162,10 @@ int what;
 	sess_t *sp = u.u_procp->p_sessp;
 
 	p = u.u_procp;
+	if (p->p_flag & STHREAD)
+		thread_exit_current();
+
+	exit_threads(p);
 
 	p->p_flag &= ~STRC;
 	p->p_clktim = 0;
@@ -411,6 +438,8 @@ waitid(idtype, id, ip, options)
 		found = 0;
 
 		do {
+			if (cp->p_flag & STHREAD)
+				continue;
 
 			if (idtype == P_PID && id != cp->p_pid)
 				continue;

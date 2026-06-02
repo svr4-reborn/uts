@@ -225,6 +225,11 @@
 #define	SYS_getresuid	142
 #define	SYS_getresgid	143
 #define	SYS_ppoll	144
+#define	SYS_thread_create	145
+#define	SYS_thread_exit	146
+#define	SYS_thread_self	147
+#define	SYS_futex_wait	148
+#define	SYS_futex_wake	149
 
 #ifndef _SYS_SYS_S
 

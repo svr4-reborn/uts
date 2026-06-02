@@ -65,6 +65,8 @@ int	systeminfo();
 int	setegid(), seteuid();
 int	nfssys();
 int	pathconf(), fpathconf();
+int	thread_create(), thread_exit(), thread_self();
+int	futex_wait(), futex_wake();
 
 #ifdef MEGA
 int	uexch();
@@ -224,6 +226,11 @@ struct sysent sysent[] = {
 	3, 0, getresuid,		/* 142 = getresuid */
 	3, 0, getresgid,		/* 143 = getresgid */
 	4, SETJUMP, ppoll,		/* 144 = ppoll */
+	2, 0, thread_create,		/* 145 = thread_create */
+	0, 0, thread_exit,		/* 146 = thread_exit */
+	0, 0, thread_self,		/* 147 = thread_self */
+	3, SETJUMP, futex_wait,		/* 148 = futex_wait */
+	2, 0, futex_wake,		/* 149 = futex_wake */
 };
 
 unsigned sysentsize = sizeof(sysent)/sizeof(struct sysent);

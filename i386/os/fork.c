@@ -208,6 +208,8 @@ newproc(cond, pidp, perror)
 	cp->p_stat = SIDL;
 	cp->p_clktim = 0;
 	cp->p_flag = SLOAD | (pp->p_flag & (SJCTL|SNOWAIT));
+	if (cond & NP_THREAD)
+		cp->p_flag |= STHREAD;
 
 	/* Enforce per-user licensing */
 	if (!(cp->p_user_license = (pp->p_user_license & PU_LIM_OK)) &&
@@ -336,7 +338,7 @@ newproc(cond, pidp, perror)
 	/*
 	 * Copy process.
 	 */
-	procdup_result = procdup(cp, pp, (cond & (NP_VFORK|NP_SHARE)),
+	procdup_result = procdup(cp, pp, (cond & (NP_VFORK|NP_SHARE|NP_THREAD)),
 				(cond & (NP_SYSPROC | NP_INIT)));
 	asm volatile ("" : "+r" (procdup_result) : : "memory");
 	switch (procdup_result) {

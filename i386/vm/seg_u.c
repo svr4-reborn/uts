@@ -864,7 +864,9 @@ segu_release(p)
 	 *	and we need to get the right amount of pages allocated for
 	 *	the ublock - which is kept in the proc structure.
 	 */
-	if (p->p_parent->p_flag & SNOWAIT)
+	if (p->p_flag & STHREAD)
+		wakeprocs((caddr_t)p->p_parent, PRMPT);
+	if ((p->p_flag & STHREAD) || (p->p_parent->p_flag & SNOWAIT))
 		freeproc(p);
 }
 
