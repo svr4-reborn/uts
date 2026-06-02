@@ -320,6 +320,50 @@ def _has_type(device: DeviceSpec, flag: str) -> bool:
     return flag in device.type_flags
 
 
+def _uses_placeholder_stream_major(device: DeviceSpec) -> bool:
+    return (
+        _has_type(device, "S")
+        and _has_type(device, "c")
+        and device.char_major_start == 0
+        and device.char_major_end == 0
+    )
+
+
+def _assign_placeholder_stream_majors(devices: list[DeviceSpec], controllers: list[ControllerSpec], filesystems: list[FileSystemSpec]) -> list[DeviceSpec]:
+    configured_names = _configured_names(controllers, filesystems)
+    used_char_majors: set[int] = set()
+    assigned_devices: list[DeviceSpec] = []
+
+    for device in devices:
+        if device.name not in configured_names or not _has_type(device, "c"):
+            continue
+        if _uses_placeholder_stream_major(device):
+            continue
+        if device.char_major_start is None or device.char_major_end is None:
+            continue
+        for major in range(device.char_major_start, device.char_major_end + 1):
+            used_char_majors.add(major)
+
+    next_char_major = max(used_char_majors, default=-1) + 1
+    for device in devices:
+        if device.name not in configured_names or not _uses_placeholder_stream_major(device):
+            assigned_devices.append(device)
+            continue
+        while next_char_major in used_char_majors:
+            next_char_major += 1
+        assigned_devices.append(
+            replace(
+                device,
+                char_major_start=next_char_major,
+                char_major_end=next_char_major,
+            )
+        )
+        used_char_majors.add(next_char_major)
+        next_char_major += 1
+
+    return assigned_devices
+
+
 def _controller_groups(controllers: list[ControllerSpec]) -> dict[str, list[ControllerSpec]]:
     groups: dict[str, list[ControllerSpec]] = {}
     for controller in controllers:
@@ -1082,6 +1126,8 @@ def main() -> int:
             )
             for filesystem in filesystems
         ]
+
+    devices = _assign_placeholder_stream_majors(devices, controllers, filesystems)
 
     _write_config_header(output_dir / "config.h", devices, controllers, tunables)
     _write_conf_c(output_dir / "conf.c", devices, controllers, filesystems, assignments)
