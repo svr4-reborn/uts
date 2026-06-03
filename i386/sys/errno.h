@@ -83,6 +83,7 @@
 #define	EL2HLT	44	/* Level 2 halted			*/
 #define	EDEADLK	45	/* Deadlock condition.			*/
 #define	ENOLCK	46	/* No record locks available.		*/
+#define ECANCELED 47	/* Operation canceled, POSIX 2001 */
 
 /* Convergent Error Returns */
 #define EBADE	50	/* invalid exchange			*/
