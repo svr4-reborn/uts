@@ -78,6 +78,8 @@ targets:
           - --enable-module
           - app
           - --enable-module
+          - ptem
+          - --enable-module
           - arp
           - --enable-module
           - icmp
