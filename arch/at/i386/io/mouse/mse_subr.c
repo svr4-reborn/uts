@@ -30,6 +30,12 @@
 
 extern int wakeup();
 
+#ifndef MSE_SUBR_DEBUG
+#define	MSE_SUBR_DEBUG	0
+#endif
+
+int mse_subr_debug = MSE_SUBR_DEBUG;
+
 void
 mse_iocack(qp, mp, iocp, rval)
 queue_t *qp;
@@ -149,8 +155,19 @@ struct strmseinfo *qp;
 		qp->type = MSE_MOTION;
 	else if (qp->button != qp->old_buttons)
 		qp->type = MSE_BUTTON;
-	else
+	else {
+		if (mse_subr_debug)
+			cmn_err(CE_CONT,
+				"mse: no event button=%x old=%x dx=%d dy=%d\n",
+				qp->button, qp->old_buttons, qp->x, qp->y);
 		return;
+	}
+
+	if (mse_subr_debug)
+		cmn_err(CE_CONT,
+			"mse: event type=%d button=%x old=%x dx=%d dy=%d status=%x\n",
+			qp->type, qp->button, qp->old_buttons, qp->x, qp->y,
+			qp->mseinfo.status);
 
 	qp->mseinfo.status = (~qp->button & 7) | ((qp->button ^ qp->old_buttons) << 3) | (qp->mseinfo.status & BUTCHNGMASK) | (qp->mseinfo.status & MOVEMENT);
 
@@ -184,6 +201,8 @@ struct strmseinfo *qp;
 			/* Note the button state */
 	qp->old_buttons = qp->button;
 	if((bp = allocb(sizeof(struct ch_protocol),BPRI_MED)) == NULL){ 
+		if (mse_subr_debug)
+			cmn_err(CE_CONT, "mse: allocb ch_protocol failed\n");
 		return;
 	}
 	bp->b_datap->db_type = M_PROTO;
@@ -193,6 +212,8 @@ struct strmseinfo *qp;
 	protop->chp_stype = CH_MSE;
 	drv_getparm(LBOLT,&protop->chp_tstmp);
 	if((mp = allocb(sizeof(struct mse_event),BPRI_MED)) == NULL){ 
+		if (mse_subr_debug)
+			cmn_err(CE_CONT, "mse: allocb mse_event failed\n");
 		freemsg(bp);
 		return;
 	}
@@ -203,5 +224,9 @@ struct strmseinfo *qp;
 	minfo->x = qp->x;	
 	minfo->y = qp->y;	
 	mp->b_wptr += sizeof(struct mse_event);
+	if (mse_subr_debug)
+		cmn_err(CE_CONT,
+			"mse: putnext CH_MSE type=%d code=%x x=%d y=%d rqp=%x\n",
+			minfo->type, minfo->code, minfo->x, minfo->y, qp->rqp);
 	putnext(qp->rqp, bp);
 }

@@ -42,18 +42,35 @@
 #define	M_OUT_DATA	1
 #define	SNDERR2		0xfc
 
+#ifndef MSE3_DEBUG
+#define MSE3_DEBUG	0
+#endif
+
+#ifndef MSE3_I8042_DELAY
+#define MSE3_I8042_DELAY	100
+#endif
+
+#define MSE_OBF		0x01
+#define MSE_AUXDATA	0x20
+
 int mse3open(), mse3close();
 int mse3devflag = 0;
 void mse3intr(), mse3ioc();
 void ps2parse();
 int mse3_wput();
-unchar  rdmse3();
+int rdmse3();
+int snd_320_cmd();
+static void mse3_flush_aux();
+static int mse3_status_direct();
+static int mse3_cmd_direct();
+static void mse3_settle();
 
 extern	void	mse_copyin(), mse_copyout();
 extern	void	mse_iocnack(), mse_iocack();
 extern	void	mseproc();
 
 extern	int i8042_has_aux_port;
+extern	int i8042_spin_time;
 
 static struct	mcastat mcastat;
 
@@ -84,6 +101,12 @@ static struct strmseinfo *mse3ptr;
 
 int	mse3closing = 0;
 int	ps2_cont = 0;
+int	mse3_debug = MSE3_DEBUG;
+int	mse3_packets = 0;
+int	mse3_motion_packets = 0;
+int	mse3_button_packets = 0;
+int	mse3_zero_packets = 0;
+int	mse3_dropped_packets = 0;
 
 void
 mse3start()
@@ -92,12 +115,19 @@ mse3start()
 	char tmp,ps2_cont;
 
 	mcastat.present = 0;
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: start probing aux port stat=%x\n",
+			inb(MSE_STAT));
 	if( is_mca()){
 #ifdef DEBUG
 printf("msestart: thinks there's a 320\n");
 #endif
+		if (mse3_debug)
+			cmn_err(CE_CONT, "m320: aux port present\n");
 		mcastat.present = 1;
-		mcastat.mode = MSESTREAM;
+		mcastat.mode = MSESPROMPT;
+		if (i8042_spin_time < MSE3_I8042_DELAY)
+			i8042_spin_time = MSE3_I8042_DELAY;
 
 		i8042_acquire(); /* obtain ownership of 8042 and disable
 				 * interfaces
@@ -125,10 +155,17 @@ printf("msestart: thinks there's a 320\n");
 		ps2_cont = inb(MSE_OUT); /* get cmd byte to change
 					  * aux interrupt status
 					  */
+		if (mse3_debug)
+			cmn_err(CE_CONT, "m320: controller command byte old=%x new=%x\n",
+				ps2_cont & 0xff, ((ps2_cont | 0x02) & ~0x20) & 0xff);
 
 		SEND8042(MSE_ICMD, MSE_WCB);
-		SEND8042(MSE_IDAT, (ps2_cont | 0x02)); /* turn interrupts on */
+		SEND8042(MSE_IDAT, ((ps2_cont | 0x02) & ~0x20)); /* turn interrupts on */
+		mse3_flush_aux();
 		i8042_release(); /* release ownership; aux should remain disabled */
+	} else {
+		if (mse3_debug)
+			cmn_err(CE_CONT, "m320: aux port absent, mouse disabled\n");
 	}
 }
 
@@ -142,28 +179,103 @@ struct cred *cred_p;
 {
 	register int oldpri;
 	register int waitcnt = 200000;
+	register int rv;
 	struct	cmd_320	mca;
+	unchar	buf[4];
 
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: open q=%x present=%d ptr=%x\n",
+			q, mcastat.present, mse3ptr);
 	if(q->q_ptr != NULL)
 		return(0);
-	if (mcastat.present != 1)
+	if (mcastat.present != 1) {
+		if (mse3_debug)
+			cmn_err(CE_CONT, "m320: open failed, aux not present\n");
 		return(ENXIO);
+	}
 	oldpri = splstr();
 	while(mse3closing)
 		sleep(&mse3info, PZERO + 1);
+	mse3_packets = 0;
+	mse3_motion_packets = 0;
+	mse3_button_packets = 0;
+	mse3_zero_packets = 0;
+	mse3_dropped_packets = 0;
 	i8042_program(P8042_AUXDISAB);
-	mca.cmd = MSEON;		/* turn on 320 mouse */
-	if(mcafunc(&mca) == FAILED){
+	mca.cmd = MSEOFF;		/* stop reports while configuring */
+	rv = mcafunc(&mca);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: cmd disable rv=%x\n", rv);
+	if(rv == FAILED){
+		splx(oldpri);
+		return(ENXIO);
+	}
+	mse3_settle("after-disable", 20000);
+	mca.cmd = MSERESET;
+	rv = mcafunc(&mca);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: cmd reset rv=%x id=%x %x %x\n",
+			rv, mca.arg1, mca.arg2, mca.arg3);
+	if(rv == FAILED){
+		splx(oldpri);
+		return(ENXIO);
+	}
+	mcastat.mode = MSESPROMPT;
+	mse3_settle("after-reset", 50000);
+	mca.cmd = MSESETDEF;
+	rv = mcafunc(&mca);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: cmd defaults rv=%x\n", rv);
+	if(rv == FAILED){
+		splx(oldpri);
+		return(ENXIO);
+	}
+	mse3_settle("after-defaults-cmd", 5000);
+	mse3_status_direct("after-defaults");
+	mca.cmd = MSESCALE1;
+	rv = mcafunc(&mca);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: cmd scale1 rv=%x\n", rv);
+	if(rv == FAILED){
 		splx(oldpri);
 		return(ENXIO);
 	}
 	mca.cmd = MSESETRES;
 	mca.arg1 = 0x03;	
-	mcafunc(&mca);
+	rv = mcafunc(&mca);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: cmd resolution arg=%x rv=%x\n",
+			mca.arg1, rv);
+	if(rv == FAILED){
+		splx(oldpri);
+		return(ENXIO);
+	}
 
 	mca.cmd = MSECHGMOD;
-	mca.arg1 = 0x28;	
-	mcafunc(&mca);
+	mca.arg1 = 100;
+	rv = mcafunc(&mca);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: cmd sample-rate arg=%x rv=%x\n",
+			mca.arg1, rv);
+	if(rv == FAILED){
+		splx(oldpri);
+		return(ENXIO);
+	}
+	mse3_settle("after-config-cmds", 5000);
+	mse3_status_direct("after-config");
+
+	rv = mse3_cmd_direct(MSESTREAM, MSE_ACK, 1, buf, "set-stream");
+	if(rv != FAILED)
+		mcastat.mode = MSESTREAM;
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: cmd stream rv=%x mode=%x\n",
+			rv, mcastat.mode);
+	if(rv == FAILED){
+		splx(oldpri);
+		return(ENXIO);
+	}
+	mse3_settle("after-stream-cmd", 5000);
+	mse3_status_direct("after-stream-reporting-disabled");
 
 	splx(oldpri);
 	/* allocate and initialize state structure */
@@ -171,6 +283,7 @@ struct cred *cred_p;
 		cmn_err(CE_WARN, "MSE320: open fails, can't allocate state structure");
 		return (ENOMEM);
 	}
+	oldpri = splstr();
 	q->q_ptr = (caddr_t) mse3ptr;
 	WR(q)->q_ptr = (caddr_t) mse3ptr;
 	mse3ptr->rqp = q;
@@ -181,7 +294,24 @@ struct cred *cred_p;
 	i8042_acquire();
 	i8042_program(P8042_AUXENAB);
 	i8042_release();
+	mse3_settle("after-aux-enable", 5000);
+	mse3_flush_aux();
+	mse3_settle("before-enable-reporting", 20000);
+	rv = mse3_cmd_direct(MSEON, MSE_ACK, 1, buf, "enable-reporting");
+	if (rv == FAILED) {
+		q->q_ptr = (caddr_t) NULL;
+		WR(q)->q_ptr = (caddr_t) NULL;
+		kmem_free(mse3ptr,sizeof(struct strmseinfo));
+		mse3ptr = (struct strmseinfo *) NULL;
+		splx(oldpri);
+		return(ENXIO);
+	}
+	mse3_settle("after-enable-reporting", 20000);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: open complete ptr=%x stat=%x\n",
+			mse3ptr, inb(MSE_STAT));
 
+	splx(oldpri);
 	return(0);
 }
 
@@ -195,6 +325,9 @@ struct cred cred_p;
 	struct strmseinfo *tmpmse3ptr;
 
 	oldpri = splstr();
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: close ptr=%x stat=%x\n",
+			mse3ptr, inb(MSE_STAT));
 	mse3closing = 1;
 	mcastat.map_unit = -1;
 	/* leave aux interface disabled after mcafunc() runs */
@@ -208,7 +341,7 @@ struct cred cred_p;
 	tmpmse3ptr = mse3ptr;
 	mse3ptr = (struct strmseinfo *) NULL;
 	splx(oldpri);
-	kmem_free(mse3ptr,sizeof(struct strmseinfo));
+	kmem_free(tmpmse3ptr,sizeof(struct strmseinfo));
 	return;
 }
 
@@ -310,19 +443,30 @@ void
 mse3intr(vect)
 unsigned vect;
 {
-	register char mdata;
+	register int mdata;
 	register int	unit;
 
 			
 	if(vect == 12){		/* vector 12 is AT&T 320 mouse */
-		if (!mcastat.present)
+		if (!mcastat.present) {
+			if (mse3_debug)
+				cmn_err(CE_CONT, "m320: irq12 ignored, not present stat=%x\n",
+					inb(MSE_STAT));
 			return;
-		if (!mse3ptr)
+		}
+		if (!mse3ptr) {
+			if (mse3_debug)
+				cmn_err(CE_CONT, "m320: irq12 ignored, not open stat=%x\n",
+					inb(MSE_STAT));
 			return;
+		}
 		if(mcastat.mode == MSESTREAM ){
-			if((mdata = rdmse3()) == FAILED) 
+			if((mdata = rdmse3()) < 0)
 				return;
-			ps2parse(mdata);
+			if (mse3_debug)
+				cmn_err(CE_CONT, "m320: irq12 byte=%x parser-state=%d\n",
+					mdata, mse3ptr->state);
+			ps2parse((char)mdata);
 		}
 		return;
 	}
@@ -333,9 +477,14 @@ ps2parse(c)
 register char	c;
 {
 	register char	tmp;
+	register unchar	uc;
 	register struct strmseinfo	*m = mse3ptr;
 
 	/* Parse the next byte of input.  */
+	uc = (unchar)c;
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: parse state=%d byte=%x\n",
+			m->state, uc);
 
 	switch (m->state)
 	{
@@ -356,15 +505,35 @@ register char	c;
 		*/
 		
 		/*
+		** Bit 3 is always set in the first byte of a standard
+		** PS/2 packet.  Use it to recover from stale command
+		** responses or dropped bytes instead of staying out of
+		** phase forever.
+		*/
+		if ((uc & 0x08) == 0)
+		{
+			mse3_dropped_packets++;
+			if (mse3_debug)
+				cmn_err(CE_CONT, "m320: drop byte=%x waiting for packet header\n",
+					uc);
+			return;
+		}
+
+		/*
 		** Shift the buttons bits into the order required: LMR
 		*/
 
-		tmp = (c & 0x01)<<2;
-		tmp |= (c & 0x06)>>1;	
+		tmp = (uc & 0x01)<<2;
+		tmp |= (uc & 0x06)>>1;
 		m->button = (tmp ^ 0x07);	/* Buttons */
 
-		m->x = (c & 0x10);		/* X sign bit */
-		m->y = (c & 0x20);		/* Y sign bit */
+		m->x = (uc & 0x10);		/* X sign bit */
+		m->y = (uc & 0x20);		/* Y sign bit */
+		m->bad_packet = (uc & 0xc0);
+		if (mse3_debug)
+			cmn_err(CE_CONT,
+				"m320: packet header raw=%x button=%x xs=%d ys=%d overflow=%x\n",
+				uc, m->button, !!m->x, !!m->y, m->bad_packet & 0xff);
 		m->state = 1;
 		break;
 
@@ -401,18 +570,21 @@ register char	c;
 
 			m->x = -128;		/* Set to signed char min */
 
-			if ( c & 0x80 )		/* NO truncate    */
+			if ( uc & 0x80 )	/* NO truncate    */
 				m->x = c;
 		}
 		else				/* Positive delta */
 		{
 			m->x = 127;		/* Set to signed char max */
 
-			if ( !(c & 0x80 ))	/* Truncate       */
+			if ( !(uc & 0x80 ))	/* Truncate       */
 				m->x = c;
 		}
 
 		m->state = 2;
+		if (mse3_debug)
+			cmn_err(CE_CONT, "m320: packet x raw=%x dx=%d\n",
+				uc, m->x);
 		break;
 
 	case 2:	/*
@@ -440,21 +612,61 @@ register char	c;
 		{
 			m->y = 127;		/* Set to signed char max */
 
-			if ( (unsigned char)c > 128 )	/* Just negate */
+			if ( uc > 128 )		/* Just negate */
 				m->y = -c;
 		}
 		else		/* Positive delta treated as Negative */
 		{
 			m->y = -128;		/* Set to signed char min */
 
-			if ( (unsigned char)c < 128 )	/* Just negate */
+			if ( uc < 128 )		/* Just negate */
 				m->y = -c;
 		}
 
 		m->state = 0;
+		if (m->bad_packet) {
+			mse3_dropped_packets++;
+			if (mse3_debug)
+				cmn_err(CE_CONT,
+					"m320: packet overflow=%x raw-y=%x, dropping packet\n",
+					m->bad_packet & 0xff, uc);
+			m->bad_packet = 0;
+			return;
+		}
+		mse3_packets++;
+		if (m->x || m->y)
+			mse3_motion_packets++;
+		else if (m->button != m->old_buttons)
+			mse3_button_packets++;
+		else
+			mse3_zero_packets++;
+		if (mse3_debug)
+			cmn_err(CE_CONT,
+				"m320: packet complete #%d motion=%d button=%d zero=%d drop=%d button=%x old=%x dx=%d dy=%d\n",
+				mse3_packets, mse3_motion_packets,
+				mse3_button_packets, mse3_zero_packets,
+				mse3_dropped_packets, m->button, m->old_buttons,
+				m->x, m->y);
 		mseproc(m);
 		break;
 	}
+}
+
+static void
+mse3_flush_aux()
+{
+	register int cnt;
+	register int flushed = 0;
+
+	for (cnt = 0; cnt < 64; cnt++) {
+		if ((inb(MSE_STAT) & (MSE_OBF | MSE_AUXDATA)) !=
+		    (MSE_OBF | MSE_AUXDATA))
+			break;
+		(void)inb(MSE_OUT);
+		flushed++;
+	}
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: flushed %d aux/controller bytes\n", flushed);
 }
 
 /*
@@ -474,6 +686,9 @@ int bufsize;
 	register unsigned char data;
 	register int wait, sndcnt = 0;
 	int rv;
+	int i;
+	int stat0, stat1;
+	int b0, b1, b2, b3;
 
 #ifdef DEBUG
 printf("entered snd_320_cmd() cmd = %x\n",cmd);
@@ -483,7 +698,20 @@ printf("entered snd_320_cmd() cmd = %x\n",cmd);
 	   /* send the command to the 8042. rv == 1 --> success
 	    * The 2 implies send the cmd to the aux device
 	    */
+	   for (i = 0; i < bufsize; i++)
+		buf[i] = 0;
+	   stat0 = inb(MSE_STAT);
 	   rv = i8042_send_cmd(cmd, 2, buf,bufsize);
+	   stat1 = inb(MSE_STAT);
+	   b0 = (bufsize > 0) ? buf[0] : 0;
+	   b1 = (bufsize > 1) ? buf[1] : 0;
+	   b2 = (bufsize > 2) ? buf[2] : 0;
+	   b3 = (bufsize > 3) ? buf[3] : 0;
+	   if (mse3_debug)
+		cmn_err(CE_CONT,
+			"m320: snd cmd=%x expect=%x size=%d attempt=%d rv=%x stat=%x/%x bytes=%x,%x,%x,%x\n",
+			cmd, ans, bufsize, sndcnt, rv, stat0, stat1,
+			b0, b1, b2, b3);
 
 	   if ( rv && ((ans == MSE_ANY) || (buf[0] == ans)) )
 		return 0; /* command succeeded, and first byte matches */
@@ -502,6 +730,7 @@ printf("snd_320_cmd() FAILED two resends\n");
 	   }
 	   else
 	   	return FAILED;
+	   drv_usecwait(MSE3_I8042_DELAY);
 	}
 #ifdef DEBUG
 printf("leaving snd_320_cmd() \n");
@@ -543,18 +772,23 @@ is_mca()
 
 
 /* 320 mouse read data function */
-unchar
+int
 rdmse3()
 {
-	register char data;
+	register unchar data;
 	register int wait;
+	register int stat;
+	register int stat0;
+	register int stat1;
 
 #ifdef DEBUG
 printf("rdmse3() called\n");
 #endif
 	/* wait until the 8042 output buffer is full */
 	for(wait =0;wait < 60000;wait++){
-		if ((MSE_OUTBF & inb(MSE_STAT)) == MSE_OUTBF)
+		stat = inb(MSE_STAT);
+		if ((stat & (MSE_OBF | MSE_AUXDATA)) ==
+		    (MSE_OBF | MSE_AUXDATA))
 			break; 
 		tenmicrosec();
 	}
@@ -562,10 +796,75 @@ printf("rdmse3() called\n");
 #ifdef DEBUG
 printf("rdmse3() FAILED timeout\n");
 #endif
-		return FAILED;
+		if (mse3_debug)
+			cmn_err(CE_CONT, "m320: rdmse3 timeout stat=%x\n",
+				inb(MSE_STAT));
+		return -1;
 	}
+	stat0 = inb(MSE_STAT);
 	data = inb(MSE_OUT); 	/* get data byte from controller */
-	return (data);
+	stat1 = inb(MSE_STAT);
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: rdmse3 wait=%d stat=%x/%x data=%x\n",
+			wait, stat0, stat1, data & 0xff);
+	return (data & 0xff);
+}
+
+static int
+mse3_status_direct(where)
+char *where;
+{
+	unchar buf[4];
+	int rv;
+	int status, resolution, sample;
+
+	buf[0] = buf[1] = buf[2] = buf[3] = 0;
+	i8042_acquire();
+	rv = snd_320_cmd(MSESTATREQ, MSE_ACK, 4, buf);
+	i8042_release();
+
+	status = buf[1];
+	resolution = buf[2];
+	sample = buf[3];
+	if (mse3_debug)
+		cmn_err(CE_CONT,
+			"m320: status %s rv=%x ack=%x status=%x res=%x sample=%x enabled=%d remote=%d scale2=%d buttons=%x ctlstat=%x mode=%x\n",
+			where, rv, buf[0], status, resolution, sample,
+			!!(status & 0x20), !!(status & 0x40),
+			!!(status & 0x10), status & 0x07, inb(MSE_STAT),
+			mcastat.mode);
+	return (rv == FAILED) ? -1 : status;
+}
+
+static int
+mse3_cmd_direct(cmd, ans, bufsize, buf, where)
+int cmd;
+int ans;
+int bufsize;
+unchar *buf;
+char *where;
+{
+	int rv;
+
+	i8042_acquire();
+	rv = snd_320_cmd((unsigned char)cmd, (unsigned char)ans, bufsize, buf);
+	i8042_release();
+	if (mse3_debug)
+		cmn_err(CE_CONT,
+			"m320: direct %s cmd=%x rv=%x stat=%x\n",
+			where, cmd, rv, inb(MSE_STAT));
+	return rv;
+}
+
+static void
+mse3_settle(where, usec)
+char *where;
+int usec;
+{
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: settle %s usec=%d stat=%x\n",
+			where, usec, inb(MSE_STAT));
+	drv_usecwait(usec);
 }
 
 /* 320 mouse command execution function */
@@ -580,6 +879,9 @@ struct cmd_320 *mca;
 printf("entered mcafunc(): cmd = %x\n",mca->cmd);
 #endif
 	i8042_acquire(); /* take ownership of 8042 */
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: mcafunc cmd=%x mode=%x stat=%x\n",
+			mca->cmd, mcastat.mode, inb(MSE_STAT));
 
 	/* must turn mouse off if streaming mode set */
 	if(mcastat.mode == MSESTREAM){
@@ -639,6 +941,9 @@ printf("mcafunc(): MSECHGMOD failed\n");
 				retflg = FAILED;
 				break;
 			}
+			mca->arg1 = buf[0];
+			mca->arg2 = buf[1];
+			mca->arg3 = buf[2];
 			/* command succeeded and got ACK as first byte 
 			 * Now verify next two bytes.
 			 */
@@ -719,5 +1024,8 @@ printf("mcafunc(): MSEON failed\n");
 
 	/* finished cmd. Release ownership of 8042 */
 	i8042_release();
+	if (mse3_debug)
+		cmn_err(CE_CONT, "m320: mcafunc done cmd=%x ret=%x mode=%x stat=%x\n",
+			mca->cmd, retflg, mcastat.mode, inb(MSE_STAT));
 	return (retflg);
 }

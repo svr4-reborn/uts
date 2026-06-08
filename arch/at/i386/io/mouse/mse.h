@@ -125,6 +125,7 @@ struct strmseinfo {
 	unchar 	type;
 	struct mouseinfo mseinfo;
 	unchar 	button;
+	char	bad_packet;
 	char 	x;
 	char	y;
 	char 	old_buttons;

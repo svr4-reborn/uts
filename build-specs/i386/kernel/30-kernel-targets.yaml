@@ -107,6 +107,7 @@ targets:
             - ws
             - kd
             - kdvm
+            - mouse
 
   io-ws-at386:
     description: Compile the workstation stream driver subtree under uts/i386/io/ws.
@@ -158,6 +159,23 @@ targets:
           extensions:
             - .c
 
+  io-mouse-at386:
+    description: Compile the AT386 PS/2 (AT&T 320) mouse driver subtree under uts/arch/at/i386/io/mouse.
+    depends_on:
+      - prepare-layout
+    steps:
+      - kind: compile
+        source_view: uts-at386
+        use:
+          - io-at386
+        cwd: io/mouse
+        output_dir: "{obj_root}/io/mouse"
+        continue_on_error: false
+        parallel: true
+        discover:
+          extensions:
+            - .c
+
   io-at386:
     description: Aggregate the generic, workstation, and AT386-specific driver subtrees.
     depends_on:
@@ -165,6 +183,7 @@ targets:
       - io-ws-at386
       - io-kd-at386
       - io-kdvm-at386
+      - io-mouse-at386
 
   ml-at386:
     description: Build the low-level machine-layer objects, including the generated locore/start/syms kernel inputs.
