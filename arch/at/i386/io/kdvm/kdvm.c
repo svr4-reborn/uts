@@ -359,7 +359,10 @@ struct cred	*crp;
 			rv = ENXIO;
 		break;
 	case SW_VDC800x600E:
-		if (!VTYPE(V600 | CAS2) || (Vdc.v_info.dsply != KD_MULTI_M && Vdc.v_info.dsply != KD_MULTI_C)) {	/* not VDC-600 or CAS-2 ? */
+		if (!(VTYPE(V600 | CAS2) || DTYPE(Kdws, KD_VGA))
+				|| (Vdc.v_info.dsply != KD_MULTI_M
+					&& Vdc.v_info.dsply != KD_MULTI_C
+					&& Vdc.v_info.dsply != KD_STAND_C)) {	/* not VDC-600, CAS-2, or VGA color ? */
 #ifdef EVGA
 			if (evga_inited) {
 				generic_mode = SW_GEN_800x600;
