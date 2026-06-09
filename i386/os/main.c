@@ -78,6 +78,7 @@ extern int	icode[];
 extern int	szicode;
 extern int	userstack[];
 extern int	sanity_clk;
+extern void	swapfs_init();	/* set up memory-backed virtual swap */
 int		eisa_bus = 0;
 unsigned int	eisa_brd_id = 0;
 
@@ -283,6 +284,13 @@ char	*argv[];
 	 * This call to swapconf must come after 
 	 * root has been mounted.
 	 */
+
+	/*
+	 * Set up the memory-backed virtual swap source first, so that
+	 * anonymous memory works even when no disk swap device is configured.
+	 * Any disk swap added by swapconf() below augments this pool.
+	 */
+	swapfs_init();
 
 	if (swapdev != NODEV) {
 		swapfile.bo_size = nswap;

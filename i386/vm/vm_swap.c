@@ -113,7 +113,7 @@ extern void	segmap_flush();
 STATIC	int swap_maxcontig = 1024 * 1024 / PAGESIZE;	/* 1MB of pages */
 
 struct	swapinfo	*swapinfo;
-STATIC	struct	swapinfo *silast;
+struct	swapinfo *silast;
 STATIC	int	nswapfiles;
 STATIC	int	sw_rdwr();
 STATIC	void	swapinfo_free();
@@ -158,6 +158,31 @@ swap_alloc()
 		if ((sip = sip->si_next) == NULL)
 			sip = swapinfo;
 	} while (sip != silast);
+	return ((struct anon *)NULL);
+}
+
+/*
+ * Allocate a single page from a *disk* swap area only, skipping any
+ * memory-backed (ST_MEMORY) source.  Used by swapfs to bind a real disk
+ * slot to a memory-backed anon page lazily at pageout time.  Returns NULL
+ * if there is no disk swap with free space.
+ */
+struct anon *
+swap_alloc_disk()
+{
+	register struct swapinfo *sip;
+	register struct anon *ap;
+
+	for (sip = swapinfo; sip != NULL; sip = sip->si_next) {
+		if (sip->si_flags & (ST_INDEL | ST_MEMORY))
+			continue;
+		ap = sip->si_free;
+		if (ap) {
+			sip->si_free = ap->un.an_next;
+			sip->si_nfpgs--;
+			return (ap);
+		}
+	}
 	return ((struct anon *)NULL);
 }
 

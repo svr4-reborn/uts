@@ -71,6 +71,12 @@ typedef struct swapent {
 #define	ST_DELETED	0x04		/* this file has been deleted  */
 					/* but the data structures have*/
 					/* not been freed up yet.      */
+#define	ST_MEMORY	0x08		/* memory-backed (swapfs) source*/
+					/* - has no disk backing store; */
+					/* anon pages bound here live in*/
+					/* RAM and are bound to a real  */
+					/* disk slot lazily at pageout  */
+					/* (see vm_swapfs.c).           */
 
 typedef struct	swaptable {
 	int	swt_n;			/*number of swapents following */
@@ -154,14 +160,20 @@ extern int swap_init(struct vnode *);
 extern void swap_free(struct anon *);
 extern void swap_xlate(struct anon *, struct vnode **, uint *);
 extern struct anon *swap_alloc(void);
+extern struct anon *swap_alloc_disk(void);
 extern struct anon *swap_anon(struct vnode *, uint);
+extern void swapfs_init(void);
+extern int swapfs_npages(void);
 #else
 extern int swapfunc();
 extern int swap_init();
 extern void swap_free();
 extern void swap_xlate();
 extern struct anon *swap_alloc();
+extern struct anon *swap_alloc_disk();
 extern struct anon *swap_anon();
+extern void swapfs_init();
+extern int swapfs_npages();
 #endif	/* __STDC__ */
 
 #endif	/* _KERNEL */
