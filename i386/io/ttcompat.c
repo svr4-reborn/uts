@@ -264,26 +264,26 @@ ttcompatwput(q, mp)
 			cqp = (struct copyreq *)mp->b_rptr;
 			cqp->cq_addr = (caddr_t) *(long *)mp->b_cont->b_rptr;
 			switch (iocbp->ioc_cmd) {
-				case TIOCSETN:
-					cqp->cq_size = sizeof(struct sgttyb);
-					break;
-				case TIOCSLTC:
-					cqp->cq_size = sizeof(struct ltchars);
-					break;
-				case TIOCSETC:
-					cqp->cq_size = sizeof(struct ltchars);
-					break;
-				case TIOCLBIS:
-					cqp->cq_size = sizeof(struct ltchars);
-					break;
-				case TIOCLBIC:
-					cqp->cq_size = sizeof(struct ltchars);
-					break;
-				case TIOCLSET:
-					cqp->cq_size = sizeof(struct ltchars);
-					break;
-				default:
-					break;
+					case TIOCSETN:
+						cqp->cq_size = sizeof(struct sgttyb);
+						break;
+					case TIOCSLTC:
+						cqp->cq_size = sizeof(struct ltchars);
+						break;
+					case TIOCSETC:
+						cqp->cq_size = sizeof(struct tchars);
+						break;
+					case TIOCLBIS:
+						cqp->cq_size = sizeof(int);
+						break;
+					case TIOCLBIC:
+						cqp->cq_size = sizeof(int);
+						break;
+					case TIOCLSET:
+						cqp->cq_size = sizeof(int);
+						break;
+					default:
+						break;
 			}
 			cqp->cq_flag = 0;
 			cqp->cq_private = NULL;
