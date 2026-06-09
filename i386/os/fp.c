@@ -478,7 +478,13 @@ fpinit()
 	asm( "  fstcw   finitstate" );
 
 	finitstate &= ~( FPINV | FPZDIV | FPOVR | FPPC );
-	finitstate |= ( FPSIG53 | FPIC );
+	/*
+	 * Modern i386 toolchains compile normal floating-point expressions for
+	 * x87 extended evaluation (FLT_EVAL_METHOD == 2).  Keeping the old SVR4
+	 * 53-bit precision control causes libm algorithms that rely on extended
+	 * intermediates, such as floor(), to round away small integer values.
+	 */
+	finitstate |= ( FPSIG64 | FPIC );
 
 	asm( "  fldcw   finitstate" );
 
