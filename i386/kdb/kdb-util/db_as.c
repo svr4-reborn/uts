@@ -220,7 +220,7 @@ db_uvtop(vaddr, proc)
 		
 		if (pdtep == ptap->hatpt_pdtep) { 
 			hatp->hat_ptlast = ptap;
-			pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+			pt = (hatpgt_t *) ptap->hatpt_kva;
 			mcnum = HATMCNO(vaddr);
 			mcndx = HATMCNDX(vaddr);
 			ptp = pt->hat_pgtc[mcnum].hat_pte;

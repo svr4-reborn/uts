@@ -29,6 +29,8 @@
 
 extern int basyncnt;
 
+extern void bp_mapin();
+
 extern void gen_strategy();
 extern int gen_read();
 extern int gen_write();
@@ -240,9 +242,13 @@ gen_strategy(bp)
 	gen_setup_idinfo(u.u_cred);
 	if (bp->b_bcount <= PAGESIZE) {
 		if (bp->b_flags & B_PAGEIO) {
-			pp = bp->b_pages;
-			/* b_addr is the offset into the 1st page of the list */
-			bp->b_un.b_addr += (u_int)pfntokv(page_pptonum(pp));
+			/*
+			 * b_addr holds the byte offset into the first page;
+			 * bp_mapin() gives the page(s) a real kernel mapping
+			 * (sptmap/self-map) and folds in that offset.
+			 * The completion path (pvn_done) calls bp_mapout().
+			 */
+			bp_mapin(bp);
 		}
 		(*shadowbsw[getmajor(bp->b_edev)].d_strategy)(bp);
 		return;
@@ -278,8 +284,12 @@ gen_strategy(bp)
 		bufp[i]->b_blkno = bp->b_blkno + (blkincr * i);
 		bufp[i]->b_chain = bp;
 		bufp[i]->b_iodone = (int(*)())gen_iodone;
-		bufp[i]->b_flags &= ~B_PAGEIO;
-		bufp[i]->b_un.b_addr = (caddr_t)pfntokv(page_pptonum(pp));
+		
+		/*
+		 * Give the page a real kernel mapping for the duration of the
+		 * transfer; pageio_done() -> bp_mapout() tears it down.
+		 */
+		bp_mapin(bufp[i]);
 		(*shadowbsw[getmajor(bufp[i]->b_edev)].d_strategy)(bufp[i]);
 		i++;
 		pp = pp->p_next;

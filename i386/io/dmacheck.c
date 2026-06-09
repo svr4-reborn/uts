@@ -29,6 +29,7 @@
 #include "vm/seg_kmem.h"
 #include "vm/mp.h"
 #include "vm/page.h"
+#include "vm/kmap.h"
 #include "sys/dmaable.h"
 
 
@@ -258,6 +259,8 @@ reserve_dma_pages()
 */
 STATIC void dma_pages();
 STATIC void pio_kvfree();
+STATIC caddr_t pio_map1();
+STATIC void pio_unmap1();
 
 /*
  *	The I/O should not be broken up; assign dmaable pages as needed and
@@ -283,6 +286,7 @@ dma_multipage_io(obp, strat)
 	paddr_t			pageaddr;
 	caddr_t			kaddr, addr;
 	register int		i, j;
+	u_int			pgoff;
 	int			pageio;
 	int			err;
 	int			do_read;
@@ -367,12 +371,12 @@ iomemerr:
 
 			ASSERT(VALID_PP(pp));
 
-			addr = PPTOKV(pp);
+			/* Page offset into the first page of the transfer. */
+			pgoff = (i == 0) ? PAGOFF(paddr(obp)) : 0;
 
 			if (i == 0) {
 				ASSERT(paddr(obp) >= 0 && paddr(bp) < PAGESIZE);
-				addr += paddr(obp);
-				iocount = MIN(count, LEFTINPAGE(addr));
+				iocount = MIN(count, PAGESIZE - pgoff);
 
 			} else if (i == (total_pages - 1)) {
 					ASSERT(count <= PAGESIZE);
@@ -392,9 +396,12 @@ iomemerr:
 				COPY_DMA_PP(pp, dma_pp);
 				RELINK_DMA_PP(pp, dma_pp);
 
-				if (! do_read)	{	/* write */
-					bcopy(addr, PPTOKV(dma_pp) + PAGOFF(addr),
-						iocount);
+				if (! do_read)	{	/* write: copy through kmap */
+					caddr_t srcva = (caddr_t)kmap(pp);
+					caddr_t dstva = (caddr_t)kmap(dma_pp);
+					bcopy(srcva + pgoff, dstva + pgoff, iocount);
+					kunmap(dma_pp);
+					kunmap(pp);
 				}
 			}
 		}
@@ -466,11 +473,10 @@ iomemerr:
 			i < total_pages;
 			i++, pp = pp->p_next, count -= iocount) {
 
-			addr = PPTOKV(pp);
+			pgoff = (i == 0) ? PAGOFF(paddr(obp)) : 0;
 
 			if (i == 0) {
-				addr += paddr(obp);
-				iocount = MIN(count, LEFTINPAGE(addr));
+				iocount = MIN(count, PAGESIZE - pgoff);
 			} else if (i == total_pages - 1) {
 				ASSERT(count <= PAGESIZE);
 				iocount = count;
@@ -499,9 +505,12 @@ iomemerr:
 				if (VALID_PP(pp->p_next))
 					pp->p_next->p_prev = nondma_pp;
 
-				if (do_read) {		/* read */
-					bcopy(addr, PPTOKV(nondma_pp) + PAGOFF(addr),
-						iocount);
+				if (do_read) {		/* read: bounce -> original */
+					caddr_t srcva = (caddr_t)kmap(pp);
+					caddr_t dstva = (caddr_t)kmap(nondma_pp);
+					bcopy(srcva + pgoff, dstva + pgoff, iocount);
+					kunmap(nondma_pp);
+					kunmap(pp);
 				}
 				j++;
 			}
@@ -642,18 +651,29 @@ dma_iodone(bp)
 		ASSERT(PAGOFF(paddr(bp)) + dma_pp->p_keepcnt <= PAGESIZE);
 
 		if (bp->b_flags & B_READ) {
+			caddr_t dstva;
 
 			ASSERT(obp->b_flags & B_READ);
 
-			bcopy(PPTOKV(dma_pp) + PAGOFF(paddr(bp)),
-				PPTOKV(pp) + PAGOFF(paddr(bp)),
+			/* Copy the freshly-read data from the bounce window
+			 * (bp->b_un.b_addr) back to the original page. */
+			dstva = (caddr_t)kmap(pp);
+			bcopy(bp->b_un.b_addr,
+				dstva + PAGOFF(paddr(bp)),
 				dma_pp->p_keepcnt);
+			kunmap(pp);
 		}
+		/* Release the persistent bounce-page window (see dma_iostart). */
+		pio_unmap1(bp->b_private);
+		bp->b_private = (caddr_t)NULL;
 	} else {
 		ASSERT(ISKADDR(bp->b_un.b_addr));
 		ASSERT(DMA_BYTE(vtop(bp->b_un.b_addr, obp->b_proc)));
 		ASSERT(DMA_PP(bp->b_pages));
 		ASSERT(page_numtopp(btoct(kvtophys(bp->b_un.b_addr))) == bp->b_pages);
+		/* Release the persistent page window (see dma_iostart). */
+		pio_unmap1(bp->b_private);
+		bp->b_private = (caddr_t)NULL;
 	}
 	biodone(bp);
 }
@@ -671,16 +691,14 @@ int slot, bytescnt;
 	struct page *pp;
 	struct page *dma_pp;
 	int		(*strat)();
-	caddr_t fbyte;
+	caddr_t winva;
+	u_int	pgoff;
 
 	bp = dma_iobp[slot];
 	obp = bp->b_chain;
 	strat = dma_checksw[getmajor(obp->b_edev)].d_strategy;
 	bp = dma_iobp[slot];	/* Get a bp */
 	pp = dma_iopp[slot];
-	fbyte = PPTOKV(pp);	/* Compute beginning of logical xfer */
-	if (dma_ioreq[slot] == 0)	/* paddr(bp) has offset in first page */
-		fbyte += paddr(obp);
 	/*
 	 *	Set up the request to be passed down.
 	*/
@@ -700,6 +718,9 @@ int slot, bytescnt;
 	bp->b_chain = obp;
 	bp->b_iodone = (int(*)())dma_iodone;
 
+	/* Byte offset within the first page of the logical transfer. */
+	pgoff = (dma_ioreq[slot] == 0) ? PAGOFF(paddr(obp)) : 0;
+
 	if (! DMA_PP(pp)) {
 
 		bp->b_flags |= B_DMA_REMAPPED;
@@ -715,14 +736,22 @@ int slot, bytescnt;
 
 		dma_pp->p_keepcnt = bytescnt;	/* Hack for dma_iodone() */
 
-		bp->b_un.b_addr = PPTOKV(dma_pp);
-		if ( dma_ioreq[slot] == 0)
-			bp->b_un.b_addr += paddr(obp);	/* convert to non-pageio */
-		if (!(obp->b_flags&B_READ))	/* write */
-			bcopy(fbyte, bp->b_un.b_addr, bytescnt);
+		/* Map the (low) bounce page into a persistent PIO window for
+		 * the duration of the transfer; freed in dma_iodone(). */
+		winva = pio_map1(dma_pp);
+		bp->b_private = (caddr_t)winva;
+		bp->b_un.b_addr = winva + pgoff;
+		if (!(obp->b_flags&B_READ)) {	/* write: copy source -> bounce */
+			caddr_t srcva = (caddr_t)kmap(pp);
+			bcopy(srcva + pgoff, bp->b_un.b_addr, bytescnt);
+			kunmap(pp);
+		}
 	} else {
 		bp->b_flags &= ~(B_DMA_REMAPPED);
-		bp->b_un.b_addr = fbyte;	/* convert to non-pageio */
+		/* The page itself is DMA-able; map it persistently for I/O. */
+		winva = pio_map1(pp);
+		bp->b_private = (caddr_t)winva;
+		bp->b_un.b_addr = winva + pgoff;
 	}
 	dma_iopp[slot] = pp->p_next;
 	dma_ioreq[slot]++;
@@ -842,7 +871,9 @@ dma_buf_breakup(obp, strat)
 		return ;
 	}
 
-	kerneladdr = PPTOKV(dma_list[0]);
+	/* Persistent mapping of the bounce page for the duration of this
+	 * routine (there is no identity map any more). */
+	kerneladdr = pio_map1(dma_list[0]);
 
 	bp = (struct buf *) kmem_alloc(sizeof(*bp), KM_SLEEP);
 
@@ -932,6 +963,7 @@ dma_buf_breakup(obp, strat)
 	}
 
 	kmem_free((caddr_t)bp, sizeof(*bp));
+	pio_unmap1(kerneladdr);
 	dma_page_rele(1, dma_list);
 
 	s = spl6();
@@ -947,6 +979,7 @@ out:
 	obp->b_flags |= B_ERROR;
 
 	kmem_free((caddr_t)bp, sizeof(*bp));
+	pio_unmap1(kerneladdr);
 	dma_page_rele(1, dma_list);
 
 	s = spl6();
@@ -1512,6 +1545,36 @@ dma_page_rele(numpages, dma_list)
 	}
 	splx(ospl);
 	return ;
+}
+
+/*
+ *	Map a single physical page into a freshly allocated one-page PIO
+ *	window and return its (persistent) kernel virtual address.  This
+ *	replaces the old PPTOKV()/identity-map trick for mappings that must
+ *	stay valid across an asynchronous transfer.  Pair with pio_unmap1().
+ */
+STATIC caddr_t
+pio_map1(pp)
+	page_t	*pp;
+{
+	caddr_t	va;
+
+	if ((va = pio_kvalloc(1)) == (caddr_t) NULL)
+		return ((caddr_t) NULL);
+	PIOVATOKPTE(va)->pg_pte = mkpte(PG_V | PG_RW, page_pptonum(pp));
+	flushtlb();
+	return (va);
+}
+
+STATIC void
+pio_unmap1(va)
+	caddr_t	va;
+{
+	if (va == (caddr_t) NULL)
+		return;
+	PIOVATOKPTE(va)->pg_pte = 0;
+	flushtlb();
+	pio_kvfree(1, va);
 }
 
 STATIC caddr_t

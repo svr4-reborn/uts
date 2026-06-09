@@ -284,10 +284,33 @@ extern paddr_t	svirtophys(/* va */);
 
 #define	kvtokptbl(x)	(&kptbl[pgndx((uint)(x) - (uint)syssegs)])
 
+/*	Recursive (self-referential) page table mapping.
+**
+**	One slot in the page directory points at the page directory's
+**	own frame (see scanmem() in startup.c).  This makes the page
+**	tables (and the directory itself) of the *currently loaded*
+**	address space visible at fixed kernel virtual addresses without
+**	requiring an identity map of physical memory:
+**
+**		page table for VA v  is at  PT_SELF_BASE + ptnum(v)*NBPP
+**		PTE for VA v         is at  PT_SELF_BASE + (v >> PNUMSHFT)*4
+**		the page directory   is at  PD_SELF_ADDR
+**
+**	We use the top page directory slot (1023) so the aperture lands
+**	at the very top of the address space.
+*/
+
+#define	PDE_SELF	1023			/* self-map PD slot		*/
+#define	PT_SELF_BASE	0xFFC00000U		/* all PTs of current AS	*/
+#define	PD_SELF_ADDR	0xFFFFF000U		/* the PD itself		*/
+
 /*
  * pte_t *
  * vatopdte(v)
  * returns the page directory entry location of v.
+ *
+ * Reads the kernel's own page directory (kpd0), which lives at a fixed
+ * kernel virtual address, so this does not depend on the self-map.
  */
 
 #define	vatopdte(v)	(&kpd0[ptnum(v)])
@@ -296,9 +319,14 @@ extern paddr_t	svirtophys(/* va */);
  * pte_t *
  * vatopte(v, pdte)
  * returns the page table entry location of v.
+ *
+ * The (now unused) pdte argument is retained for source compatibility.
+ * The page table entry is reached through the recursive self-map, so v
+ * must belong to the currently loaded address space (which is always
+ * true for kernel addresses, whose PD entries are shared).
  */
 
-#define	vatopte(v, pdte) ((pte_t *)phystokv(ctob(pdte->pgm.pg_pfn)) + pnum(v))
+#define	vatopte(v, pdte) ((pte_t *)PT_SELF_BASE + ((uint)(v) >> PNUMSHFT))
 
 /*
  * pte_t *
@@ -309,7 +337,7 @@ extern paddr_t	svirtophys(/* va */);
  *
  */
 
-#define svtopte(v) ((pte_t *)phystokv(ctob((uint)(vatopdte(v)->pgm.pg_pfn))) + pnum(v))
+#define svtopte(v) ((pte_t *)PT_SELF_BASE + ((uint)(v) >> PNUMSHFT))
 
 /*
  * svtopfn(v)

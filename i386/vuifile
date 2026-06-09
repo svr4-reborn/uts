@@ -17,9 +17,16 @@ MEMORY	{
 	kv_loadsite :    ORIGIN  = 0xD0010000,   LENGTH  =  0x3f0000
 #endif
 
-	kv_sysseg :	ORIGIN  = 0xD1000000,	LENGTH 	=  0x400000
-	kv_pioseg :	ORIGIN  = 0xD2000000,	LENGTH 	=  0x400000
-	kv_segmap :	ORIGIN	= 0xD2400000,	LENGTH	=  0x400000
+/*
+ * kv_sysseg holds the kernel heap (kvseg), which includes the page-frame
+ * database.  The page-DB scales with installed RAM (~80MB at 4GB), so this
+ * region is sized to 144MB; kv_pioseg/kv_segmap follow after it and still
+ * sit below the u-block region at 0xE0000000.  This must agree with the
+ * SYSSEGSZ tunable (see i386/master.d/mtune).
+ */
+	kv_sysseg :	ORIGIN  = 0xD1000000,	LENGTH 	=  0x9000000
+	kv_pioseg :	ORIGIN  = 0xDA000000,	LENGTH 	=  0x400000
+	kv_segmap :	ORIGIN	= 0xDA400000,	LENGTH	=  0x400000
 
 	uv_ublock :	ORIGIN  = 0xe0000000,	LENGTH =    0x20000
 	kv_segu :	ORIGIN	= 0xe0200000,	LENGTH	=  0x400000

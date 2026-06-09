@@ -73,6 +73,7 @@ typedef struct hatpt {
 	struct	hatpt *hatpt_prev;	/* backward activept list ptr */
 	pte_t	hatpt_pde;		/* PDE for page table */
 	pte_t	*hatpt_pdtep;		/* PDT entry pointer */
+	caddr_t	hatpt_kva;		/* persistent kernel VA of the page	*/
 	struct	as *hatpt_as;		/* pointer back to containing as */
 	cnt_t	hatpt_aec;		/* active entry count */
 	cnt_t	hatpt_locks;		/* count of locked PTEs */

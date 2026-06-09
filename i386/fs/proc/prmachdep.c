@@ -411,7 +411,7 @@ prfastmapin(p, addr, writing)
 		
 		if (pdtep == ptap->hatpt_pdtep) { 
 			hatp->hat_ptlast = ptap;
-			pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+			pt = (hatpgt_t *) ptap->hatpt_kva;
 			mcnum = HATMCNO(addr);
 			mcndx = HATMCNDX(addr);
 			ptp = pt->hat_pgtc[mcnum].hat_pte;

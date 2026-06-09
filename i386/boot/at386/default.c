@@ -283,6 +283,9 @@ register char	*p;
 	/* modifiers */
 
 	switch( *p ) {
+	case ('G'):
+	case ('g'):
+		n *= 1024;
 	case ('M'):
 	case ('m'):
 		n *= 1024;

@@ -36,6 +36,15 @@ extern 		scsidiskflag;		/* is the hard disk a scsi disk? */
 /* foll. is declared in bootlib/blfile.c */
 extern	off_t 	boot_delta;		/* boot starting sector on disk */
 
+struct biosparm {
+	unsigned char	maxsec;
+	unsigned char	maxcyl;
+	unsigned char	ndrive;
+	unsigned char	maxhd;
+};
+
+extern struct biosparm	hd0parm;
+
 /*
  * get_fs: 	initialize the driver; open the disk, find
  *		the root slice and fill in the global 
@@ -132,4 +141,43 @@ get_fs()
 #endif /* WINI */
 
 	return (root_delta);
+}
+
+void
+disk_read_error(secno, count, status)
+unsigned long secno;
+unsigned int count;
+unsigned int status;
+{
+	unsigned long cyl;
+	unsigned long rem;
+	unsigned int head;
+	unsigned int sect;
+	unsigned int bios_cyl;
+	unsigned int bios_head;
+	unsigned int bios_sect;
+
+	bios_cyl = hd0parm.maxcyl + (((int)hd0parm.maxsec & 0xC0) << 2) + 1;
+	bios_head = hd0parm.maxhd + 1;
+	bios_sect = hd0parm.maxsec & 0x3F;
+
+	printf("\nboot: BIOS disk read failed, status 0x%x\n", status);
+	printf("boot: request sector %lu count %u\n", secno, count);
+
+	if (spc > 0 && spt > 0) {
+		cyl = secno / (unsigned long)spc;
+		rem = secno % (unsigned long)spc;
+		head = (unsigned int)(rem / (unsigned long)spt);
+		sect = (unsigned int)(rem % (unsigned long)spt) + 1;
+		printf("boot: request CHS cyl %lu head %u sect %u\n",
+			cyl, head, sect);
+	} else {
+		printf("boot: request CHS unavailable, loader geometry invalid\n");
+	}
+
+	printf("boot: BIOS geometry cyl %u head %u sect %u\n",
+		bios_cyl, bios_head, bios_sect);
+	printf("boot: loader geometry unix_start %u spc %u spt %u\n",
+		unix_start, spc, spt);
+	halt();
 }

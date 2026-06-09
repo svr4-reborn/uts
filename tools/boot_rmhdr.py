@@ -18,6 +18,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Strip the container header from a linked boot image.')
     parser.add_argument('input_path')
     parser.add_argument('output_path')
+    parser.add_argument('--pad-to', type=lambda value: int(value, 0))
+    parser.add_argument('--pad-byte', type=lambda value: int(value, 0), default=0)
     return parser.parse_args()
 
 
@@ -80,7 +82,18 @@ def main() -> int:
     if offset < 0 or offset > len(payload):
         raise ValueError(f'Computed payload offset {offset} is outside the image')
 
-    output_path.write_bytes(payload[offset:])
+    binary = payload[offset:]
+    if args.pad_to is not None:
+        if args.pad_byte < 0 or args.pad_byte > 0xFF:
+            raise ValueError(f'Pad byte must fit in one byte, got {args.pad_byte}')
+        if len(binary) > args.pad_to:
+            raise ValueError(
+                f'Boot payload is larger than the requested padded size '
+                f'({len(binary)} > {args.pad_to})'
+            )
+        binary = binary + bytes([args.pad_byte]) * (args.pad_to - len(binary))
+
+    output_path.write_bytes(binary)
     return 0
 
 

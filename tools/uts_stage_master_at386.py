@@ -118,7 +118,7 @@ COMMODS = [
     "kdb-util",
 ]
 
-AT386MODS = ["asy", "dma", "rtc", "cram", "hd", "fd", "lp", "kd", "kdvm", "cmux", "gvid"]
+AT386MODS = ["asy", "dma", "rtc", "cram", "hd", "fd", "lp", "kd", "kdvm", "cmux", "gvid", "m320"]
 
 
 def _parse_args() -> argparse.Namespace:

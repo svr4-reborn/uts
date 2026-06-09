@@ -51,6 +51,12 @@ _cr3(void)
 }
 
 static __inline__ void
+invlpg(unsigned long vaddr)
+{
+	__asm__ __volatile__("invlpg (%0)" : : "r"(vaddr) : "memory");
+}
+
+static __inline__ void
 _wdr0(unsigned long value)
 {
 	__asm__ __volatile__("movl %0, %%db0" : : "r"(value));

@@ -60,6 +60,7 @@
 #include "vm/page.h"
 #include "vm/bootconf.h"
 #include "vm/faultcatch.h"
+#include "vm/kmap.h"
 
 #ifdef AT386	/* 16 MB DMA */
 #include "sys/dmaable.h"
@@ -150,6 +151,7 @@ mlsetup()
 	int    cnt;
 	int	binfosum;
 	caddr_t	caddr;
+	void	boot_zero_range();
 
 
 #ifdef STARTUP_DEBUG_0
@@ -346,10 +348,11 @@ mlsetup()
 
 
 #ifdef AT386
-	/* Unfortunately, for AT386 we have to support device drivers
-		which assume the device memory at bmemsize to 1M is always
-		mapped at KVBASE + bmemsize. */
-	nextclick = scanmem(nextclick, btoct(bmemsize*1024), btoct(1024*1024));
+	/* Map the low megabyte (conventional + device/BIOS/video memory) at
+	   KVBASE.  Several low-level paths (egafont, BIOS data area, video
+	   memory, soft reset) and legacy device drivers assume this fixed
+	   low device window is always mapped at KVBASE + paddr. */
+	nextclick = scanmem(nextclick, btoct(0), btoct(1024*1024));
 	physmem = 0;	/* Don't count device memory in physmem */
 #endif
 
@@ -367,14 +370,25 @@ mlsetup()
 	 */
 #endif
 
-	/* Set up linear map for all real memory */
-	for (i=0; i < bootinfo.memavailcnt && bootinfo.memavail[i].extent;++i) {
+	/* Calculate how much RAM we have installed in the system. */
+	for (i = 0; i < bootinfo.memavailcnt && bootinfo.memavail[i].extent; ++i) {
 		firstclick = btoct(bootinfo.memavail[i].base);
 		lastclick = btoct(bootinfo.memavail[i].base +
 						bootinfo.memavail[i].extent);
-		nextclick = scanmem(nextclick, firstclick, lastclick);
+		physmem += lastclick - firstclick;
 	}
 
+
+	/* Install the recursive (self-referential) page directory entry.
+	 * This points the top PD slot at the page directory's own physical
+	 * frame, making the page tables of the currently loaded address
+	 * space (and the directory itself) visible at fixed kernel virtual
+	 * addresses (PT_SELF_BASE / PD_SELF_ADDR).  This replaces the old
+	 * dependence on the physical-memory identity map for page table
+	 * walks (see vatopte()/svtopte() in immu.h).
+	 */
+
+	kpd0[PDE_SELF].pg_pte = mkpte(PG_V | PG_RW, pfnum(_cr3()));
 
 	/* After we have come up we no longer need addresses at linear 0. */
 	/* Make them illegal.  These addresses were needed during the     */
@@ -386,11 +400,25 @@ mlsetup()
 
 	flushtlb();
 
-	wzero(phystokv(ctob(nextclick)), ctob(btoct(memNOTused[memused_idx].base +
-			   memNOTused[memused_idx].extent) - nextclick));
+	/*	Initialize the kmap temporary-mapping window first, so that the
+	**	remaining boot-time frame accesses can reach physical frames that
+	**	lie outside the (transitional) low identity map - in particular
+	**	frames returned by non_dma_page() from the high end of memory.
+	*/
+
+	nextclick = kmapseginit(nextclick);
+
+	/*	Zero the remaining free physical memory.  Frames may live above
+	**	the identity-mapped low window, so reach each one through the
+	**	kmap window rather than phystokv().
+	*/
+
+	boot_zero_range(nextclick, btoct(memNOTused[memused_idx].base +
+			   memNOTused[memused_idx].extent));
 
 	for (i = memused_idx+1; i < memNOTusedcnt; i++) {
-		wzero(phystokv(memNOTused[i].base), memNOTused[i].extent);
+		boot_zero_range(btoct(memNOTused[i].base),
+			btoct(memNOTused[i].base + memNOTused[i].extent));
 	}
 
 	/*
@@ -753,12 +781,12 @@ int nextfree;
 	register int pgcnt;
 
 	i = ptnum(syssegs);
-	for (pgcnt = 0 , pt = &kpd0[i] ; pgcnt < 2048 ; pgcnt += 1024, pt++)
+	for (pgcnt = 0 , pt = &kpd0[i] ; pgcnt < syssegsz ; pgcnt += 1024, pt++, i++)
 	{
 		if (!PG_ISVALID(pt)) {
-			pt->pg_pte = 
-				mkpte(PG_V | PG_US, non_dma_page(&nextfree));
-			wzero(phystokv (ctob(pt->pgm.pg_pfn)), NBPP);
+			pt->pg_pte = mkpte(PG_V | PG_US, non_dma_page(&nextfree));
+			flushtlb();
+			wzero((caddr_t)vatopte((caddr_t)((uint)i << PTNUMSHFT), pt), NBPP);
 		}
 	}
 
@@ -782,13 +810,61 @@ int nextfree;
 	pt = &kpd0[i];
 	if (!PG_ISVALID(pt)) {
 		pt->pg_pte = mkpte(PG_V, non_dma_page(&nextfree));
-		wzero(phystokv (ctob(pt->pgm.pg_pfn)), NBPP);
+		flushtlb();
+		wzero((caddr_t)vatopte((caddr_t)piosegs, pt), NBPP);
 	}
 
 	/* piownptbl points to the piosegs page table */
 
-	piownptbl = (pte_t *)phystokv(ctob(pt->pgm.pg_pfn));
+	piownptbl = (pte_t *)vatopte((caddr_t)piosegs, pt);
 	return(nextfree);
+}
+
+/*	Allocate the page table for the kmap temporary-mapping window.
+ *	kmapsegs is on a page table (4MB) boundary.  The window's page
+ *	table is reached through the recursive self-map), as is the PT frame we
+ *  zero here.
+*/
+
+kmapseginit(nextfree)
+int nextfree;
+{
+	register pte_t *pd;
+	extern char kmapsegs[];
+	extern pte_t *kmapptbl;
+
+	pd = &kpd0[ptnum(kmapsegs)];
+	if (!PG_ISVALID(pd)) {
+		pd->pg_pte = mkpte(PG_V | PG_RW, non_dma_page(&nextfree));
+		flushtlb();
+	}
+
+	/* The window's page table is now visible through the self-map. */
+	kmapptbl = (pte_t *)vatopte((caddr_t)kmapsegs, pd);
+	wzero((caddr_t)kmapptbl, NBPP);
+
+	return(nextfree);
+}
+
+/*	Zero the physical frames in [firstpfn, lastpfn) one page at a time
+ *	through the kmap window.  Used during boot to clear free memory
+ *	without relying on a physical-memory identity map (frames may lie
+ *	anywhere in installed RAM, well above any low identity window).
+ *	Requires kmapseginit() to have run.
+*/
+
+void
+boot_zero_range(firstpfn, lastpfn)
+uint firstpfn, lastpfn;
+{
+	register uint pfn;
+	register caddr_t va;
+
+	for (pfn = firstpfn; pfn < lastpfn; pfn++) {
+		va = kmap_pfn(pfn);
+		wzero(va, NBPP);
+		kunmap_pfn(va);
+	}
 }
 
 
@@ -807,8 +883,11 @@ int nextfree;
 
 	if (!PG_ISVALID(ptptr))
 		ptptr->pg_pte = mkpte(PG_V, non_dma_page(&nextfree));
-	wzero(phystokv(ctob(ptptr->pgm.pg_pfn)), ctob(1));
-	usertable = (pte_t *) phystokv(ctob(ptptr->pgm.pg_pfn)) + pnum(&u);
+	flushtlb();
+	/* Reach the ublock page table frame through the self-map.  The PT
+	 * base maps the start of this 4MB region; zero the whole frame. */
+	wzero((caddr_t)vatopte((caddr_t)(ptnum(&u) << PTNUMSHFT), ptptr), ctob(1));
+	usertable = (pte_t *) vatopte((caddr_t)&u, ptptr);
 
 	PG_SETPROT(ptptr, PTE_RW);  /* Page directory entry is user read/write */
 
@@ -827,12 +906,13 @@ int nextfree;
 	if (!PG_ISVALID(ptptr))
 		ptptr->pg_pte = mkpte(PG_V, non_dma_page(&nextfree));
 	PG_SETPROT(ptptr, PTE_RW);
+	flushtlb();
 
 	/* And the physical page */
 
-	ptptr = (pte_t *) phystokv(ctob(ptptr->pgm.pg_pfn)) +
-					pnum((char *)&u - NBPP);
+	ptptr = (pte_t *) vatopte((caddr_t)((char *)&u - NBPP), ptptr);
 	ptptr->pg_pte = mkpte(PG_V, non_dma_page(&nextfree));
+	flushtlb();
 	wzero(((char *)&u - NBPP), NBPP);
 
 	return(nextfree);
@@ -891,9 +971,9 @@ proc0_fail:
 	/*
 	 * seg_u can replace the page table backing &u, so refresh the common
 	 * usertable window from the live PDE before installing proc 0's PTEs.
+	 * Reach the page table through the recursive self-map (no identity map).
 	 */
-	usertable = (pte_t *)phystokv(ctob(kpd0[ptnum(&u)].pgm.pg_pfn)) +
-		pnum(&u);
+	usertable = (pte_t *)vatopte((caddr_t)&u, vatopdte(&u));
 
 	/* Copy the ublock page table into usertable, so we can use &u */
 	bcopy((caddr_t)pp->p_ubptbl, (caddr_t)usertable,

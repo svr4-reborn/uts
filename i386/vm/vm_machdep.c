@@ -58,6 +58,7 @@
 #include "vm/seg.h"
 #include "vm/page.h"
 #include "vm/seg_vn.h"
+#include "vm/kmap.h"
 #include "vm/seg_kmem.h"
 
 #include "sys/immu.h"
@@ -262,12 +263,16 @@ ppcopy(frompp, topp)
 	page_t *frompp;
 	page_t *topp;
 {
+	addr_t fromva, tova;
+
 	ASSERT(frompp != NULL && topp != NULL);
 	ASSERT(frompp >= pages && frompp < epages && topp >= pages && topp < epages);
 
-	inlinecopy((addr_t) phystokv(ctob(page_pptonum(frompp))),
-		   (addr_t) phystokv(ctob(page_pptonum(topp))),
-		   PAGESIZE);
+	fromva = (addr_t) kmap(frompp);
+	tova   = (addr_t) kmap(topp);
+	inlinecopy(fromva, tova, PAGESIZE);
+	kunmap(topp);
+	kunmap(frompp);
 }
 
 /*
@@ -287,15 +292,17 @@ pagecopy(addr, pp)
 	register addr_t va;
 
 	ASSERT(pp != NULL);
-	va = (addr_t) pfntokv(page_pptonum(pp));
+	va = (addr_t) kmap(pp);
 	(void) copyin((caddr_t)addr, va, PAGESIZE);
+	kunmap(pp);
 }
 
 /*
  * Zero the physical page from off to off + len given by `pp'
  * without changing the reference and modified bits of page.
- * pagezero uses global CADDR2 and assumes that no one uses this
- * map at interrupt level and no one sleeps with an active mapping there.
+ * The page is temporarily mapped through the kmap window; the
+ * caller must not be at interrupt level (kmap()/kunmap() are the
+ * process-context interface) and must not sleep while mapped.
  */
 pagezero(pp, off, len)
 	page_t *pp;
@@ -306,8 +313,9 @@ pagezero(pp, off, len)
 	ASSERT((int)len > 0 && (int)off >= 0 && off + len <= PAGESIZE);
 	ASSERT(pp != NULL);
 
-	va = (caddr_t) pfntokv(page_pptonum(pp));
+	va = (caddr_t) kmap(pp);
 	(void) bzero(va + off, len);
+	kunmap(pp);
 }
 
 /* Find an isolated hole in the user address space to use to

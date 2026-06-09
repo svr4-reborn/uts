@@ -63,6 +63,7 @@
 #include "vm/seg.h"
 #include "vm/pvn.h"
 #include "vm/mp.h"
+#include "vm/kmap.h"
 #ifdef AT386	/* 16MB support */
 #include "sys/dmaable.h"
 #endif	/* 16MB support */
@@ -415,6 +416,17 @@ dma_page_init()
 				(pap->firstpfn >= dma_pfn))
 				dma_pfn = (dma_pap = pap)->firstpfn;
 
+		/*
+		 * There must be free memory below the DMA limit.  If the
+		 * page-frame database (or other boot allocations) consumed all
+		 * of it, the boot code that marks >16MB memory B_MEM_NODMA
+		 * (see memsize.c) is not working - fail loudly rather than
+		 * dereferencing a NULL dma_pap.
+		 */
+		if (dma_pap == (struct pageac *) NULL)
+			cmn_err(CE_PANIC,
+			    "dma_page_init: no DMA-able free memory below pfn %d\n",
+			    LAST_DMAABLE_PFN);
 
 		if (dma_pap->endpfn >= LAST_DMAABLE_PFN)
 			dma_limit_pfn = LAST_DMAABLE_PFN - 1;
@@ -1642,21 +1654,27 @@ found_contig:
 			if (check_pp != next_pp)
 				cmn_err(CE_PANIC,"getcpages: not contiguous pages: npgs %d pageno %d pp %x checkpp %x nextpp %x\n",
 					npgs, i, pp, check_pp, next_pp);
-		bzero((caddr_t)phystokv(ctob(page_pptonum(pp))), ctob(npgs));
+		
+		/* Map each page and zero it */
+		for (i = 0; i < npgs; i++) {
+			caddr_t zva = kmap(pp + i);
+			bzero(zva, PAGESIZE);
+			kunmap(pp + i);
+		}
 	}
 #endif
 
 	/*
 	 *	Usually these pages are used for DMA - and their keep count is
 	 *	already bumped up - so they will NOT be stolen/swapped.
-	 *	Since we are returning a kernel virtual address, the virtual map
-	 *	for the vtop translation is also thus never lost.
 	 *	These pages are locked down in memory - until freepage() is invoked.
 	 */
 
 	pages_pp_kernel += npgs;	/* bump up pages kept for kernel */
 
-	return((pte_t *) phystokv(ctob(page_pptonum(pp))));
+	/* Map this into the kernel segment and return this */
+	return((pte_t *) sptalloc(npgs, PG_V | PG_RW,
+		(caddr_t)page_pptonum(pp), NOSLEEP));
 }
 
 /*

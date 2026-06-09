@@ -79,14 +79,22 @@
 	.set	kpd0	, Page0 + 0x2000
 #endif
 
+	.globl	kmapsegs
+	.set	kmapsegs, 0xc8000000
+
 	.globl	syssegs
 	.set	syssegs, 0xd1000000
 
+/	syssegs holds the kernel heap (kvseg), including the page-frame
+/	database, which scales with installed RAM.  It is sized (via
+/	SYSSEGSZ) to 144MB so the page-DB for up to ~4GB of physical
+/	memory fits; piosegs/kvsegmap follow immediately after it.
+
 	.globl	piosegs
-	.set	piosegs, 0xd2000000
+	.set	piosegs, 0xda000000
 
 	.globl	kvsegmap
-	.set	kvsegmap, 0xd2400000
+	.set	kvsegmap, 0xda400000
 
 	.globl	kvsegu
 	.set	kvsegu, 0xe0400000

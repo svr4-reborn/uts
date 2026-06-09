@@ -408,6 +408,7 @@ int	physmem;
 pte_t	*kptbl;
 pte_t	*piownptbl;
 pte_t	*usertable;
+pte_t	*kmapptbl;	/* page table for the kmap temporary-mapping window */
 
 /*	The following space is concerned with the configuration of
 **	NOFILES.  We have to do it this hard way because the code

@@ -103,6 +103,7 @@ PACKAGE_SOURCE_RULES: dict[str, list[dict[str, object]]] = {
     "krpc": [{"source_root": "uts/i386/rpc", "output_root": "rpc", "patterns": ["*.c"]}],
     "ktli": [{"source_root": "uts/i386/ktli", "output_root": "ktli", "patterns": ["*.c"]}],
     "llcloop": [{"source_root": "uts/i386/netinet", "output_root": "netinet", "patterns": ["llcloop.c"]}],
+    "m320": [{"source_root": "uts/arch/at/i386/io/mouse", "output_root": "io/mouse", "patterns": ["m320.c", "mse_subr.c"]}],
     "namefs": [{"source_root": "uts/i386/fs", "output_root": "fs", "patterns": ["namefs/*.c"]}],
     "nfs": [{"source_root": "uts/i386/fs", "output_root": "fs", "patterns": ["nfs/*.c"]}],
     "pic": [{"source_root": "uts/i386/ml", "output_root": "ml", "patterns": ["pic.c"]}],

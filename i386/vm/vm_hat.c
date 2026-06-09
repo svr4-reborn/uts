@@ -50,6 +50,8 @@
 #include "vm/page.h"
 #include "vm/anon.h"
 #include "vm/seg_vn.h"
+#include "vm/seg_kmem.h"
+#include "vm/kmap.h"
 #include "sys/mman.h"
 #include "sys/bitmasks.h"
 #include "sys/tuneable.h"
@@ -332,7 +334,7 @@ int zap_pdt;			/* 1 = invoked in context of current process */
 
 		ASSERT(ptap->hatpt_locks == 0);
 
-		pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+		pt = (hatpgt_t *) ptap->hatpt_kva;
 		mcp = ptap->hatpt_mcp;
 		for (mcnum = 0; mcnum < HAT_MCPP && ptap->hatpt_aec > 0; mcp++, mcnum++) {
 			if (mcp->hat_mcp == 0) {
@@ -519,10 +521,16 @@ hat_pageunload(pp)
 		if (--(ptap->hatpt_aec) == 0) {
 #ifdef DEBUG
 			u_int	idx;
+			page_t	*ptpp;
 
-			ptep = (pte_t *)pfntokv(ptap->hatpt_pde.pgm.pg_pfn);
+			/* The page table may belong to a non-current address
+			 * space, so reach its frame through a temporary
+			 * mapping. */
+			ptpp = page_numtopp(ptap->hatpt_pde.pgm.pg_pfn);
+			ptep = (pte_t *)kmap(ptpp);
 			for (idx = 0; idx < NPGPT; idx++, ptep++)
 				ASSERT(ptep->pg_pte == 0);
+			kunmap(ptpp);
 			for (idx = 0; idx < HAT_MCPP; idx++)
 				ASSERT(ptap->hatpt_mcp[idx].hat_mcp == 0);
 #endif
@@ -672,7 +680,7 @@ hat_unload(seg, addr, len, flags)
 			addr = (addr_t) ((++vpdte - kpd0) * VPTSIZE);
 			if (addr >= endaddr) goto done;
 		}
-		pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+		pt = (hatpgt_t *) ptap->hatpt_kva;
 		mcp = ptap->hatpt_mcp;
 		mcnum = HATMCNO(addr);
 		mcp += mcnum;
@@ -966,7 +974,7 @@ u_int prot;
 			addr = (addr_t) ((++vpdte - kpd0) * VPTSIZE);
 			if (addr >= endaddr) goto done;
 		}
-		pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+		pt = (hatpgt_t *) ptap->hatpt_kva;
 		mcp = ptap->hatpt_mcp;
 		mcnum = HATMCNO(addr);
 		mcp += mcnum;
@@ -1245,7 +1253,7 @@ found_ptap:
 	ASSERT(ptap);
 	ASSERT(hatp->hat_ptlast == ptap);
 
-	pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+	pt = (hatpgt_t *) ptap->hatpt_kva;
 
 	/* Now setup the mapping chunk pointers */
 	mcnum = HATMCNO(addr);
@@ -1558,7 +1566,7 @@ struct as *new_as;
 		addr = (addr_t) ((++vpdte - kpd0) * VPTSIZE);
 	    }
 	    ASSERT(vpdte == ptap->hatpt_pdtep);
-	    pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+	    pt = (hatpgt_t *) ptap->hatpt_kva;
 
 	    /* Lock down the current page table, so we don't lose it
 	     * during a preemption.
@@ -1604,7 +1612,7 @@ struct as *new_as;
 
 	    lptap->hatpt_locks++;
 
-	    newpt = (hatpgt_t *) ptetokv(lptap->hatpt_pde.pg_pte);
+	    newpt = (hatpgt_t *) lptap->hatpt_kva;
 
 	    mcp = ptap->hatpt_mcp;
 	    mcnum = HATMCNO(addr);
@@ -2151,7 +2159,7 @@ foundpt:
 		ASSERT(ptap);
 		ASSERT(hatp->hat_ptlast == ptap);
 
-		pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+		pt = (hatpgt_t *) ptap->hatpt_kva;
 
 		/* Now setup the mapping chunk pointers */
 		mcnum = HATMCNO(addr);
@@ -2295,7 +2303,7 @@ addr_t addr;
 		pte_t *ptep;
 		hatpgt_t *pt;
 
-		pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+		pt = (hatpgt_t *) ptap->hatpt_kva;
 		mcnum = HATMCNO(addr);
 		mcndx = HATMCNDX(addr);
 		ptep = pt->hat_pgtc[mcnum].hat_pte + mcndx;
@@ -2426,7 +2434,10 @@ again:
 				pfn = page_pptonum(pp);
 				ptap->hatpt_pde.pg_pte =
 		 	        	(u_int)mkpte(PTE_RW|PG_V,pfn);
-				ptaddr = (caddr_t)phystokv(ctob(pfn));
+				/* Allocate a page for the page table in the kernel page table. */
+				ptaddr = (caddr_t)sptalloc(1, PG_V | PG_RW,
+					(caddr_t)pfn, NOSLEEP);
+				ptap->hatpt_kva = ptaddr;
 				struct_zero(ptaddr, PAGESIZE);
 				pp->phat_ptap = ptap;
 				return(ptap);
@@ -2483,6 +2494,12 @@ register hatpt_t *ptap;
 	pp = page_numtopp(ptap->hatpt_pde.pgm.pg_pfn);
 	if (pp < pages || pp >= epages)
 		cmn_err(CE_PANIC, "hat_ptfree: no page struct for page to be freed");
+	/* Tear down the persistent kvseg mapping of the page table frame
+	 * (see hat_ptalloc) before releasing the frame. */
+	if (ptap->hatpt_kva != (caddr_t)NULL) {
+		sptfree(ptap->hatpt_kva, 1, 1);
+		ptap->hatpt_kva = (caddr_t)NULL;
+	}
 	PAGE_RELE(pp);
 	++availsmem;
 	++availrmem;
@@ -2544,7 +2561,7 @@ u_int	flag;
 		 * if (ptap->hatpt_locks == 0 && as != cur_as) {
 		 */
 		if (ptap->hatpt_locks == 0) {
-			pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+			pt = (hatpgt_t *) ptap->hatpt_kva;
 			mcp = ptap->hatpt_mcp;
 			for (mcnum = 0; mcnum < HAT_MCPP && ptap->hatpt_aec > 0; mcp++, mcnum++) {
 				if (mcp->hat_mcp == 0) 
@@ -2684,7 +2701,12 @@ loop:
 				mcfreelist.p_prev = pp;
 				pp->p_next = pp->p_prev = (page_t *)&mcfreelist;
 				pfn = page_pptonum(pp);
-				pp->phat_mcpgp = cpgp = (hatmcpg_t *) phystokv(ctob(pfn));
+				/* The mapping-chunk page is referenced for the
+				 * life of the chunk (see phat_mcpgp uses), so it
+				 * needs a persistent kernel mapping rather than a
+				 * transient kmap one. */
+				pp->phat_mcpgp = cpgp = (hatmcpg_t *)
+					sptalloc(1, PG_V | PG_RW, (caddr_t)pfn, NOSLEEP);
 				struct_zero((caddr_t)cpgp, PAGESIZE);
 				/* treat accounting as allocated chunk */
 				cpgp->hat_mcpga.hat_mpgabits = 1;	
@@ -2808,6 +2830,10 @@ hatmap_t *mcp;
 			pp->p_prev->p_next = pp->p_next;
 			pp->p_next->p_prev = pp->p_prev;
 			pp->p_next = pp->p_prev = (page_t *)NULL;
+			/* tear down the persistent kvseg mapping (see
+			 * hat_mcalloc) before releasing the frame */
+			sptfree((caddr_t)pgp, 1, 1);
+			pp->phat_mcpgp = (hatmcpg_t *)NULL;
 			PAGE_RELE(pp);
 			++availsmem;
 			++availrmem;
@@ -2816,6 +2842,8 @@ hatmap_t *mcp;
 		}
 		else if (pp->p_next == (page_t *)NULL &&
 		         mcfreelist.p_next != (page_t *)&mcfreelist) {
+			sptfree((caddr_t)pgp, 1, 1);
+			pp->phat_mcpgp = (hatmcpg_t *)NULL;
 			PAGE_RELE(pp);
 			++availsmem;
 			++availrmem;
@@ -2907,7 +2935,7 @@ kernel_addr:
 		
 		if (pdtep == ptap->hatpt_pdtep) { 
 			hatp->hat_ptlast = ptap;
-			pt = (hatpgt_t *) ptetokv(ptap->hatpt_pde.pg_pte);
+			pt = (hatpgt_t *) ptap->hatpt_kva;
 			mcnum = HATMCNO(vaddr);
 			mcndx = HATMCNDX(vaddr);
 			ptp = pt->hat_pgtc[mcnum].hat_pte;

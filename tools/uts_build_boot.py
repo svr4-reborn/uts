@@ -30,6 +30,7 @@ BOOT_SOURCES = [
     'default.c',
     'memcpy.s',
     'touchpage.s',
+    'e820.s',
     'physaddr.c',
     'memsize.c',
     'bstart.s',
@@ -63,6 +64,10 @@ COMMON_CFLAGS = [
     '-nostdlib',
     '-Os',
 ]
+
+AT386_FDBOOT_LOADED_SECTORS = 30
+AT386_SECTOR_SIZE = 512
+AT386_BOOT_FILL_BYTE = 0xF6
 
 
 def parse_args() -> argparse.Namespace:
@@ -255,7 +260,16 @@ def main() -> int:
     run([args.strip, str(hdboot_path)])
 
     fdboot_binary = build_root / 'fdboot'
-    run([sys.executable, str(kernel_root / 'tools/boot_rmhdr.py'), str(fdboot_path), str(fdboot_binary)])
+    run([
+        sys.executable,
+        str(kernel_root / 'tools/boot_rmhdr.py'),
+        '--pad-to',
+        str(AT386_FDBOOT_LOADED_SECTORS * AT386_SECTOR_SIZE),
+        '--pad-byte',
+        hex(AT386_BOOT_FILL_BYTE),
+        str(fdboot_path),
+        str(fdboot_binary),
+    ])
 
     install_boot_artifacts(system_root, fdboot_binary, hdboot_path, boot_at386_root / 'default')
     return 0
