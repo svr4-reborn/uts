@@ -170,6 +170,12 @@ unsigned prev_mapsize;	 /* mapsize to free if reallocating bbh maps */
 #define MAXRETRY 10
 #define NORMRETRIES  4
 
+#define	HD_LBA		0x0001	/* drive accepts LBA28 commands */
+#define	HD_IDENT_OK	0x0002	/* identify data was read successfully */
+#define	ATF_LBA		0x01	/* command should be encoded as LBA28 */
+#define	ATA_IDENT_LBA	0x0200	/* word 49: LBA supported */
+#define	ATA_LBA28_LIMIT	0x10000000L
+
 struct hdcstat {
 	unchar  hd_active;	/* indicates a transfer in progress */
 	unchar  hd_errcnt;	/* number of errors on this transfer */
@@ -188,6 +194,7 @@ struct hdcstat {
 struct hddrvinfo {
 	ushort	hd_state;
 	ushort	hd_nparts;
+	ushort	hd_flags;
 	struct hdparams hd_geom;
 #define hd_ncyls	hd_geom.hdp_ncyl
 #define hd_nhds		hd_geom.hdp_nhead
@@ -195,6 +202,7 @@ struct hddrvinfo {
 #define hd_precomp	hd_geom.hdp_precomp
 #define hd_lz		hd_geom.hdp_lz
 	daddr_t	hd_unixstart;	/* first absolute sector of active partition */
+	daddr_t	hd_capacity;	/* disk size from identify, in sectors */
 	int	hd_begtrk;	/* first track of active partition */
 	daddr_t hd_last_sacred;	/* last absolute sector of sacred area */
 	daddr_t	hd_alts_loc;	/* first absolute sector of alternate table */
@@ -377,6 +385,7 @@ hdinit()
 	hdsetcont(&hddrvinfo[0], 0);
 
 	hdcst.hd_idto = timeout( hdtimeout, 0, (30 * HZ) );
+	hdidentify(&hddrvinfo[0], 0);
 
 /*
  * Get parameters for second hard disk if there is one.
@@ -404,6 +413,7 @@ hdinit()
  * Set drive 2 parameters
  */
 	hdsetcont(&hddrvinfo[1], 1);
+	hdidentify(&hddrvinfo[1], 1);
 	return(0);
 }
 
@@ -438,6 +448,59 @@ int				drive;
 	fmtvfyreq = 0;
 	wakeup((char *)&fmtvfyreq);
 	splx(oldpri);
+	return(0);
+}
+
+/*
+ * Probe modern ATA drives for LBA28 support.  Failure leaves the drive
+ * on the legacy CHS path.
+ */
+hdidentify(hdip, drive)
+register struct hddrvinfo	*hdip;
+int				drive;
+{
+	static ushort	ident[SECSIZE / sizeof(ushort)];
+	register int	i;
+	register unsigned char	status;
+	unsigned long	capacity;
+
+	hdip->hd_flags &= ~(HD_LBA | HD_IDENT_OK);
+	hdip->hd_capacity = 0;
+
+	ATwait();
+	outb(HD0+HD_DRV, HD_DHFIXED | (drive ? HD_DRIVE1 : HD_DRIVE0));
+	outb(HD0+HD_CMD, HD_IDENTIFY);
+
+	for (i = HDTIMOUT; i > 0; i--) {
+		status = inb(HD0 + HD_STATUS);
+		if (status & BUSY) {
+			tenmicrosec();
+			continue;
+		}
+		if (status & ERROR)
+			break;
+		if (status & DATARQ) {
+			linw(HD0 + HD_DATA, (caddr_t)ident, SECSIZE/2);
+			hdip->hd_flags |= HD_IDENT_OK;
+			if (ident[49] & ATA_IDENT_LBA) {
+				capacity = ((unsigned long)ident[61] << 16) |
+					    (unsigned long)ident[60];
+				if (capacity != 0 && capacity <= ATA_LBA28_LIMIT) {
+					hdip->hd_flags |= HD_LBA;
+					hdip->hd_capacity = (daddr_t)capacity;
+					cmn_err(CE_CONT,
+					    "HD: drive %d using LBA28, %ld sectors",
+					    drive, hdip->hd_capacity);
+				}
+			}
+			break;
+		}
+		tenmicrosec();
+	}
+
+	if (!(hdip->hd_flags & HD_LBA)) {
+		cmn_err(CE_CONT, "HD: drive %d using CHS addressing", drive);
+	}
 	return(0);
 }
 
@@ -589,8 +652,11 @@ struct cred *cred_p;
 		hdwholedisk[unit].p_tag = V_BACKUP;
 		hdwholedisk[unit].p_flag = V_UNMNT | V_VALID;
 		hdwholedisk[unit].p_start = 0;
-		hdwholedisk[unit].p_size = (long)hdi->hd_ncyls *
-						hdi->hd_nhds * hdi->hd_nsecs;
+		if ((hdi->hd_flags & HD_LBA) && hdi->hd_capacity != 0)
+			hdwholedisk[unit].p_size = hdi->hd_capacity;
+		else
+			hdwholedisk[unit].p_size = (long)hdi->hd_ncyls *
+							hdi->hd_nhds * hdi->hd_nsecs;
 		/*
 		 * Temporarily set up partition 0 to be the whole disk,
 		 * in case we can't read the FDISK table.
@@ -673,7 +739,8 @@ struct cred *cred_p;
 			hdi->hd_ncyls = pdptr->cyls;
 			hdi->hd_nhds = pdptr->tracks;
 			hdi->hd_nsecs = pdptr->sectors;
-			hdsetcont(hdi, unit);
+			if (!(hdi->hd_flags & HD_LBA))
+				hdsetcont(hdi, unit);
 		}
 		/*
 		 * Get the VTOC.
@@ -1204,7 +1271,7 @@ register struct buf *bp;
 	register struct  alt_table *trkptr;
 	register daddr_t firstsec;
 	register daddr_t sec, lastsec;
-	register short trk, lastrk;
+	register daddr_t trk, lastrk;
 	register short ndx;
 	unsigned unit;
 	struct hddrvinfo *hdi;
@@ -2156,11 +2223,14 @@ static  struct  AT_cmd AT_cmd;
 
 ATdocmd(drive)
 {
-	AT_cmd.nhd_drv |= (HD_DHFIXED | (drive << 4));
+	if (AT_cmd.nhd_flags & ATF_LBA)
+		AT_cmd.nhd_drv |= (HD_DHFIXED | HD_LBAMODE | (drive << 4));
+	else
+		AT_cmd.nhd_drv |= (HD_DHFIXED | (drive << 4));
 	if (ATcmd(&AT_cmd) != 0)
 		cmn_err(CE_PANIC, "HD controller: command aborted\n");
 
-	if (AT_cmd.nhd_cmd == HD_WRSEC)
+	if ((AT_cmd.nhd_cmd & 0xf0) == HD_WRSEC)
 		ATout(hdcst.hd_addr);
 	return(0);
 }
@@ -2170,11 +2240,12 @@ ATiocmd(drv, cmd)
 int drv;
 int cmd;
 {
-	register unsigned track;
+	register daddr_t track;
 	register struct hddrvinfo *hdi;
 	unsigned char	ehd;
 
 	hdi = &hddrvinfo[drv];
+	AT_cmd.nhd_flags = 0;
 	AT_cmd.nhd_cmd = cmd;
 	AT_cmd.nhd_precomp = hdi->hd_precomp >> 2;
 	if (hdi->hd_nhds > 8)
@@ -2189,10 +2260,24 @@ int cmd;
 			cmd, hdcst.hd_physblk);
 	}
 #endif
-	track = hdcst.hd_physblk / (daddr_t)hdi->hd_nsecs;
-	AT_cmd.nhd_drv = track % hdi->hd_nhds;
-	AT_cmd.nhd_cyl = track / hdi->hd_nhds;
-	AT_cmd.nhd_sect = (hdcst.hd_physblk % (daddr_t)hdi->hd_nsecs);
+	if ((hdi->hd_flags & HD_LBA) &&
+	    hdcst.hd_physblk >= 0 &&
+	    hdcst.hd_physblk < ATA_LBA28_LIMIT &&
+	    ((cmd & 0xf0) == HD_RDSEC ||
+	     (cmd & 0xf0) == HD_WRSEC ||
+	     (cmd & 0xf0) == HD_RDVER)) {
+		AT_cmd.nhd_flags = ATF_LBA;
+		AT_cmd.nhd_precomp = 0;
+		AT_cmd.nhd_lba = hdcst.hd_physblk;
+		AT_cmd.nhd_drv = (hdcst.hd_physblk >> 24) & 0x0f;
+		AT_cmd.nhd_cyl = (hdcst.hd_physblk >> 8) & 0xffff;
+		AT_cmd.nhd_sect = hdcst.hd_physblk & 0xff;
+	} else {
+		track = hdcst.hd_physblk / (daddr_t)hdi->hd_nsecs;
+		AT_cmd.nhd_drv = track % hdi->hd_nhds;
+		AT_cmd.nhd_cyl = track / hdi->hd_nhds;
+		AT_cmd.nhd_sect = (hdcst.hd_physblk % (daddr_t)hdi->hd_nsecs);
+	}
 	AT_cmd.nhd_nsect = hdcst.hd_nblks;
 	ATdocmd(drv);
 	return(0);
@@ -2202,6 +2287,7 @@ int cmd;
 ATxcmd(drv)
 int drv;
 {
+	AT_cmd.nhd_flags = 0;
 	AT_cmd.nhd_cmd = HD_RESTORE;
 	AT_cmd.nhd_drv = 0;
 	ATdocmd(drv);
@@ -2219,6 +2305,7 @@ char *itable;	/* interleave table */
 
 	hdi = &hddrvinfo[drv];
 
+	AT_cmd.nhd_flags = 0;
 	AT_cmd.nhd_cmd = HD_FORMAT;
 	AT_cmd.nhd_precomp = hdi->hd_precomp >> 2;
 	if (hdi->hd_nhds > 8)
@@ -2247,10 +2334,10 @@ struct AT_cmd *cmdp;
 
 #ifdef DEBUG
 	if (hddebug) {
-		cmn_err(CE_NOTE,"AT_cmd: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n", 
+		cmn_err(CE_NOTE,"AT_cmd: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x flags 0x%x\n", 
 			cmdp->nhd_precomp, cmdp->nhd_nsect, cmdp->nhd_sect+1,
 			cmdp->nhd_cyl&0xFF, (cmdp->nhd_cyl>>8)&0xFF,
-			cmdp->nhd_drv, cmdp->nhd_cmd);
+			cmdp->nhd_drv, cmdp->nhd_cmd, cmdp->nhd_flags);
 	}
 #endif
 	
@@ -2266,7 +2353,10 @@ struct AT_cmd *cmdp;
 	 * way.  Everywhere else we keep sectors 0-based, and convert here
 	 * right before we talk to the controller.
 	 */
-	outb(HD0+HD_SECT, cmdp->nhd_sect+1);
+	if (cmdp->nhd_flags & ATF_LBA)
+		outb(HD0+HD_SECT, cmdp->nhd_sect);
+	else
+		outb(HD0+HD_SECT, cmdp->nhd_sect+1);
 
 	outb(HD0+HD_LCYL, cmdp->nhd_cyl&0xFF);
 	outb(HD0+HD_HCYL, (cmdp->nhd_cyl>>8)&0xFF);
@@ -2564,7 +2654,7 @@ ushort blktyp;
 {
 
 	register struct alt_table *ap;
-	short trk;
+	daddr_t trk;
 
 	ap = &hdaltinfo[curdrv].alt_sec;
 

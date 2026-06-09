@@ -59,6 +59,7 @@
 #define	HD_DHFIXED	0xa0	/* bits always set in drive/head reg. */
 #define	HD_DRIVE0	0x00	/* or into HD_DHFIXED to select drive 0 */
 #define	HD_DRIVE1	0x10	/* or into HD_DHFIXED to select drive 1 */
+#define	HD_LBAMODE	0x40	/* drive/head bit selecting LBA mode */
 
 /*
  * Hard disk commands. 
@@ -67,12 +68,16 @@
 #define	HD_SEEK		0x70	/* seek cmd, bottom 4 bits set step rate */
 #define	HD_RDSEC	0x20	/* read sector cmd, bottom 2 bits set ECC and
 					retry modes */
+#define	HD_RDSEC_LBA	0x20	/* read sector cmd using LBA taskfile */
 #define	HD_WRSEC	0x30	/* write sector cmd, bottom 2 bits set ECC and
 					retry modes */
+#define	HD_WRSEC_LBA	0x30	/* write sector cmd using LBA taskfile */
 #define	HD_FORMAT	0x50	/* format track command */
 #define	HD_RDVER	0x40	/* read verify cmd, bot. bit sets retry mode */
+#define	HD_RDVER_LBA	0x40	/* read verify cmd using LBA taskfile */
 #define	HD_DIAG		0x90	/* diagnose command */
 #define	HD_SETPARAM	0x91	/* set parameters command */
+#define	HD_IDENTIFY	0xec	/* identify device command */
 
 #define	HDTIMOUT	25000	/* how many 10usecs in a 1/4 sec.*/
 
@@ -120,10 +125,12 @@
  * controller interface templates
  */
 struct AT_cmd {
+	unsigned char nhd_flags;	/* internal command flags */
 	unsigned char nhd_precomp;	/* write precomp */
         unsigned char nhd_nsect; /* decremented during operation - 0 == 256 */
 	unsigned char nhd_sect;                   /* starting sector number */
 	unsigned int  nhd_cyl;                      /* up to 1024 cylinders */
+	daddr_t	      nhd_lba;			    /* LBA sector number */
 	/*
 	 * must have
 	 *	bit	7	1
