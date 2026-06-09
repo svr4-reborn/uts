@@ -54,7 +54,16 @@ void chr_scan();
 
 int chr_maxmouse;
 
-int chr_debug = 0;
+#ifndef CHR_DEBUG
+#define	CHR_DEBUG	0
+#endif
+
+#ifndef CHR_MOUSE_DEBUG
+#define	CHR_MOUSE_DEBUG	0
+#endif
+
+int chr_debug = CHR_DEBUG;
+int chr_mouse_debug = CHR_MOUSE_DEBUG;
 
 #define	DEBUG1(a)	if (chr_debug == 1) printf a
 #define	DEBUG2(a)	if (chr_debug >= 2) printf a /* allocations */
@@ -2121,6 +2130,10 @@ charstat_t *cp;
 
 	msep = (struct mse_event *) mp->b_cont->b_rptr;
 	evp = &cp->c_xevent;
+	if (chr_mouse_debug)
+		cmn_err(CE_CONT,
+			"char: xmouse in type=%d code=%x x=%d y=%d xqinfo=%x\n",
+			msep->type, msep->code, msep->x, msep->y, cp->c_xqinfo);
 
 	evp->xq_type = msep->type;
 	evp->xq_x = msep->x;
@@ -2128,6 +2141,12 @@ charstat_t *cp;
 	evp->xq_code = msep->code;
 
 	xq_enqueue(cp->c_xqinfo, evp); 
+	if (chr_mouse_debug)
+		cmn_err(CE_CONT,
+			"char: xmouse queued type=%d code=%x x=%d y=%d head=%d tail=%d\n",
+			evp->xq_type, evp->xq_code, evp->xq_x, evp->xq_y,
+			cp->c_xqinfo->xq_queue->xq_head,
+			cp->c_xqinfo->xq_queue->xq_tail);
 }
 
 void
@@ -2142,6 +2161,11 @@ charstat_t *cp;
 
 	msep = (struct mse_event *) mp->b_cont->b_rptr;
 	minfop = &cp->c_mouseinfo;
+	if (chr_mouse_debug)
+		cmn_err(CE_CONT,
+			"char: mouseinfo in type=%d code=%x x=%d y=%d old=%x state=%x\n",
+			msep->type, msep->code, msep->x, msep->y,
+			cp->c_oldbutton, cp->c_state);
 	minfop->status = (~msep->code & 7) | ((msep->code ^ cp->c_oldbutton) << 3) | (minfop->status & BUTCHNGMASK) | (minfop->status & MOVEMENT);
 
 	if (msep->type == MSE_MOTION) {
@@ -2166,6 +2190,11 @@ charstat_t *cp;
 	/* Note the button state */
 	cp->c_oldbutton = msep->code;
 	cp->c_state |= C_MSEINPUT;
+	if (chr_mouse_debug)
+		cmn_err(CE_CONT,
+			"char: mouseinfo out status=%x xmotion=%d ymotion=%d state=%x\n",
+			minfop->status, minfop->xmotion, minfop->ymotion,
+			cp->c_state);
 	if (cp->c_heldmseread) {
 		mblk_t *tmp;
 		tmp = cp->c_heldmseread;
