@@ -65,3 +65,9 @@ int xbtb_pmemadx = 0xA0000;	/* mono Blit */
 int xbtb_ioadx = 0x304;
 #endif /* XBTB */
 #endif /* BLTCONS */
+
+struct kd_custom_mode kd_custom_mode_info;
+struct b_param kd_custom_regs;
+int custom_mode_inited = 0;
+
+

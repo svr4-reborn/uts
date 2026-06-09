@@ -250,7 +250,7 @@ unchar	oldmode;
 	int i;
 
 	if (evga_inited) {
-	    if (oldmode > ENDNONEVGAMODE) {
+	    if (oldmode > ENDNONEVGAMODE && oldmode != DM_CUSTOM_MODE) {
 		/* If previous mode was an evga mode, restore extended
 	         * registers and misc register.
 		 */
@@ -276,7 +276,7 @@ unchar	newmode;
 	int i;
 
 	if (evga_inited) {
-	    if (newmode > ENDNONEVGAMODE) {
+	    if (newmode > ENDNONEVGAMODE && newmode != DM_CUSTOM_MODE) {
 
 		/* Save extended register values and initialize 
 		 * extended registers that the new mode uses to

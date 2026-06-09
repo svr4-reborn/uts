@@ -801,10 +801,14 @@ struct modeinfo kd_modeinfo[] = {
 	{0,  0,    0,    0, 0, 0, 0,  0, 0,  0, 0}, /* 132x43 placeholder */
 	{  0,   0,  800,  600, 1, EBSE, ESZE,  GRAPH, TBLE,  5, 1}, /* ??  */
 	{  0,   0,  640,  400, 1, EBSE, ELSZ,  GRAPH, TBLE,  6, 3}, /* ??  */
+#ifndef EVC
+	{  0,   0,  0,  0, 1, EBSE, 0,  GRAPH, TBLE,  0, 3}, /* 41: DM_CUSTOM_MODE */
+#endif
 #ifdef	EVC
 	{  0,	0,  640,  480, 1, EBSE, EHSZ,  GRAPH, TBLE,  7, 3}, /* ??  */
 	{  0,	0, 1024,  768, 1, EBSE, ELSZ,  GRAPH, TBLE,  8, 1}, /* ??  */
 	{  0,	0, 1024,  768, 1, VBSE, VSZE,  GRAPH, TBLE,  8, 3}, /* ??  */
+	{  0,   0,  0,  0, 1, EBSE, 0,  GRAPH, TBLE,  0, 3}, /* 44: DM_CUSTOM_MODE */
 #endif	/*EVC*/
 #ifdef EVGA
   {0,0,  640,  480, 1, EBSE, 64*1024,  GRAPH, TBLE,  VT_VGA+STEVGA, (unchar)-1}, 

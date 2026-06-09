@@ -249,6 +249,41 @@ int	*rvalp;
 		rv = kdv_modromfont(newbuf,numchar);
 		break;
 	}
+	case KD_SET_CUSTOM_MODE: {
+		struct kd_custom_mode mode_arg;
+		extern struct kd_custom_mode kd_custom_mode_info;
+		extern struct b_param kd_custom_regs;
+		extern struct modeinfo kd_modeinfo[];
+		extern int custom_mode_inited;
+
+		if (drv_priv(crp))
+			return (EPERM);
+		if (copyin((caddr_t)arg, &mode_arg, sizeof(struct kd_custom_mode)) < 0)
+			return (EFAULT);
+		if (mode_arg.map_size == 0 || mode_arg.map_size > EGA_LGSIZE)
+			return (EINVAL);
+		if (mode_arg.slbytes == 0 || mode_arg.buf_size == 0)
+			return (EINVAL);
+
+		kd_modeinfo[DM_CUSTOM_MODE].m_xpels = mode_arg.xpix;
+		kd_modeinfo[DM_CUSTOM_MODE].m_ypels = mode_arg.ypix;
+		kd_modeinfo[DM_CUSTOM_MODE].m_size = mode_arg.map_size;
+		kd_modeinfo[DM_CUSTOM_MODE].m_ramdac = (mode_arg.colors == 256) ? 3 : 1;
+
+		kd_custom_mode_info = mode_arg;
+		kd_custom_regs = mode_arg.regs;
+
+		custom_mode_inited = 1;
+		rv = 0;
+		break;
+	}
+	case KD_GET_CUSTOM_MODE: {
+			int custom_mode = DM_CUSTOM_MODE;
+
+			if (copyout(&custom_mode, arg, sizeof(custom_mode)) < 0)
+				return (EFAULT);
+			break;
+		}
 #ifdef EVGA
 	case KDEVGA:
 		if ( ! DTYPE(Kdws, KD_VGA)) {
@@ -449,6 +484,13 @@ Vdc.v_info.dsply != KD_MULTI_C)) /* EVC-1 with hi-res monitor only */
 		break;
 #endif /*EVGA*/
 
+	case SW_CUSTOM_MODE:
+		{
+			extern int custom_mode_inited;
+			if (!custom_mode_inited)
+				rv = ENXIO;
+		}
+		break;
 	default:
 		rv = ENXIO;
 		break;
@@ -730,6 +772,19 @@ giofont:
 
 	case KDDISPINFO: {
 		struct kd_dispinfo dinfo;
+		extern struct kd_custom_mode kd_custom_mode_info;
+		extern int custom_mode_inited;
+
+		if (custom_mode_inited && chp->ch_vstate.v_cvmode == DM_CUSTOM_MODE) {
+			dinfo.physaddr = EGA_BASE;
+			dinfo.vaddr = (caddr_t) dinfo.physaddr;
+			dinfo.size = kd_custom_mode_info.map_size;
+			if (dinfo.size == 0)
+				dinfo.size = EGA_SIZE;
+			if (copyout(&dinfo, arg, sizeof(struct kd_dispinfo)) < 0)
+				rv = EFAULT;
+			break;
+		}
 
 		switch (Kdws.w_vstate.v_type) {
 

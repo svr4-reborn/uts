@@ -1633,6 +1633,10 @@ unchar	mode;
  	struct b_param	*initp;
 	struct modeinfo *modep;
 	register vidstate_t *vp = &Kdws.w_vstate;
+	extern struct b_param kd_custom_regs;
+
+	if (mode == DM_CUSTOM_MODE)
+		return &kd_custom_regs;
 
 	modep = WSMODE(vp,mode);
         switch (modep->m_params) {

@@ -683,6 +683,12 @@ struct kd_dispinfo {
 #define DM_EVC1024x768D 43		/* EVC 1024x768 256 color graphics */
 #endif	/*EVC*/
 
+#ifndef EVC
+#define DM_CUSTOM_MODE 41
+#else
+#define DM_CUSTOM_MODE 44
+#endif
+
 #ifdef EVGA
 
 /*  THE FOLLOWING VALUES SHOULD REFLECT THE NUMBER OF NON-EVGA MODE
@@ -692,12 +698,12 @@ struct kd_dispinfo {
  */
 #ifndef EVC
 
-#define ENDNONEVGAMODE 40
+#define ENDNONEVGAMODE 41
 #define STEVGA 7
 
 #else /* EVC defined */
 
-#define ENDNONEVGAMODE 43
+#define ENDNONEVGAMODE 44
 #define STEVGA 9
 
 #endif /* EVC */ 
@@ -1301,6 +1307,21 @@ struct ext_graph {
 	long	pid;
 	struct proc *procp;
 };
+
+
+struct kd_custom_mode {
+	unsigned short xpix;        /* Width in pixels */
+	unsigned short ypix;        /* Height in pixels */
+	unsigned short colors;      /* Number of colors (e.g. 256) */
+	unsigned long  buf_size;    /* Framebuffer size */
+	unsigned long  map_size;    /* CPU mapping window size (e.g. 64KB) */
+	unsigned short slbytes;     /* Scanline bytes (stride) */
+	struct b_param regs;        /* Raw VGA registers (CRTC, Sequencer, etc.) */
+};
+
+#define KD_SET_CUSTOM_MODE   (('K' << 8) | 120)
+#define KD_GET_CUSTOM_MODE   (('K' << 8) | 121)
+#define SW_CUSTOM_MODE       (MODESWITCH | DM_CUSTOM_MODE)
 
 
 #endif /* _SYS_KD_H */
