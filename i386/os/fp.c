@@ -330,6 +330,25 @@ fpexterrflt()
 #endif
 
 		/*
+		 * Log the faulting process and decode which x87 exception
+		 * fired from the saved status word.  The low six status-word
+		 * bits share positions with the control-word mask bits
+		 * (FPINV/FPDNO/FPZDIV/FPOVR/FPUNR/FPPRE), so we reuse those.
+		 * An unmasked exception reaching here usually means stricter
+		 * FPU masking than userland expects (see fpinit()).
+		*/
+		cmn_err(CE_WARN,
+		    "SIGFPE (x87 exception) in user process \"%s\" pid %d: "
+		    "status=0x%.4x%s%s%s%s%s%s",
+		    PTOU(fp_proc)->u_comm, fp_proc->p_pid, fpsw & 0xffff,
+		    (fpsw & FPINV)  ? " invalid"    : "",
+		    (fpsw & FPDNO)  ? " denormal"   : "",
+		    (fpsw & FPZDIV) ? " zerodivide" : "",
+		    (fpsw & FPOVR)  ? " overflow"   : "",
+		    (fpsw & FPUNR)  ? " underflow"  : "",
+		    (fpsw & FPPRE)  ? " precision"  : "");
+
+		/*
 		 * Send a floating-point error signal to the process
 		 * that owns the processor extension.
 		*/
@@ -471,13 +490,17 @@ fpinit()
 	asm( "  fninit" );
 
 	/*
-	** must allow invalid operation, zero divide, and
-	** overflow interrupt conditions and change to use
-	** long real precision
-	*/
+	 * Mask all the exceptions and set the control word to modern defaults.
+	 * The old SVR4 control word settings didn't mask several interrupts,
+	 * which caused modern userland that expects simple NaN responses and stuff
+	 * to get SIGFPE instead.
+	 * TODO: really, this only affected mesa. I don't know what POSIX says
+	 * about this but if POSIX doesn't mind, perhaps following what newer UNIX
+	 * versions did here would be more in spirit of this project
+	 */
 	asm( "  fstcw   finitstate" );
 
-	finitstate &= ~( FPINV | FPZDIV | FPOVR | FPPC );
+	finitstate &= ~( FPPC );
 	/*
 	 * Modern i386 toolchains compile normal floating-point expressions for
 	 * x87 extended evaluation (FLT_EVAL_METHOD == 2).  Keeping the old SVR4
