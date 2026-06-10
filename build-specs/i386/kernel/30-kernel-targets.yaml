@@ -1,85 +1,66 @@
+# Shared compile-step body for the per-subsystem kernel object builds. Each subsystem
+# target merges this with `<<:` and overrides only `use`, `cwd`, `output_dir`, and
+# (where needed) `discover`. Defined here as a top-level key the build loader ignores;
+# the anchor is file-local, so it must stay in this file with its consumers.
+_compile_subsystem: &compile_subsystem
+  kind: compile
+  source_view: uts-at386
+  continue_on_error: false
+  parallel: true
+  discover:
+    extensions:
+      - .c
+
 targets:
   os-at386:
     description: Compile the core operating-system sources under uts/i386/os.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - os-at386
+      - <<: *compile_subsystem
+        use: [os-at386]
         cwd: os
         output_dir: "{obj_root}/os"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   vm-at386:
     description: Compile the virtual-memory subsystem sources under uts/i386/vm.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - vm-at386
+      - <<: *compile_subsystem
+        use: [vm-at386]
         cwd: vm
         output_dir: "{obj_root}/vm"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   disp-at386:
     description: Compile the scheduling and dispatcher classes under uts/i386/disp.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - disp-at386
+      - <<: *compile_subsystem
+        use: [disp-at386]
         cwd: disp
         output_dir: "{obj_root}/disp"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   vx-at386:
     description: Compile the VP/ix support driver sources under uts/i386/vx.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - vx-at386
+      - <<: *compile_subsystem
+        use: [vx-at386]
         cwd: vx
         output_dir: "{obj_root}/vx"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   exec-at386:
     description: Compile all executable-loader families under uts/i386/exec.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - exec-at386
+      - <<: *compile_subsystem
+        use: [exec-at386]
         cwd: exec
         output_dir: "{obj_root}/exec"
-        continue_on_error: false
-        parallel: true
         discover:
           recursive: true
           extensions:
@@ -90,14 +71,10 @@ targets:
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - io-at386
+      - <<: *compile_subsystem
+        use: [io-at386]
         cwd: io
         output_dir: "{obj_root}/io/core"
-        continue_on_error: false
-        parallel: true
         discover:
           recursive: true
           extensions:
@@ -114,67 +91,41 @@ targets:
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - io-at386
+      - <<: *compile_subsystem
+        use: [io-at386]
         cwd: io/ws
         output_dir: "{obj_root}/io/ws"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   io-kd-at386:
     description: Compile the AT386 keyboard and display driver subtree under uts/arch/at/i386/io/kd.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - io-at386
+      - <<: *compile_subsystem
+        use: [io-at386]
         cwd: io/kd
         output_dir: "{obj_root}/io/kd"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   io-kdvm-at386:
     description: Compile the AT386 KD virtual-memory companion driver under uts/arch/at/i386/io/kdvm.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - io-at386
+      - <<: *compile_subsystem
+        use: [io-at386]
         cwd: io/kdvm
         output_dir: "{obj_root}/io/kdvm"
-        continue_on_error: false
-        discover:
-          extensions:
-            - .c
+        parallel: false
 
   io-mouse-at386:
     description: Compile the AT386 PS/2 (AT&T 320) mouse driver subtree under uts/arch/at/i386/io/mouse.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - io-at386
+      - <<: *compile_subsystem
+        use: [io-at386]
         cwd: io/mouse
         output_dir: "{obj_root}/io/mouse"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   io-at386:
     description: Aggregate the generic, workstation, and AT386-specific driver subtrees.
@@ -206,17 +157,9 @@ targets:
           - "{cpp}"
           - --ld
           - "{ld}"
-          - --cflag=-std=gnu89
-          - --cflag=-m32
-          - --cflag=-fcommon
-          - --cflag=-fno-builtin
-          - --cflag=-O2
+          - --cflags
+          - "{kernel_recompile_cflags}"
           - --cflag=-I..
-          - --cflag=-D_KERNEL
-          - --cflag=-DAT386
-          - --cflag=-DVPIX
-          - --cflag=-DWEITEK
-          - --cflag=-DWEITEK_EMULATOR
           - --cpp-flag=-P
           - --cpp-flag=-I..
           - --cpp-flag=-D_KERNEL
@@ -231,14 +174,10 @@ targets:
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - fs-at386
+      - <<: *compile_subsystem
+        use: [fs-at386]
         cwd: fs
         output_dir: "{obj_root}/fs"
-        continue_on_error: false
-        parallel: true
         discover:
           recursive: true
           extensions:
@@ -249,85 +188,50 @@ targets:
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - netmod-at386
+      - <<: *compile_subsystem
+        use: [netmod-at386]
         cwd: des
         output_dir: "{obj_root}/des"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   rpc-at386:
     description: Compile the kernel RPC sources under uts/i386/rpc.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - netmod-at386
+      - <<: *compile_subsystem
+        use: [netmod-at386]
         cwd: rpc
         output_dir: "{obj_root}/rpc"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   ktli-at386:
     description: Compile the kernel TLI sources under uts/i386/ktli.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - netmod-at386
+      - <<: *compile_subsystem
+        use: [netmod-at386]
         cwd: ktli
         output_dir: "{obj_root}/ktli"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   klm-at386:
     description: Compile the kernel lock-manager sources under uts/i386/klm.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - netmod-at386
+      - <<: *compile_subsystem
+        use: [netmod-at386]
         cwd: klm
         output_dir: "{obj_root}/klm"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   netinet-at386:
     description: Compile the TCP/IP stack sources under uts/i386/netinet.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - netinet-at386
+      - <<: *compile_subsystem
+        use: [netinet-at386]
         cwd: netinet
         output_dir: "{obj_root}/netinet"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   network-at386:
     description: Aggregate the network-facing kernel modules that historical nonet builds excluded.
@@ -343,50 +247,31 @@ targets:
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - kdb-at386
+      - <<: *compile_subsystem
+        use: [kdb-at386]
         cwd: kdb/kdb
         output_dir: "{obj_root}/kdb/core"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   kdb-gdebugger-at386:
     description: Compile the graphical debugger companion sources under uts/i386/kdb/gdebugger.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - kdb-at386
+      - <<: *compile_subsystem
+        use: [kdb-at386]
         cwd: kdb/gdebugger
         output_dir: "{obj_root}/kdb/gdebugger"
-        continue_on_error: false
-        discover:
-          extensions:
-            - .c
+        parallel: false
 
   kdb-util-at386:
     description: Compile the in-kernel debugger support sources under uts/i386/kdb/kdb-util.
     depends_on:
       - prepare-layout
     steps:
-      - kind: compile
-        source_view: uts-at386
-        use:
-          - kdb-at386
+      - <<: *compile_subsystem
+        use: [kdb-at386]
         cwd: kdb/kdb-util
         output_dir: "{obj_root}/kdb/kdb-util"
-        continue_on_error: false
-        parallel: true
-        discover:
-          extensions:
-            - .c
 
   kdb-at386:
     description: Aggregate the kernel debugger families that participate in the AT386 kernel build tree.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -16,10 +17,22 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--cc", default="gcc")
     parser.add_argument("--ld", default="ld")
     parser.add_argument("--cflag", action="append", default=[])
+    parser.add_argument("--cflags", action="append", default=[], help="Space-joined compiler flags; shell-split and appended to --cflag.")
     parser.add_argument("--include-dir", action="append", default=[])
+    parser.add_argument("--include-dirs", action="append", default=[], help="Space-joined include directories; shell-split and appended to --include-dir.")
     parser.add_argument("--module", action="append", default=[])
     parser.add_argument("--report", required=True)
-    return parser.parse_args()
+    args = parser.parse_args()
+    args.cflag = _expand_joined(args.cflag, args.cflags)
+    args.include_dir = _expand_joined(args.include_dir, args.include_dirs)
+    return args
+
+
+def _expand_joined(individual: list[str], joined: list[str]) -> list[str]:
+    expanded = list(individual)
+    for group in joined:
+        expanded.extend(shlex.split(group))
+    return expanded
 
 
 def _compile_source(cc: str, cflags: list[str], include_dirs: list[str], source_path: Path, output_path: Path) -> None:

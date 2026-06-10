@@ -738,7 +738,15 @@ def _string_list(value: Any, field_name: str) -> list[str]:
     if not isinstance(value, list):
         raise BuildSpecError(f'{field_name} must be a list')
     typed_value = cast(list[Any], value)
-    return [str(item) for item in typed_value]
+    # Flatten one level of nesting so a YAML anchor holding a group of flags can be
+    # spliced into a larger list (YAML itself cannot merge a sequence into a sequence).
+    items: list[str] = []
+    for item in typed_value:
+        if isinstance(item, list):
+            items.extend(str(inner) for inner in cast(list[Any], item))
+        else:
+            items.append(str(item))
+    return items
 
 
 def _step_list(target: dict[str, Any]) -> list[dict[str, Any]]:
@@ -786,8 +794,7 @@ def _positive_int_value(value: Any, field_name: str) -> int:
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='SVR4 builder.')
-    parser.add_argument('--subsystem', '-s', type=str, default='uts', help='Subsystem to build (default: uts)')
+    parser = argparse.ArgumentParser(description='SVR4 kernel (uts) builder.')
     parser.add_argument('--target', '-t', type=str, default='kernel-at386', help='Target to build from the selected config')
     parser.add_argument('--config', '-c', type=str, help='YAML build config to load')
     parser.add_argument('--builddir', '-b', type=str, default='build', help='Directory to place build artifacts (default: build)')
@@ -800,16 +807,9 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
-    script_root = Path(__file__).resolve().parent
-    if (script_root / 'i386').exists() and (script_root / 'build-specs').exists():
-        workspace_root = script_root
-    else:
-        workspace_root = script_root
+    workspace_root = Path(__file__).resolve().parent
     repo_root = workspace_root.parent if (workspace_root.parent / 'original_diskettes').exists() else workspace_root
     output_root = Path.cwd()
-
-    if args.subsystem != 'uts':
-        raise BuildSpecError(f'Unknown subsystem: {args.subsystem}')
 
     builder = UTSBuilder(
         workspace_root=workspace_root,

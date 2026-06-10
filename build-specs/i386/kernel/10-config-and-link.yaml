@@ -212,22 +212,8 @@ targets:
           - "{cc}"
           - --ld
           - "{ld}"
-          - --cflag=-std=gnu89
-          - --cflag=-fcommon
-          - --cflag=-fno-builtin
-          - --cflag=-fno-tree-vectorize
-          - --cflag=-O2
-          - --cflag=-m32
-          - --cflag=-mno-mmx
-          - --cflag=-mno-sse
-          - --cflag=-mno-sse2
-          - --cflag=-D_KERNEL
-          - --cflag=-DAT386
-          - --cflag=-DWEITEK
-          - --cflag=-DWEITEK_EMULATOR
-          - --cflag=-DVPIX
-          - --cflag=-DSYSV
-          - --cflag=-DSVR40
+          - --cflags
+          - "{kernel_recompile_cflags}"
           - --include-dir={cf_dir}
           - --include-dir={kernel_root}/arch/at/i386
           - --include-dir={kernel_root}/i386
@@ -252,23 +238,8 @@ targets:
           - "{cc}"
           - --ld
           - "{ld}"
-          - --cflag=-std=gnu89
-          - --cflag=-fcommon
-          - --cflag=-fno-builtin
-          - --cflag=-fno-tree-vectorize
-          - --cflag=-O2
-          - --cflag=-m32
-          - --cflag=-mno-mmx
-          - --cflag=-mno-sse
-          - --cflag=-mno-sse2
-          - --cflag=-D_KERNEL
-          - --cflag=-DAT386
-          - --cflag=-DWEITEK
-          - --cflag=-DWEITEK_EMULATOR
-          - --cflag=-DRAMD_BOOT
-          - --cflag=-DVPIX
-          - --cflag=-DSYSV
-          - --cflag=-DSVR40
+          - --cflags
+          - "{kernel_recompile_cflags} -DRAMD_BOOT"
           - --include-dir={floppy_cf_dir}
           - --include-dir={kernel_root}/arch/at/i386
           - --include-dir={kernel_root}/i386
@@ -283,7 +254,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/uts_idbuild.py"
+          - "{kernel_root}/tools/uts_idmkunix.py"
           - --manifest
           - "{simple_idconfig_manifest}"
           - --cc
@@ -292,40 +263,8 @@ targets:
           - "{ld}"
           - --output
           - "{cf_dir}/unix"
-          - --cflag
-          - -std=gnu89
-          - --cflag
-          - -fcommon
-          - --cflag
-          - -fno-builtin
-          - --cflag
-          - -fno-tree-vectorize
-          - --cflag
-          - -O2
-          - --cflag
-          - -m32
-          - --cflag
-          - -mno-mmx
-          - --cflag
-          - -mno-sse
-          - --cflag
-          - -mno-sse2
-          - --cflag
-          - -D_KERNEL
-          - --cflag
-          - -DAT386
-          - --cflag
-          - -DWEITEK
-          - --cflag
-          - -DWEITEK_EMULATOR
-          - --cflag
-          - -DRAMD_BOOT
-          - --cflag
-          - -DVPIX
-          - --cflag
-          - -DSYSV
-          - --cflag
-          - -DSVR40
+          - --cflags
+          - "{kernel_recompile_cflags} -DRAMD_BOOT"
           - --include-dir
           - "{cf_dir}"
           - --include-dir
@@ -341,7 +280,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/uts_idbuild.py"
+          - "{kernel_root}/tools/uts_idmkunix.py"
           - --manifest
           - "{floppy_idconfig_manifest}"
           - --cc
@@ -350,40 +289,8 @@ targets:
           - "{ld}"
           - --output
           - "{floppy_unix}"
-          - --cflag
-          - -std=gnu89
-          - --cflag
-          - -fcommon
-          - --cflag
-          - -fno-builtin
-          - --cflag
-          - -fno-tree-vectorize
-          - --cflag
-          - -O2
-          - --cflag
-          - -m32
-          - --cflag
-          - -mno-mmx
-          - --cflag
-          - -mno-sse
-          - --cflag
-          - -mno-sse2
-          - --cflag
-          - -D_KERNEL
-          - --cflag
-          - -DAT386
-          - --cflag
-          - -DWEITEK
-          - --cflag
-          - -DWEITEK_EMULATOR
-          - --cflag
-          - -DRAMD_BOOT
-          - --cflag
-          - -DVPIX
-          - --cflag
-          - -DSYSV
-          - --cflag
-          - -DSVR40
+          - --cflags
+          - "{kernel_recompile_cflags} -DRAMD_BOOT"
           - --include-dir
           - "{floppy_cf_dir}"
           - --include-dir

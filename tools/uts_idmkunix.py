@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import shutil
 import subprocess
 import sys
@@ -27,15 +28,22 @@ def _normalize_option_values(argv: list[str] | None, option_names: set[str]) -> 
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    argv = _normalize_option_values(argv, {"--cflag", "--include-dir"})
+    argv = _normalize_option_values(argv, {"--cflag", "--cflags", "--include-dir", "--include-dirs"})
     parser = argparse.ArgumentParser(description="Build the AT386 unix image from the modern manifest-driven config outputs.")
     parser.add_argument("--manifest", required=True)
     parser.add_argument("--cc", required=True)
     parser.add_argument("--ld", required=True)
     parser.add_argument("--output")
     parser.add_argument("--cflag", action="append", default=[])
+    parser.add_argument("--cflags", action="append", default=[], help="Space-joined compiler flags; shell-split and appended to --cflag.")
     parser.add_argument("--include-dir", action="append", default=[])
-    return parser.parse_args(argv)
+    parser.add_argument("--include-dirs", action="append", default=[], help="Space-joined include directories; shell-split and appended to --include-dir.")
+    args = parser.parse_args(argv)
+    for group in args.cflags:
+        args.cflag.extend(shlex.split(group))
+    for group in args.include_dirs:
+        args.include_dir.extend(shlex.split(group))
+    return args
 
 
 def _run(argv: list[str], cwd: Path | None = None) -> None:

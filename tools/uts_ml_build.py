@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -124,9 +125,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--cpp', required=True)
     parser.add_argument('--ld', required=True)
     parser.add_argument('--cflag', action='append', default=[])
+    parser.add_argument('--cflags', action='append', default=[], help='Space-joined compiler flags; shell-split and appended to --cflag.')
     parser.add_argument('--cpp-flag', action='append', default=[])
+    parser.add_argument('--cpp-flags', action='append', default=[], help='Space-joined preprocessor flags; shell-split and appended to --cpp-flag.')
     parser.add_argument('--ld-flag', action='append', default=[])
-    return parser.parse_args()
+    args = parser.parse_args()
+    for group in args.cflags:
+        args.cflag.extend(shlex.split(group))
+    for group in args.cpp_flags:
+        args.cpp_flag.extend(shlex.split(group))
+    return args
 
 
 def run(command: list[str], cwd: Path, env: dict[str, str] | None = None) -> None:

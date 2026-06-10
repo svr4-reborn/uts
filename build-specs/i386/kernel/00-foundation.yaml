@@ -1,20 +1,30 @@
+# Canonical kernel codegen (ABI) flags. This is the single source of truth for the
+# i386 kernel object ABI: it is spliced into toolchain.cflags below (as a YAML anchor)
+# and exposed to the re-compiling helper tools (driver-compose, idmkunix, ml) via the
+# {kernel_codegen} variable. The two representations must stay byte-identical; they are
+# kept adjacent here so any drift is visible in a single screen.
+_kernel_codegen: &kernel_codegen
+  - -std=gnu89
+  - -fcommon
+  - -fno-builtin
+  - -fno-tree-vectorize
+  - -O2
+  - -m32
+  - -mno-mmx
+  - -mno-sse
+  - -mno-sse2
+
 toolchain:
   cc: i686-svr4-mlibc-gcc
   cpp: i686-svr4-mlibc-cpp
   ld: i686-svr4-mlibc-ld
+  # Per-subsystem compiles: shared codegen base + toolchain-only hardening. Feature
+  # defines (-D_KERNEL, -DAT386, ...) come from the per-subsystem profiles, not here.
   cflags:
-    - -std=gnu89
-    - -fcommon
-    - -fno-builtin
-    - -fno-tree-vectorize
+    - *kernel_codegen
     - -fno-unwind-tables
     - -fno-asynchronous-unwind-tables
-    - -O2
-    - -m32
     - -mgeneral-regs-only
-    - -mno-mmx
-    - -mno-sse
-    - -mno-sse2
     - -nostdinc
     - -nostdlib
     - -Werror
@@ -26,6 +36,15 @@ toolchain:
   ldflags: []
 
 variables:
+  # Mirror of &kernel_codegen above, as a shlex-splittable string for the helper tools
+  # that re-compile generated glue (conf.c, Driver.o stubs, locore). Keep in sync with
+  # the anchor. The helper re-compiles deliberately omit the toolchain-only hardening
+  # flags (-Werror, -nostdinc, ...) because the generated sources are not warning-clean.
+  kernel_codegen: "-std=gnu89 -fcommon -fno-builtin -fno-tree-vectorize -O2 -m32 -mno-mmx -mno-sse -mno-sse2"
+  # Feature defines used by the helper re-compiles (NOT the per-subsystem profiles, which
+  # vary these per directory). VPIX/SVR40 here are intentional and specific to this stage.
+  kernel_defines: "-D_KERNEL -DAT386 -DWEITEK -DWEITEK_EMULATOR -DVPIX -DSYSV -DSVR40"
+  kernel_recompile_cflags: "{kernel_codegen} {kernel_defines}"
   system_root: "{builddir}/uts/i386/system-root"
   conf_root: "{builddir}/uts/i386/conf"
   cf_dir: "{conf_root}/cf.d"
