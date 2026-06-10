@@ -268,7 +268,7 @@ int	*rvalp;
 		kd_modeinfo[DM_CUSTOM_MODE].m_xpels = mode_arg.xpix;
 		kd_modeinfo[DM_CUSTOM_MODE].m_ypels = mode_arg.ypix;
 		kd_modeinfo[DM_CUSTOM_MODE].m_size = mode_arg.map_size;
-		kd_modeinfo[DM_CUSTOM_MODE].m_ramdac = (mode_arg.colors == 256) ? 3 : 1;
+		kd_modeinfo[DM_CUSTOM_MODE].m_ramdac = mode_arg.ramdac;
 
 		kd_custom_mode_info = mode_arg;
 		kd_custom_regs = mode_arg.regs;
