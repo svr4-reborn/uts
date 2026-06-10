@@ -1316,6 +1316,8 @@ struct kd_custom_mode {
 	unsigned long  buf_size;    /* Framebuffer size */
 	unsigned long  map_size;    /* CPU mapping window size (e.g. 64KB) */
 	unsigned short slbytes;     /* Scanline bytes (stride) */
+    unsigned char  ramdac;      /* RAMDAC table offset to use */
+	unsigned char  reserved;
 	struct b_param regs;        /* Raw VGA registers (CRTC, Sequencer, etc.) */
 };
 
