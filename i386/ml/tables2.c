@@ -69,7 +69,9 @@ extern ivctM7S4(), ivctM7S5(), ivctM7S6(), ivctM7S7();
 
 extern struct tss386 ktss, ltss, dftss;
 
-struct gate_desc idt[IDTSZ] = {
+#define BOOTDESC __attribute__((section(".data.bootdesc")))
+
+struct gate_desc idt[IDTSZ] BOOTDESC = {
 			MKKTRPG(div0trap),	/* 000 */
 			MKKTRPG(dbgtrap), 	/* 001 */
 			MKINTG(nmiint),		/* 002 */
@@ -336,7 +338,7 @@ struct gate_desc idt[IDTSZ] = {
 **  processes only. The vector that has a task gate to the user
 **  TSS is: the invalid opcode exception (vector 6).
 */
-struct gate_desc idt2[IDTSZ] = {
+struct gate_desc idt2[IDTSZ] BOOTDESC = {
 			MKKTRPG(div0trap),      /* 000 */
 			MKKTRPG(dbgtrap),       /* 001 */
 			MKINTG(nmiint),		/* 002 */
@@ -602,7 +604,18 @@ struct gate_desc idt2[IDTSZ] = {
  *	386 Global Descriptor Table
  */
 
-struct seg_desc gdt[GDTSZ] = {
+#define GDT_DATA BOOTDESC
+#define STRINGIFY1(x) #x
+#define STRINGIFY(x) STRINGIFY1(x)
+
+struct gdt_storage {
+	struct seg_desc table[GDTSZ];
+	int end;
+};
+
+#define gdt gdt_storage.table
+struct gdt_storage gdt_storage GDT_DATA = {
+	{
 		MKDSCR(0L,0,0,0) ,		/* 00 */
 	MKDSCR((char *)&gdt[0],GDTSZ*sizeof(struct seg_desc)-1,0x93,0),/* 01 */
 	MKDSCR((char *)&idt[0],IDTSZ*sizeof(struct gate_desc)-1,0x92,0),/* 02 */
@@ -663,9 +676,17 @@ struct seg_desc gdt[GDTSZ] = {
 	MKDSCR(0L,0L,0,0) ,		/* 53 */
 	MKDSCR(0L,0L,0,0) ,		/* 54 */
 						/* other entries all zero */
+	},
+	0
 };
+#undef gdt
 
-int gdtend = 0;         /* used by uprt.s to find end of gdt */
+asm(".globl gdt\n"
+    ".set gdt, gdt_storage\n"
+    ".globl gdtend\n"
+    ".set gdtend, gdt_storage + (" STRINGIFY(GDTSZ) " * 8)\n");
+#undef STRINGIFY
+#undef STRINGIFY1
 struct gate_desc monidt[MONIDTSZ] = {
 			MKKTRPG(0L),	/* 000 */
 			MKKTRPG(0L),	/* 001 */
@@ -685,9 +706,9 @@ struct gate_desc monidt[MONIDTSZ] = {
 			MKKTRPG(0L),	/* 015 */
 };
 
-struct tss386 ltss = {0};	/* uprt.s dumps stuff here. It's never read */
+struct tss386 ltss BOOTDESC = {0};	/* uprt.s dumps stuff here. It's never read */
 
-struct tss386 ktss = {
+struct tss386 ktss BOOTDESC = {
 			0L,
 /*			(unsigned long) ((char *)&u + KSTKSZ),*/
 			(unsigned long)(&df_stack+0xFFC),
@@ -718,7 +739,7 @@ struct tss386 ktss = {
 			0xDFFF0000L,
 };
 
-struct tss386 dftss = {
+struct tss386 dftss BOOTDESC = {
 			0L,
 			(unsigned long)(&df_stack+0xFFC),
 			(unsigned long)KDSSEL,
@@ -747,11 +768,11 @@ struct tss386 dftss = {
 			0xDFFF0000L,
 };
 
-struct gate_desc scall_dscr = {
+struct gate_desc scall_dscr BOOTDESC = {
 		(ulong)sys_call, KCSSEL, 1, GATE_UACC|GATE_386CALL
 };
 
-struct gate_desc sigret_dscr = {
+struct gate_desc sigret_dscr BOOTDESC = {
 		(ulong)sig_clean, KCSSEL, 1, GATE_UACC|GATE_386CALL
 };
 

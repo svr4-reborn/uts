@@ -73,6 +73,8 @@ SECTIONS {
 	.text : {
 		stext = .;
 		../pack.d/kernel/start.o(.text)
+		*(.data.bootdesc)
+		*(.data.gdt)
 		*(.text)
 		*(.text.*)
 		etext = .;
@@ -145,4 +147,3 @@ SECTIONS {
 
 	/DISCARD/ : { *(.eh_frame) *(.rel.eh_frame) *(.note.gnu.property) *(.comment) }
 	}
-

@@ -339,9 +339,9 @@ vnodeops_t *rf_vnopsp;	/* RFS vnode op vector (initialized by rf_init) */
 
 struct vnode *rootvp = (struct vnode *) NULL;
 
-/* Default fstype for root is "s5".  This can be overridden with
+/* Default fstype for root is "ufs".  This can be overridden with
    the "rootfstype" parameter in /stand/boot. */
-#define	ROOTFSTYPE	"s5"
+#define	ROOTFSTYPE	"ufs"
 char rootfstype[ROOTFS_NAMESZ+1] = {ROOTFSTYPE};
 
 /* parameters for remote (RFS) network access (which uses buffers from 
