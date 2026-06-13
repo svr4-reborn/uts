@@ -216,10 +216,11 @@ def install_boot_artifacts(system_root: Path, fdboot: Path, hdboot: Path, defaul
     shutil.copyfile(hdboot, etc_dir / '.wboot')
     os.chmod(etc_dir / '.fboot', 0o644)
     os.chmod(etc_dir / '.wboot', 0o644)
-    for name in ['default.at386', 'default.cpq', 'default.att', 'default.att512']:
+    # Copy all the files in the default_dir to the defaults_dir, preserving permissions.
+    for name in os.listdir(default_dir):
         shutil.copyfile(default_dir / name, defaults_dir / name)
         os.chmod(defaults_dir / name, 0o644)
-    shutil.copyfile(default_dir / 'default.at386', defaults_dir / 'boot')
+
     os.chmod(defaults_dir / 'boot', 0o644)
 
 
