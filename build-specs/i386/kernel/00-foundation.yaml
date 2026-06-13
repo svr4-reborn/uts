@@ -8,16 +8,16 @@ _kernel_codegen: &kernel_codegen
   - -fcommon
   - -fno-builtin
   - -fno-tree-vectorize
-  - -O2
+  - -Os
   - -m32
   - -mno-mmx
   - -mno-sse
   - -mno-sse2
 
 toolchain:
-  cc: i686-svr4-mlibc-gcc
-  cpp: i686-svr4-mlibc-cpp
-  ld: i686-svr4-mlibc-ld
+  cc: i686-pc-sysv4-mlibc-gcc
+  cpp: i686-pc-sysv4-mlibc-cpp
+  ld: i686-pc-sysv4-mlibc-ld
   # Per-subsystem compiles: shared codegen base + toolchain-only hardening. Feature
   # defines (-D_KERNEL, -DAT386, ...) come from the per-subsystem profiles, not here.
   cflags:
