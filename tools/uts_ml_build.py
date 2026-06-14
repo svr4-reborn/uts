@@ -182,8 +182,26 @@ def gensymvals_cflags(cflags: list[str]) -> list[str]:
     return [flag for flag in cflags if not flag.startswith('-O')]
 
 
-def should_emit_vpix_symbols(cflags: list[str]) -> bool:
-    return any('VPIX' in flag for flag in cflags)
+def has_preprocessor_define(flags: list[str], name: str) -> bool:
+    enabled = False
+    index = 0
+    while index < len(flags):
+        flag = flags[index]
+        if flag == '-D' and index + 1 < len(flags):
+            enabled = flags[index + 1].split('=', 1)[0] == name
+            index += 2
+            continue
+        if flag == '-U' and index + 1 < len(flags):
+            if flags[index + 1] == name:
+                enabled = False
+            index += 2
+            continue
+        if flag.startswith('-D') and flag[2:].split('=', 1)[0] == name:
+            enabled = True
+        elif flag.startswith('-U') and flag[2:] == name:
+            enabled = False
+        index += 1
+    return enabled
 
 
 def generate_symvals_source(work_ml_root: Path, include_vpix: bool) -> Path:
@@ -335,7 +353,7 @@ def normalize_legacy_generated_assembly(source: Path) -> None:
     source.write_text(text, encoding='utf-8')
 
 
-def write_locore_source(work_ml_root: Path) -> Path:
+def write_locore_source(work_ml_root: Path, include_vpix: bool) -> Path:
     output = work_ml_root / 'locore-temp.c'
     inputs = [
         work_ml_root / 'symvals.s',
@@ -344,10 +362,11 @@ def write_locore_source(work_ml_root: Path) -> Path:
         work_ml_root / 'misc.s',
         work_ml_root / 'intr.s',
         work_ml_root / 'weitek.s',
-        work_ml_root / 'v86gptrap.s',
         work_ml_root / 'oemsup.s',
         work_ml_root / 'string.s',
     ]
+    if include_vpix:
+        inputs.insert(6, work_ml_root / 'v86gptrap.s')
     with output.open('w', encoding='utf-8') as handle:
         handle.write('\t.file\t"locore.s"\n')
         for source in inputs:
@@ -411,7 +430,7 @@ def main() -> int:
     work_ml_root = prepare_worktree(uts_root, obj_root)
     write_setfilter_wrapper(work_ml_root, workspace_root)
     symval_cflags = gensymvals_cflags(args.cflag)
-    include_vpix = should_emit_vpix_symbols(args.cflag)
+    include_vpix = has_preprocessor_define(args.cpp_flag, 'VPIX')
     partial_ld = choose_partial_linker(args.ld)
 
     env = dict(os.environ)
@@ -440,7 +459,7 @@ def main() -> int:
     syms_obj = obj_root / 'syms.o'
     compile_generated_assembly(args.cc, args.cflag, syms_source, syms_obj, work_ml_root)
 
-    locore_temp = write_locore_source(work_ml_root)
+    locore_temp = write_locore_source(work_ml_root, include_vpix)
     locore_source = work_ml_root / 'locore.s'
     run([args.cc, '-x', 'assembler-with-cpp', '-E', *args.cpp_flag, str(locore_temp), '-o', str(locore_source)], cwd=work_ml_root)
     normalize_legacy_generated_assembly(locore_source)

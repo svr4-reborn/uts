@@ -165,7 +165,6 @@ targets:
           - --cpp-flag=-D_KERNEL
           - --cpp-flag=-DLOCORE
           - --cpp-flag=-DAT386
-          - --cpp-flag=-DVPIX
           - --cpp-flag=-DWEITEK
           - --cpp-flag=-DWEITEK_EMULATOR
 

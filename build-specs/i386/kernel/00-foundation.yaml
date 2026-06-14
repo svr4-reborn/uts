@@ -42,8 +42,8 @@ variables:
   # flags (-Werror, -nostdinc, ...) because the generated sources are not warning-clean.
   kernel_codegen: "-std=gnu89 -fcommon -fno-builtin -fno-tree-vectorize -O2 -m32 -mno-mmx -mno-sse -mno-sse2"
   # Feature defines used by the helper re-compiles (NOT the per-subsystem profiles, which
-  # vary these per directory). VPIX/SVR40 here are intentional and specific to this stage.
-  kernel_defines: "-D_KERNEL -DAT386 -DWEITEK -DWEITEK_EMULATOR -DVPIX -DSYSV -DSVR40"
+  # vary these per directory). SVR40 here is intentional and specific to this stage.
+  kernel_defines: "-D_KERNEL -DAT386 -DWEITEK -DWEITEK_EMULATOR -DSYSV -DSVR40"
   kernel_recompile_cflags: "{kernel_codegen} {kernel_defines}"
   system_root: "{builddir}/uts/i386/system-root"
   conf_root: "{builddir}/uts/i386/conf"

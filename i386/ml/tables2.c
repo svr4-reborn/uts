@@ -36,7 +36,14 @@ extern char df_stack;	/* top of stack for double fault handler */
  *	386 Interrupt Descriptor Table
  */
 extern div0trap(), dbgtrap(), nmiint(), brktrap(), ovflotrap(), boundstrap();
-extern invoptrap(), ndptrap0(), ndptrap2(),ndptrap3(),ndptrap4(), ndptrap(), syserrtrap(), invaltrap(), invtsstrap();
+extern invoptrap();
+
+/* These are only created if VPIX is enabled. */
+#ifdef VPIX
+extern ndptrap0(), ndptrap2(),ndptrap3(),ndptrap4();
+#endif /* VPIX*/
+
+extern ndptrap(), syserrtrap(), invaltrap(), invtsstrap();
 extern segnptrap(), stktrap(), gptrap(), pftrap(), ndperr();
 extern overrun(), resvtrap();
 extern vstart(), sys_call(), sig_clean(), cmnint();
@@ -79,7 +86,11 @@ struct gate_desc idt[IDTSZ] BOOTDESC = {
 			MKUTRPG(ovflotrap),	/* 004 */
 			MKKTRPG(boundstrap),	/* 005 */
 			MKKTRPG(invoptrap),	/* 006 */
+#ifdef VPIX
 			MKKTRPG(ndptrap0),	/* 007 */
+#else
+			MKKTRPG(invaltrap),	/* 007 */
+#endif
 			MKGATE(0, DFTSSSEL, GATE_KACC|GATE_TSS), /* 008 */
 			MKKTRPG(overrun),	/* 009 */
 			MKKTRPG(invtsstrap),	/* 010 */
@@ -104,7 +115,11 @@ struct gate_desc idt[IDTSZ] BOOTDESC = {
 			MKKTRPG(invaltrap),	/* 029 */
 			MKKTRPG(invaltrap),	/* 030 */
 			MKKTRPG(invaltrap),	/* 031 */
+#ifdef VPIX
 			MKUTRPG(ndptrap2),	/* 032 */ /* for fp emul */
+#else
+			MKKTRPG(invaltrap),	/* 032 */
+#endif
 			MKKTRPG(invaltrap),	/* 033 */
 			MKKTRPG(invaltrap),	/* 034 */
 			MKKTRPG(invaltrap),	/* 035 */

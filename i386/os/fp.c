@@ -123,10 +123,10 @@ paddr_t fp387cr3 = 0;
 **	instruction, fpinit() is executed.  After fpinit(), u_fpvalid == 1.
 **	And fpinit() is executed only once for any process (exclusive of
 **	fpinits for fp inside of signal handlers).
+**
+**  r0ptr: pointer to registers on stack
 */
-fpnoextflt(r0ptr)
-	int    *r0ptr;         /* pointer to registers on stack */
-{
+void fpnoextflt(int* r0ptr) {
 	unsigned int ts;        /* saved task-switched bit */
 	flags_t *flags;         /* pointer to saved flags on stack */
 	label_t fpsav;          /* saved state for longjmp */
