@@ -8,7 +8,7 @@ _kernel_codegen: &kernel_codegen
   - -fcommon
   - -fno-builtin
   - -fno-tree-vectorize
-  - -Os
+  - -O2
   - -m32
   - -mno-mmx
   - -mno-sse
