@@ -306,7 +306,7 @@ targets:
       - kdb-at386
 
   kernel-system-at386:
-    description: Full AT386 kernel graph plus the historical platform families and manifest-driven system-build phases.
+    description: Full AT386 kernel graph plus the historical platform families and idtools-driven system-build phases.
     depends_on:
       - kernel-at386
       - historical-platform-at386

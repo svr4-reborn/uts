@@ -163,21 +163,6 @@ def compile_generated_assembly(cc: str, cflags: list[str], source: Path, output:
     run([cc, *cflags, '-c', str(source), '-o', str(output)], cwd=cwd)
 
 
-def write_setfilter_wrapper(work_ml_root: Path, workspace_root: Path) -> None:
-    tool_dir = work_ml_root / 'tool'
-    tool_dir.mkdir(parents=True, exist_ok=True)
-    wrapper = tool_dir / 'setfilter'
-    target = resolve_kernel_root(workspace_root) / 'tools' / 'legacy_setfilter.py'
-    wrapper.write_text(
-        '#!/usr/bin/env python3\n'
-        'import os\n'
-        'import sys\n'
-        f'os.execv(sys.executable, [sys.executable, {str(target)!r}, *sys.argv[1:]])\n',
-        encoding='utf-8',
-    )
-    wrapper.chmod(0o755)
-
-
 def gensymvals_cflags(cflags: list[str]) -> list[str]:
     return [flag for flag in cflags if not flag.startswith('-O')]
 
@@ -428,7 +413,6 @@ def main() -> int:
     pack_root.mkdir(parents=True, exist_ok=True)
 
     work_ml_root = prepare_worktree(uts_root, obj_root)
-    write_setfilter_wrapper(work_ml_root, workspace_root)
     symval_cflags = gensymvals_cflags(args.cflag)
     include_vpix = has_preprocessor_define(args.cpp_flag, 'VPIX')
     partial_ld = choose_partial_linker(args.ld)

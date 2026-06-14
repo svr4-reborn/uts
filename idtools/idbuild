@@ -1,0 +1,67 @@
+#!/bin/sh
+
+#ident	"@(#)idtools:idbuild	2.0"
+#
+# Rebuild the UNIX kernel from the configured /etc/conf tree, in place, on the
+# running system.  Driven by idconfig (generate config glue) + idmkunix
+# (compile glue, relink against the prebuilt pack.d objects).
+#
+# Usage: idbuild [-r root]     (default root "/")
+# Extra args are passed through to idmkunix.
+
+ROOT=/
+case "$1" in
+	-r) ROOT="$2"; shift 2;;
+esac
+[ -n "$ROOT" ] || ROOT=/
+
+ID="$ROOT/etc/conf"
+BIN="$ID/bin"
+
+# Target toolchain used to recompile the generated glue and relink.  Plain
+# cc/ld off PATH on the installed system; override via CC/LD in the environment.
+CC=${CC:-cc}
+LD=${LD:-ld}
+
+echo
+echo "	The UNIX Operating System will now be rebuilt."
+echo "	This will take some time.  Please wait."
+echo
+[ "$ROOT" = "/" ] || echo "	Root for this build is $ROOT"
+
+cd "$ID/cf.d" || { echo "idbuild: no $ID/cf.d" >&2; exit 1; }
+rm -f unix
+
+# Assemble the working sdevice/sfsys/mfsys from their .d fragment dirs, the way
+# the historical reconfigure flow did.
+cat "$ID"/sdevice.d/* > sdevice.new 2>/dev/null
+cat "$ID"/sfsys.d/*   > sfsys      2>/dev/null
+cat "$ID"/mfsys.d/*   > mfsys      2>/dev/null
+
+# Generate config.h / conf.c / fsconf.c / vector.c / direct from the metadata.
+"$BIN/idconfig" -d sdevice.new -r "$ID"
+if [ $? != 0 ]; then
+	rm -f config.h conf.c fsconf.c vector.c direct
+	exit 1
+fi
+
+# Compile the glue and relink the kernel.
+"$BIN/idmkunix" -r "$ROOT" -c "$CC" -l "$LD" "$@"
+if [ $? != 0 ]; then
+	rm -f conf.o fsconf.o vector.o
+	rm -f "$ID"/pack.d/*/space.o "$ID"/pack.d/*/stubs.o
+	exit 1
+fi
+
+# Tidy the per-build intermediates; keep unix.
+rm -f conf.o fsconf.o vector.o config.h conf.c fsconf.c vector.c direct
+rm -f "$ID"/pack.d/*/space.o "$ID"/pack.d/*/stubs.o
+mv sdevice.new sdevice
+
+chmod 744 unix
+
+echo
+echo "	The UNIX Kernel has been rebuilt: $ID/cf.d/unix"
+echo "	Install it (e.g. copy to /stand/unix) and reboot to run it."
+echo
+exit 0

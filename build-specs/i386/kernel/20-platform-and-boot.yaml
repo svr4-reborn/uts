@@ -26,44 +26,10 @@ targets:
           - -eu
           - -c
           - |
-              legacy_bin="{builddir}/uts/i386/tools/legacy-host/bin"
-              mkdir -p "$legacy_bin" "{system_root}/etc"
-              cat >"$legacy_bin/cc" <<'EOF'
-              #!/bin/sh
-              out=
-              src=
-              prev=
-              for arg in "$@"; do
-                if [ "$prev" = "-o" ]; then
-                  out="$arg"
-                fi
-                prev="$arg"
-                src="$arg"
-              done
-              if [ "${{src##*/}}" = "rmhdr.c" ] && [ -n "$out" ]; then
-                cat >"$out" <<'EOS'
-              #!/bin/sh
-              set -eu
-              objcopy -O binary "$1" "$2"
-              EOS
-                chmod 755 "$out"
-                exit 0
-              fi
-              exec "{cc}" -m32 -std=gnu89 -fcommon -fno-builtin -fno-tree-vectorize -mno-mmx -mno-sse -mno-sse2 "$@"
-              EOF
-              chmod 755 "$legacy_bin/cc"
-              cat >"$legacy_bin/as" <<'EOF'
-              #!/bin/sh
-              set -eu
-              exec as --32 "$@"
-              EOF
-              chmod 755 "$legacy_bin/as"
-              cp "{kernel_root}/tools/legacy_ld.py" "$legacy_bin/ld"
-              chmod 755 "$legacy_bin/ld"
+              mkdir -p "{system_root}/etc"
               stage_root="{legacy_stage_root}"
               mkdir -p "$stage_root/uts/i386"
-              rm -rf "$stage_root/tools" "{boot_stage_root}"
-              cp -a "{kernel_root}/tools" "$stage_root/"
+              rm -rf "{boot_stage_root}"
               cp -a "{kernel_root}/i386/boot" "$stage_root/uts/i386/"
       - kind: command
         argv:
@@ -126,7 +92,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/boot_floppy_image.py"
+          - "{kernel_root}/tools/floppyfs.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -147,7 +113,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/boot_floppy_image.py"
+          - "{kernel_root}/tools/floppyfs.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -173,7 +139,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/boot_floppy_image.py"
+          - "{kernel_root}/tools/floppyfs.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -199,7 +165,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/boot_floppy_image.py"
+          - "{kernel_root}/tools/floppyfs.py"
           - build-hybrid
           - --reference-image
           - "{reference_boot_floppy}"
@@ -222,7 +188,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/boot_floppy_image.py"
+          - "{kernel_root}/tools/floppyfs.py"
           - validate-replacements
           - --image
           - "{reference_boot_floppy}"
@@ -237,7 +203,7 @@ targets:
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/boot_floppy_image.py"
+          - "{kernel_root}/tools/floppyfs.py"
           - validate-replacements
           - --image
           - "{reference_boot_floppy}"
