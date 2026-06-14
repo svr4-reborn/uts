@@ -290,8 +290,6 @@ user_trap:
 
 	.align	4
 kern_trap:
-	cmpw	$FPESEL, %ax	# are we running the fp emulator?
-	je	user_trap
 	call	k_trap		# handle kernel trap
 	movb	$0, u_sigfault    # don't catch signal processing GP faults
 	addl	$4, %esp	# get argument off stack

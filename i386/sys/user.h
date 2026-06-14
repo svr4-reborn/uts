@@ -88,17 +88,12 @@ typedef	struct	user {
 			int     state[27];/* 287/387 saved state           */
 			int     status;   /* status word saved at exception */
 		} u_fpstate;
-		struct	fp_emul
-		{
-			char	fp_emul[246];  /* (extras for emulator) */
-			char	fp_epad[2];
-		} fp_emul;
+		int	u_fpreserved[62];
 	} u_fps;
 	long	u_weitek_reg[33];	/* bits needed to save weitek state */
 					/* NOTE: If the WEITEK is actually  */
 					/* present, only 32 longs will be   */
-					/* used, but if it is not, the      */
-					/* emulator will need 33.           */
+					/* used.                            */
 
 	/* NOTE: The second page of the uarea must begin here.
 	   That is, the offset at this point must be NBPP. */
@@ -465,4 +460,3 @@ extern void addupc();
 #endif	/* _KERNEL */
 
 #endif	/* _SYS_USER_H */
-

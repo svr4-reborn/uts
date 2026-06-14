@@ -67,11 +67,6 @@ typedef struct fpregset {
             int state[27];  /* 287/387 saved state */
             int status;     /* status word saved at exception */
         } fpchip_state;
-        struct fp_emul_space        /* for emulator(s) */
-        {
-            char    fp_emul[246];
-            char    fp_epad[2];
-        } fp_emul_space;
         int f_fpregs[62];       /* union of the above */
     } fp_reg_set;
     long    f_wregs[33];            /* saved weitek state */

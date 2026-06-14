@@ -19,8 +19,7 @@
 /*
  * values that go into fp_kind
  */
-#define FP_NO   0       /* no fp chip, no emulator (no fp support)      */
-#define FP_SW   1       /* no fp chip, using software emulator          */
+#define FP_NO   0       /* no fp chip                                   */
 #define FP_HW   2       /* chip present bit                             */
 #define FP_287  2       /* 80287 chip present                           */
 #define FP_387  3       /* 80387 chip present                           */
@@ -62,25 +61,11 @@
 extern char fp_kind;            /* kind of fp support                   */
 extern struct proc *fp_proc;    /* process that owns the fp unit        */
 
-/*
- * values for fp_vers
- */
-#define	FP_COFF		1
-#define	FP_XOUT		2
-/*  Since Elf or Coff Format Emulator behaves/works in the same way.
- */
-#define FP_ELF		1
-
-extern char fp_vers;		/* used to indicate how to map u-area	*/
-
-#define EMUL_START	0x15
-
 #if defined(__STDC__)
 
 extern void fpnoextflt(int *);
 extern void fpextovrflt(int *);
 extern void fpexterrflt(void);
-extern int fpukill(int *);
 #ifdef AT386
 extern void fpintr(void);
 #endif
@@ -92,15 +77,12 @@ extern void fpkreset(void);
 extern void savefp(int *);
 extern void restorefp(int *);
 extern void setts(void);
-extern void fpeinit(void);
-extern int fpeclean(void);
 
 #else
 
 extern void fpnoextflt();
 extern void fpextovrflt();
 extern void fpexterrflt();
-extern int fpukill();
 #ifdef AT386
 extern void fpintr();
 #endif
@@ -112,8 +94,6 @@ extern void fpkreset();
 extern void savefp();
 extern void restorefp();
 extern void setts();
-extern void fpeinit();
-extern int fpeclean();
 
 #endif	/* __STDC__ */
 

@@ -231,11 +231,11 @@ exece(uap, rvp)
 	setdscrlim(&u.u_ldt_desc, (MINLDTSZ + 1) * sizeof(struct dscr) - 1);
 	/* End XENIX Support */
 
-	/* if LDT was modified, clear it above USER_FP */
+	/* if LDT was modified, clear it above USER_LDT_LAST_PRESERVED */
 	if (u.u_ldtmodified) {
 		u.u_ldtmodified = 0;
-		bzero((caddr_t)((struct dscr *)(u.u_procp->p_ldt) + (seltoi(USER_FP)+1)),
-		      (MINLDTSZ - seltoi(USER_FP)-1) * sizeof(struct dscr));
+		bzero((caddr_t)((struct dscr *)(u.u_procp->p_ldt) + (seltoi(USER_LDT_LAST_PRESERVED)+1)),
+		      (MINLDTSZ - seltoi(USER_LDT_LAST_PRESERVED)-1) * sizeof(struct dscr));
 	}
 	/* XENIX Support */
 	/* if IDT was modified, clear it above 0xf0 */

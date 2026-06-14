@@ -71,7 +71,6 @@ variables:
   floppy_driver_compose_report: "{floppy_cf_dir}/driver-compose-report.json"
   floppy_unix: "{floppy_cf_dir}/unix"
   boot_kernel_stripped: "{builddir}/boot-media/unix.at386.floppy"
-  fp_stage_root: "{legacy_stage_root}/uts/i386/fp"
   simple_idconfig_manifest: "{cf_dir}/simple-idconfig.json"
   driver_compose_report: "{cf_dir}/driver-compose-report.json"
   init_root: "{conf_root}/init.d"

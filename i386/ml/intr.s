@@ -146,131 +146,21 @@ invoptrap:
 	.globl	ndptrap2
 	.globl	ndptrap3
 	.globl	ndptrap4
-	.globl	EM80387
 ndptrap0:
-	pushl	%eax
-	movl	$0, %eax
 	jmp	ndptrap
 	.align	4
 ndptrap2:
-	pushl	%eax
-	movl	$1, %eax
 	jmp	ndptrap
 	.align	4
 ndptrap3:
-	pushl	%eax
-	movl	$2, %eax
 	jmp	ndptrap
 	.align	4
 ndptrap4:
-	pushl	%eax
-	movl	$3, %eax
 	jmp	ndptrap
 	.align	4
 #endif
 
 ndptrap:
-#ifdef VPIX
-	.globl	v86procflag
-	.set	OLDFLAGS, 16
-	.set 	VMFLAG,	0x00020000
-	.set 	FPINIT, 0x1	
-
-	cmpb    $0,%cs:v86procflag      # Is this a v86 process?
-	je      procndp                 # No - then process trap as usual
-	cmpb    $FP_NO,%cs:fp_kind      # Is there no fp unit or emuation?
-	je      ndptrap1                # No unit or emulation - spurious intr
-	cmpb	$FP_SW,%cs:fp_kind	# Is there emulation?
-	jne	procndp			# No, there's a chip - usual process
-	testl	$VMFLAG,OLDFLAGS(%esp)	# Was it in V86 mode?
-	jne	setemandemul		# No, must set EM and emulate
-	pushl   %eax                    # Save the user reg
-	movl	%cr0,%eax
-	andl	$-1!CR0_EM, %eax	# Turn off EM bit
-	movl	%eax,%cr0
-	popl    %eax                    # Restore user register
-ndptrap1:
-	popl    %eax                    # Restore user register
-	clts                            # Try to prevent further spurious ints
-	iret                            # Exit trap interrupt routine
-
-	.align	4
-setemandemul:
-	pushl	%eax			# Must set EM mode back on
-	movl	%cr0,%eax
-	orl	$CR0_EM,%eax
-	movl	%eax,%cr0
-	popl	%eax
-
-	andl	$FPINIT, %eax
-	cmpl	$FPINIT, %eax
-	je	procndp
-
-	movl	8(%esp), %eax
-	cmpw	$USER_CS, %ax
-	jne	procndp
-	
-	movl	%esp, %eax
-	pushl	%ebx
-	pushl	%ecx
-	pushl	%edx
-
-	pushl	%fs
-	pushl	%gs
-	
-	pushl	%esi
-	pushl	%edi
-	pushl	%ebp
-
-	movl	%eax, %esi
-	movl	%esp, %ebp
-
-/* Fix the return address on the user stack from the fp emulator */
-
-	movw	20(%esi), %fs		# USER SS SEGMENT
-	movl	16(%esi), %edi		# USER ESP
-	movl	12(%esi), %ebx		# USER FLAGS
-	movl	 8(%esi), %ecx		# USER CS SEGMENT
-	movl	 4(%esi), %edx		# USER EIP 
-
-	pushl	%ebx			# USER FLAGS
-	pushl	%ecx			# USER CS SEGMENT
-	pushl	%edx			# USER EIP 
-	movl	%esp, %eax
-
-	subl	$12, %edi	
-	pushl	$12		# 3 longs
-	pushl	%edi		# user stack
-	pushl	%eax		# kernel stack
-	call	copyout
-
-	movl	%ebp, %esp		# restore %ESP
-
-	movl	%edi, 16(%esi)
-	movl	$FPESEL, 8(%esi)
-
-/* store the %eip value (EM80387) so we can jump to after iret */
-	movl	%cs:EM80387, %eax
-	movl	%eax, 4(%esi)
-
-	popl	%ebp
-	popl	%edi
-	popl	%esi
-
-	popl	%gs
-	popl	%fs
-
-	popl	%edx
-	popl	%ecx
-	popl	%ebx
-	popl	%eax
-
-	iret
-
-	.align	4
-procndp:
-	popl	%eax
-#endif /* VPIX */
 	pushl	$0
 	pushl	$7
 	jmp	cmntrap

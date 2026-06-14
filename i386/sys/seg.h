@@ -78,7 +78,6 @@ struct dscr {
 #define JTSSSEL		0x170
 #define MON1SEL		0x178	/* Selector to get to monitor int 1 handler */
 #define MON3SEL		0x180	/* Selector to get to monitor int 3 handler */
-#define FPESEL		0x193	/* Selector for the FP emulator image */
 #define XTSSSEL         0x188   /* XTSS for dual-mode processes */
 #define GRANBIT		0x8	/* bit in acc0811 for granularity */
 
@@ -87,10 +86,9 @@ struct dscr {
 #define	USER_DS		0x1F	/* user's data segment */
 #define	USER_SCALL	0x07	/* call gate for system calls */
 #define	USER_SIGCALL	0x0F	/* call gate for sigreturn */
-#define USER_FPSTK	0x27	/* alias 32 bit stack selector for emulator */
-#define USER_FP		0x2F	/* selector for fp emulator to u area */
 #define CSALIAS_SEL	0x37	/* CS alias selector for USER_DS (for XENIX */
 				/* 	execseg()/unexecseg() system calls). */
+#define USER_LDT_LAST_PRESERVED	CSALIAS_SEL
 
 #define IDTSZ		256
 #define MONIDTSZ	16

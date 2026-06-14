@@ -409,30 +409,15 @@ k_trap(r0ptr)
 	/* floating point extension faults */
 
 	case NOEXTFLT:          /* no extension */
-/* #ifdef XXX - MS_EMULATOR */
-		if (fp_vers == FP_XOUT)
-			cmn_err(CE_PANIC,"NOEXTFLT in kernel mode\n");
-		else
-/* #endif XXX - MS_EMULATOR */
-			fpnoextflt(r0ptr);
+		fpnoextflt(r0ptr);
 		break;
 
 	case EXTOVRFLT:         /* extension address overrun */
-/* #ifdef XXX - MS_EMULATOR */
-		if (fp_vers == FP_XOUT)
-			cmn_err(CE_WARN,"EXTOVRFLT in kernel mode\n");
-		else
-/* #endif XXX - MS_EMULATOR */
-			fpextovrflt(r0ptr);
+		fpextovrflt(r0ptr);
 		break;
 
 	case EXTERRFLT:         /* extension error */
-/* #ifdef XXX - MS_EMULATOR */
-		if (fp_vers == FP_XOUT)
-			cmn_err(CE_WARN,"floating point trap in kernel mode\n");
-		else
-/* #endif XXX - MS_EMULATOR */
-			fpexterrflt();
+		fpexterrflt();
 		break;
 
 	case GPFLT:		/* general protection violation */
@@ -696,35 +681,15 @@ int    *r0ptr;         /* pointer to registers on stack */
 		/* floating point extension faults */
 
 		case NOEXTFLT:		/* no extension */
-/* #ifdef XXX - MS_EMULATOR */
-			if (fp_vers == FP_XOUT) {
-				info.si_signo = SIGFPE;
-				info.si_code = ILL_ILLOPC;
-				fault = FLTFPE;
-			}
-			else
-/* #endif XXX - MS_EMULATOR */
-				fpnoextflt(r0ptr);
+			fpnoextflt(r0ptr);
 			break;
 
 		case EXTOVRFLT:         /* extension address overrun */
-/* #ifdef XXX - MS_EMULATOR */
-			if (fp_vers == FP_XOUT)
-				cmn_err(CE_PANIC, "EXTOVRFLT in user mode with no 287/387\n");
-			else
-/* #endif XXX - MS_EMULATOR */
-				fpextovrflt(r0ptr);
+			fpextovrflt(r0ptr);
 			break;
 
 		case EXTERRFLT:         /* extension error */
-/* #ifdef XXX - MS_EMULATOR */
-			if (fp_vers == FP_XOUT) {
-				info.si_signo = fpukill(r0ptr);
-				info.si_code = ILL_ILLOPC;
-				fault = FLTFPE;
-			} else
-/* #endif XXX - MS_EMULATOR */
-				fpexterrflt();
+			fpexterrflt();
 			break;
 	}
 
@@ -738,14 +703,6 @@ int    *r0ptr;         /* pointer to registers on stack */
 	if (runrun != 0)
 		preempt();
 	if (ISSIG(pp, FORREAL)) {
-/* #ifdef XXX - MS_EMULATOR */
-		if (((short)u.u_ar0[CS] == FPESEL) && (fp_vers != FP_XOUT))
-/* #else
-		if ((short)u.u_ar0[CS] == FPESEL)
-
-#endif XXX - MS_EMULATOR 
-*/
-			fpeclean();
 #ifdef MERGE386
 	/* if it's a vm86 process dump the vm86 registers */
 	{
@@ -1054,7 +1011,7 @@ int *r0ptr;
 	** Returns true if the kernel should panic.
 	**
 	** ptrace(), the user who trashes his stack during signal handling,
-	** the [23]87 emulators, and i286 emulator,
+	** the i286 emulator,
 	** and perhaps other circumstances will occasionally set various user
 	** registers or selectors to real bad values. Unfortunately, the
 	** values of the user registers seem to cause a k_trap() instead of

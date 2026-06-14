@@ -210,10 +210,7 @@ typedef struct v86dat
     		int	state[27];	/* 287/387 saved state */
     		int	status;		/* status word saved at exception */
     	} vp_fpstate;
-    	struct	vfpemul {		/* FP emulator state */
-    		char	fp_emul[246];	/* (extras for emulator) */
-    		char	fp_epad[2];
-    	} vp_fpemul;
+    	int	vp_fpreserved[62];
     } vp_fpu;
     struct seg_desc	vp_xtss_desc;	/* Segment descriptor for xtss  */
 }   v86_t;
@@ -276,4 +273,3 @@ typedef struct v86dat
 #define V86_MAGIC1      'T'             /* Byte for XTSS magic[1]       */
 
 #endif	/*  _SYS_V86_H */
-

@@ -605,16 +605,8 @@ struct proc *p;
  	if (v86p)                       /* Save TR for v86 process */
  	    v86p->vp_oldtr = (sel_t)get_tr() & (sel_t)0x0FFF8;
 
- 	/*
- 	**  Always set EM bit in CR0 if there is emulation, since if the
- 	**  previous task was a dual-mode process in V86 mode, we may have
- 	**  unset it to fool it into thinking there's no emulation.
- 	*/
- 	if (fp_kind == FP_SW)
- 		setem();
-
- 	/*
- 	**  If incoming process is a dual-mode process then:
+	/*
+	**  If incoming process is a dual-mode process then:
  	**    a)  If he entered the kernel in Virtual 86 mode, we must
  	**        map his XTSS, not his U-block TSS, into the window.
  	**        The XTSS descriptor must be marked AVAILABLE because

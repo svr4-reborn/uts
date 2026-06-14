@@ -751,7 +751,7 @@ skip_b1_detect:
 	fninit                          # initialize chip
 	fstsw	%ax			# get status
 	orb	%al,%al			# status zero? 0 = chip present
-	jnz     mathemul                # no, use emulator
+	jnz     nofp                    # no chip
 /* */
 /* at this point we know we have a chip of some sort; */
 /* use cr0 to differentiate. */
@@ -818,14 +818,14 @@ skip_cr3_detect:
 	movl	%eax, %cr3
 	jmp	cont
 /* */
-/* Assume we have an emulator. */
+/* No math chip. */
 /* */
-mathemul:
+nofp:
 	movl    %cr0,%edx
 	andl    $-1!CR0_MP,%edx         # clear math chip present
 	orl     $CR0_EM,%edx            # set emulate math bit
 	movl    %edx,%cr0               # in machine status word
-	movb    $FP_SW,fp_kind          # signify that we are emulating
+	movb    $FP_NO,fp_kind
 cont:
 
 #ifdef WEITEK
@@ -1348,11 +1348,9 @@ resume:
 	movsl				# from p_ubptbl[] to usertable[]
 
 /* */
-/* # First ublock page must be user read#write, for two reasons: */
-/* 1. To get around a bug in the B1 stepping of the 80386, the */
+/* # First ublock page must be user read#write. */
+/* To get around a bug in the B1 stepping of the 80386, the */
 /* kernel stack must be user readable. */
-/* 2. Floating point emulators (executing in user mode) must be */
-/* able to read and write the floating-point state. */
 /* So, the ublock is set up so the first page contains (only) the */
 /* kernel stack and the floating-point state. */
 

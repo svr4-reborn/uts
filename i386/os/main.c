@@ -259,12 +259,6 @@ char	*argv[];
  	u.u_error = 0;		/* XXX kludge for SCSI driver */
  	vfs_mountroot();	/* Mount the root file system */
  
-	/*
-	 *  pull in the floating point emulator.
-	 */
-
-	fpeinit();
-
 	u.u_start = hrestime.tv_sec;
 
 	/*
@@ -397,40 +391,6 @@ char	*argv[];
 		ldta->a_lim0015 = (ushort)btoct(WEITEK_MAXADDR);
 		ldta->a_lim1619 = ((unsigned char)(btoct(WEITEK_MAXADDR) >> 16)) & 0x0F;
 #endif
-		/*
-		 * set up LDT entries for floating point emulation.
-		 * 2 entries: one for a 32-bit alias to the user's stack,
-		 *   and one for a window into the fp save area in the
-		 *   user structure.
-		 */
-		ldt = (struct dscr *)u.u_procp->p_ldt;
-		ldt += seltoi(USER_FP);
-/* #ifdef XXX - MS_EMULATOR */
-		if (fp_vers == FP_COFF)
-		{
-/* #endif XXX - MS_EMULATOR */
-			setdscrbase(ldt, &u.u_fpvalid);
-			i = (int)(&u.u_fps) - (int)(&u.u_fpvalid) +
-							sizeof(u.u_fps);
-/* #ifdef XXX - MS_EMULATOR */
-		}
-		else
-		{
-			setdscrbase(ldt, &u.u_fps);
-			i = sizeof(u.u_fps);
-		}
-/* #endif XXX - MS_EMULATOR */
-#ifdef WEITEK
-		i += sizeof(u.u_weitek_reg);
-#endif
-		setdscrlim(ldt, i);
-		ldt->a_acc0007 = UDATA_ACC1;
-		ldt->a_acc0811 = DATA_ACC2_S;
-
-		ldt = (struct dscr *)u.u_procp->p_ldt;
-		ldt += seltoi(USER_FPSTK);
-		*ldt = *ldta;
-
  		return UVTEXT;
 	}
 
