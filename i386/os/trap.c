@@ -432,7 +432,7 @@ k_trap(r0ptr)
 			cmn_err(CE_WARN,"floating point trap in kernel mode\n");
 		else
 /* #endif XXX - MS_EMULATOR */
-			fpexterrflt(r0ptr);
+			fpexterrflt();
 		break;
 
 	case GPFLT:		/* general protection violation */
@@ -724,7 +724,7 @@ int    *r0ptr;         /* pointer to registers on stack */
 				fault = FLTFPE;
 			} else
 /* #endif XXX - MS_EMULATOR */
-				fpexterrflt(r0ptr);
+				fpexterrflt();
 			break;
 	}
 
@@ -1390,4 +1390,3 @@ stop_on_fault(fault, sip)
 	p->p_curflt = 0;
 	return fault;
 }
-

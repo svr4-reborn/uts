@@ -17,6 +17,7 @@
 #include <sys/cred.h>
 #include <sys/resource.h>
 #include <sys/proc.h>
+#include <sys/elf.h>
 
 
 #define getexmag(x)   (x[1] << 8) + x[0]
@@ -90,6 +91,8 @@ typedef struct exhda {
 	int nomap;
 } exhda_t;
 
+struct exdata;
+
 #define EXHDA_HADERROR	1
 
 #if defined(__STDC__)
@@ -107,6 +110,8 @@ extern caddr_t execstk_addr(int, u_int *);
 extern int execpermissions(struct vnode *, struct vattr *, exhda_t *, struct uarg *);
 extern int arglistsz(char **, int *, int *, int);
 extern int copyarglist(int, char **, int, char **, char *, int);
+extern int getcoffhead(vnode_t *, struct exdata *, long *, exhda_t *);
+extern int getelfhead(Elf32_Ehdr **, caddr_t *, long *, exhda_t *);
 
 #else
 
@@ -122,6 +127,8 @@ extern caddr_t execstk_addr();
 extern int execpermissions();
 extern int arglistsz();
 extern int copyarglist();
+extern int getcoffhead();
+extern int getelfhead();
 
 #endif	/* __STDC__ */
 
