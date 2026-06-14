@@ -225,8 +225,6 @@ def install_boot_artifacts(system_root: Path, fdboot: Path, hdboot: Path, defaul
         shutil.copyfile(default_dir / name, defaults_dir / name)
         os.chmod(defaults_dir / name, 0o644)
 
-    os.chmod(defaults_dir / 'boot', 0o644)
-
 
 def main() -> int:
     args = parse_args()
