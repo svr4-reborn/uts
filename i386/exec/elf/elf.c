@@ -75,8 +75,6 @@ extern int	userstack[];
 extern int mau_present;
 #endif
 
-STATIC int getelfhead();
-
 int
 elfexec(vp, args, level, execsz, ehdp, setid)
 struct vnode *vp;

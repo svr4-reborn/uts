@@ -49,7 +49,6 @@ extern int mau_present;
 #endif
 
 void coffexec_err();
-STATIC int getcoffhead();
 int getcoffshlibs();
 
 #ifdef i386	/* We highlighted this - helps during porting phase - */
@@ -518,7 +517,7 @@ exhda_t	*ehdp;
 		lhda.nomap = nvp->v_flag & VNOMAP;
 
 
-		error = getcoffhead(nvp, dat, execsz, &lhda, (struct uarg *) 0);
+		error = getcoffhead(nvp, dat, execsz, &lhda);
 		exhd_release(&lhda);
 		if (error) {
 			if (error != ENOMEM)
