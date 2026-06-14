@@ -15,12 +15,6 @@ try:
 except ImportError:
     from pathing import resolve_kernel_root
 
-try:
-    from .legacy_as import normalize_legacy_assembly
-except ImportError:
-    from legacy_as import normalize_legacy_assembly
-
-
 SYMVAL_MEMBER_EXPRESSIONS: list[tuple[str, str]] = [
     ('i_flag', '__builtin_offsetof(struct inode, i_flag)'),
     ('memused', '__builtin_offsetof(struct bootinfo, memused)'),
@@ -114,6 +108,119 @@ BYTE_REGISTER_PATTERNS = {
     '%c': '%cl',
     '%d': '%dl',
 }
+LEGACY_PREFIX_BYTES = {
+    'addr16': '0x67',
+    'data16': '0x66',
+}
+LEGACY_AMBIGUOUS_MNEMONICS = {
+    'adc',
+    'add',
+    'and',
+    'cmp',
+    'dec',
+    'div',
+    'inc',
+    'mov',
+    'mul',
+    'neg',
+    'not',
+    'or',
+    'rcl',
+    'shl',
+    'sub',
+    'test',
+}
+LEGACY_REGISTER_TOKEN = re.compile(r'%[A-Za-z][A-Za-z0-9]*')
+LEGACY_MEMORY_ADDRESSING = re.compile(r'\([^)]*\)|\[[^]]*\]')
+LEGACY_SEGMENT_PREFIX = re.compile(r'%(?:[cdefgs]s):')
+LEGACY_INSTRUCTION_LINE = re.compile(
+    r'^(?P<indent>\s*)(?:(?P<label>[A-Za-z_.$][\w.$]*):\s*)?(?P<mnemonic>[A-Za-z]+)(?P<rest>\s+.*)?$'
+)
+
+
+def find_legacy_comment_index(line: str) -> int:
+    quote: str | None = None
+    for index, char in enumerate(line):
+        if char in {'"', "'"}:
+            if quote is None:
+                quote = char
+            elif quote == char:
+                quote = None
+            continue
+        if char == '/' and quote is None:
+            if index == 0 or line[index - 1] != '\\':
+                return index
+    return -1
+
+
+def rewrite_legacy_comment_syntax(source_text: str) -> str:
+    rewritten: list[str] = []
+    for line in source_text.splitlines():
+        comment_index = find_legacy_comment_index(line)
+        if comment_index == -1:
+            rewritten.append(line.replace('\\*', '*').replace('\\/', '/'))
+            continue
+        normalized = f'{line[:comment_index]}#{line[comment_index + 1:]}'
+        rewritten.append(normalized.replace('\\*', '*').replace('\\/', '/'))
+    return '\n'.join(rewritten) + '\n'
+
+
+def normalize_prefix_line(line: str) -> str:
+    stripped = line.strip()
+    prefix_byte = LEGACY_PREFIX_BYTES.get(stripped)
+    if prefix_byte is None:
+        return line
+    indent = line[: len(line) - len(line.lstrip())]
+    return f'{indent}.byte\t{prefix_byte}'
+
+
+def explicit_register_tokens(operand_text: str) -> list[str]:
+    scrubbed = LEGACY_MEMORY_ADDRESSING.sub('', operand_text)
+    scrubbed = LEGACY_SEGMENT_PREFIX.sub('', scrubbed)
+    return LEGACY_REGISTER_TOKEN.findall(scrubbed)
+
+
+def is_ambiguous_memory_operation(mnemonic: str, operands: str) -> bool:
+    if mnemonic not in LEGACY_AMBIGUOUS_MNEMONICS:
+        return False
+    if '(' not in operands and '[' not in operands and '%gs:' not in operands and '%fs:' not in operands:
+        return False
+    for token in explicit_register_tokens(operands):
+        if token in {'%gs', '%fs', '%cs', '%ds', '%es', '%ss'}:
+            continue
+        if token.startswith('%e'):
+            return False
+    return True
+
+
+def normalize_ambiguous_instruction(line: str) -> str:
+    match = LEGACY_INSTRUCTION_LINE.match(line)
+    if match is None:
+        return line
+
+    mnemonic = match.group('mnemonic')
+    if mnemonic[-1] in {'b', 'w', 'l'} and mnemonic[:-1] in LEGACY_AMBIGUOUS_MNEMONICS:
+        return line
+
+    rest = match.group('rest') or ''
+    operands = rest.split('#', 1)[0]
+    if not is_ambiguous_memory_operation(mnemonic, operands):
+        return line
+
+    label = match.group('label')
+    prefix = match.group('indent')
+    if label:
+        prefix = f'{prefix}{label}: '
+    return f'{prefix}{mnemonic}l{rest}'
+
+
+def normalize_legacy_assembly(source_text: str) -> str:
+    normalized: list[str] = []
+    for line in rewrite_legacy_comment_syntax(source_text).splitlines():
+        updated = normalize_prefix_line(line)
+        updated = normalize_ambiguous_instruction(updated)
+        normalized.append(updated)
+    return '\n'.join(normalized) + '\n'
 
 
 def parse_args() -> argparse.Namespace:

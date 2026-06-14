@@ -16,7 +16,7 @@
 #ident	"@(#)boot:boot/at386/initprog/misc.c	1.1.4.1"
 
 /* #include <sys/inline.h> */
-#include "../bsymvals.h"
+#include "bsymvals.h"
 
 
 /*

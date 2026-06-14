@@ -53,6 +53,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Generate uts/i386/boot/at386/bsymvals.{s,h} without relying on historical compiler debug record layouts.')
     parser.add_argument('--workspace-root', required=True)
     parser.add_argument('--boot-root')
+    parser.add_argument('--output-root')
     parser.add_argument('--cc', default='gcc')
     return parser.parse_args()
 
@@ -138,8 +139,9 @@ def main() -> int:
     workspace_root = Path(args.workspace_root).resolve()
     kernel_root = resolve_kernel_root(workspace_root)
     boot_root = Path(args.boot_root).resolve() if args.boot_root else kernel_root / 'i386/boot/at386'
-    boot_dir = boot_root
-    temp_dir = boot_root / '.bsymvals-build'
+    output_root = Path(args.output_root).resolve() if args.output_root else boot_root
+    output_root.mkdir(parents=True, exist_ok=True)
+    temp_dir = output_root / '.bsymvals-build'
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -165,7 +167,7 @@ def main() -> int:
         str(assembly_output),
     ])
     offsets = extract_offset_lines(assembly_output)
-    (boot_dir / 'bsymvals.s').write_text(offsets, encoding='utf-8')
+    (output_root / 'bsymvals.s').write_text(offsets, encoding='utf-8')
 
     header_lines = collect_header_lines([
         kernel_root / 'i386/sys/bootinfo.h',
@@ -174,7 +176,7 @@ def main() -> int:
         kernel_root / 'i386/sys/hd.h',
         kernel_root / 'i386/sys/kd.h',
     ])
-    (boot_dir / 'bsymvals.h').write_text('\n'.join(header_lines) + '\n', encoding='utf-8')
+    (output_root / 'bsymvals.h').write_text('\n'.join(header_lines) + '\n', encoding='utf-8')
     return 0
 
 

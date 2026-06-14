@@ -27,18 +27,14 @@ targets:
           - -c
           - |
               mkdir -p "{system_root}/etc"
-              stage_root="{legacy_stage_root}"
-              mkdir -p "$stage_root/uts/i386"
-              rm -rf "{boot_stage_root}"
-              cp -a "{kernel_root}/i386/boot" "$stage_root/uts/i386/"
       - kind: command
         argv:
           - python3
           - "{kernel_root}/tools/uts_boot_symvals.py"
           - --workspace-root
           - "{workspace_root}"
-          - --boot-root
-          - "{boot_stage_at386_root}"
+          - --output-root
+          - "{boot_symvals_root}"
           - --cc
           - "{cc}"
       - kind: command
@@ -48,7 +44,9 @@ targets:
           - --workspace-root
           - "{workspace_root}"
           - --boot-root
-          - "{boot_stage_root}"
+          - "{kernel_root}/i386/boot"
+          - --symvals-root
+          - "{boot_symvals_root}"
           - --build-root
           - "{builddir}/uts/i386/boot/build"
           - --system-root
@@ -68,7 +66,9 @@ targets:
           - --workspace-root
           - "{workspace_root}"
           - --boot-root
-          - "{boot_stage_root}"
+          - "{kernel_root}/i386/boot"
+          - --symvals-root
+          - "{boot_symvals_root}"
           - --build-root
           - "{builddir}/uts/i386/boot/at386/initprog"
           - --system-root

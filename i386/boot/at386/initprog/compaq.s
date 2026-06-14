@@ -26,7 +26,7 @@
 /	
 	.text
 
-#include "../bsymvals.h"
+#include "bsymvals.h"
 
 	.globl	initprog
 

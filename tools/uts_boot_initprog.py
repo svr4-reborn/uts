@@ -28,6 +28,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Build uts/i386/boot/at386/initprog without the historical makefile suffix rules.')
     parser.add_argument('--workspace-root', required=True)
     parser.add_argument('--boot-root')
+    parser.add_argument('--symvals-root')
     parser.add_argument('--build-root', required=True)
     parser.add_argument('--system-root', required=True)
     parser.add_argument('--cc', default='gcc')
@@ -77,19 +78,20 @@ def find_comment_index(line: str) -> int:
     return -1
 
 
-def compile_assembly(source: Path, output: Path, *, cpp: str, assembler: str, include_root: Path, build_dir: Path) -> None:
+def compile_assembly(source: Path, output: Path, *, cpp: str, assembler: str, include_root: Path, symvals_root: Path, build_dir: Path) -> None:
     preprocessed = build_dir / f'{source.stem}.i'
     sanitized = build_dir / f'{source.stem}.s'
-    run([cpp, '-P', *CPP_DEFINES, f'-I{include_root}', str(source), '-o', str(preprocessed)])
+    run([cpp, '-P', *CPP_DEFINES, f'-I{symvals_root}', f'-I{include_root}', str(source), '-o', str(preprocessed)])
     sanitized.write_text(rewrite_legacy_comment_syntax(preprocessed.read_text()), encoding='utf-8')
     run([assembler, '--32', '-o', str(output), str(sanitized)])
 
 
-def compile_c(source: Path, output: Path, *, cc: str, include_root: Path) -> None:
+def compile_c(source: Path, output: Path, *, cc: str, include_root: Path, symvals_root: Path) -> None:
     run([
         cc,
         '-m32',
         *COMMON_CFLAGS,
+        f'-I{symvals_root}',
         f'-I{include_root}',
         '-include',
         str(include_root / 'sys/types.h'),
@@ -125,15 +127,15 @@ def write_linker_script(build_dir: Path) -> Path:
     return linker_script
 
 
-def build_program(name: str, sources: list[str], *, source_dir: Path, build_dir: Path, include_root: Path, cc: str, cpp: str, assembler: str, ld: str) -> Path:
+def build_program(name: str, sources: list[str], *, source_dir: Path, build_dir: Path, include_root: Path, symvals_root: Path, cc: str, cpp: str, assembler: str, ld: str) -> Path:
     object_paths: list[Path] = []
     for source_name in sources:
         source = source_dir / source_name
         object_path = build_dir / f'{Path(source_name).stem}.o'
         if source.suffix == '.s':
-            compile_assembly(source, object_path, cpp=cpp, assembler=assembler, include_root=include_root, build_dir=build_dir)
+            compile_assembly(source, object_path, cpp=cpp, assembler=assembler, include_root=include_root, symvals_root=symvals_root, build_dir=build_dir)
         elif source.suffix == '.c':
-            compile_c(source, object_path, cc=cc, include_root=include_root)
+            compile_c(source, object_path, cc=cc, include_root=include_root, symvals_root=symvals_root)
         else:
             raise ValueError(f'unsupported source type: {source}')
         object_paths.append(object_path)
@@ -172,9 +174,10 @@ def main() -> int:
     system_root = Path(args.system_root).resolve()
     source_dir = boot_root / 'at386/initprog'
     include_root = kernel_root / 'i386'
+    symvals_root = Path(args.symvals_root).resolve() if args.symvals_root else source_dir.parent
 
-    if not (source_dir.parent / 'bsymvals.h').exists():
-        raise SystemExit('error: expected uts/i386/boot/at386/bsymvals.h to exist before building initprog')
+    if not (symvals_root / 'bsymvals.h').exists():
+        raise SystemExit(f'error: expected {symvals_root / "bsymvals.h"} to exist before building initprog')
 
     if build_root.exists():
         shutil.rmtree(build_root)
@@ -188,6 +191,7 @@ def main() -> int:
             source_dir=source_dir,
             build_dir=build_root,
             include_root=include_root,
+            symvals_root=symvals_root,
             cc=args.cc,
             cpp=args.cpp,
             assembler=args.assembler,

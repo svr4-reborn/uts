@@ -76,6 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Build uts/i386/boot without invoking the historical makefiles.')
     parser.add_argument('--workspace-root', required=True)
     parser.add_argument('--boot-root')
+    parser.add_argument('--symvals-root')
     parser.add_argument('--build-root', required=True)
     parser.add_argument('--system-root', required=True)
     parser.add_argument('--cc', default='gcc')
@@ -128,9 +129,10 @@ def apply_boot_sed(source_text: str) -> str:
     return '\n'.join(output) + '\n'
 
 
-def common_cpp_flags(workspace_root: Path, include_root: Path, extra_define: str | None = None) -> list[str]:
+def common_cpp_flags(workspace_root: Path, include_root: Path, symvals_root: Path, extra_define: str | None = None) -> list[str]:
     flags = [
         *CPP_DEFINES,
+        f'-I{symvals_root}',
         f'-I{include_root}',
     ]
     if extra_define:
@@ -138,8 +140,8 @@ def common_cpp_flags(workspace_root: Path, include_root: Path, extra_define: str
     return flags
 
 
-def assemble_with_cpp(source: Path, output: Path, *, workspace_root: Path, include_root: Path, cpp: str, assembler: str, build_dir: Path, extra_define: str | None = None, prepend: Path | None = None) -> None:
-    combined = source.parent / f'.{source.stem}.combined.s'
+def assemble_with_cpp(source: Path, output: Path, *, workspace_root: Path, include_root: Path, symvals_root: Path, cpp: str, assembler: str, build_dir: Path, extra_define: str | None = None, prepend: Path | None = None) -> None:
+    combined = build_dir / f'{source.stem}.combined.s'
     try:
         with combined.open('w', encoding='utf-8') as handle:
             if prepend is not None:
@@ -150,7 +152,7 @@ def assemble_with_cpp(source: Path, output: Path, *, workspace_root: Path, inclu
         sanitized = build_dir / f'{source.stem}.s'
         run([
             cpp,
-            *common_cpp_flags(workspace_root, include_root, extra_define),
+            *common_cpp_flags(workspace_root, include_root, symvals_root, extra_define),
             '-P',
             str(combined),
             '-o',
@@ -162,13 +164,13 @@ def assemble_with_cpp(source: Path, output: Path, *, workspace_root: Path, inclu
         combined.unlink(missing_ok=True)
 
 
-def compile_c_to_object(source: Path, output: Path, *, workspace_root: Path, include_root: Path, cc: str, assembler: str, build_dir: Path, extra_define: str | None = None) -> None:
+def compile_c_to_object(source: Path, output: Path, *, workspace_root: Path, include_root: Path, symvals_root: Path, cc: str, assembler: str, build_dir: Path, extra_define: str | None = None) -> None:
     assembly = build_dir / f'{source.stem}.gen.s'
     filtered = build_dir / f'{source.stem}.i'
     run([
         cc,
         *COMMON_CFLAGS,
-        *common_cpp_flags(workspace_root, include_root, extra_define),
+        *common_cpp_flags(workspace_root, include_root, symvals_root, extra_define),
         '-S',
         '-c',
         str(source),
@@ -179,7 +181,7 @@ def compile_c_to_object(source: Path, output: Path, *, workspace_root: Path, inc
     run([assembler, '--32', '-o', str(output), str(filtered)])
 
 
-def compile_variant_objects(source_dir: Path, source_names: list[str], *, workspace_root: Path, include_root: Path, cc: str, cpp: str, assembler: str, build_dir: Path, extra_define: str | None = None, prepend: Path | None = None) -> list[Path]:
+def compile_variant_objects(source_dir: Path, source_names: list[str], *, workspace_root: Path, include_root: Path, symvals_root: Path, cc: str, cpp: str, assembler: str, build_dir: Path, extra_define: str | None = None, prepend: Path | None = None) -> list[Path]:
     build_dir.mkdir(parents=True, exist_ok=True)
     object_paths: list[Path] = []
     for source_name in source_names:
@@ -187,9 +189,9 @@ def compile_variant_objects(source_dir: Path, source_names: list[str], *, worksp
         suffix = 'o'
         object_path = build_dir / f'{source.stem}.{suffix}'
         if source.suffix == '.s':
-            assemble_with_cpp(source, object_path, workspace_root=workspace_root, include_root=include_root, cpp=cpp, assembler=assembler, build_dir=build_dir, extra_define=extra_define, prepend=prepend)
+            assemble_with_cpp(source, object_path, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cpp=cpp, assembler=assembler, build_dir=build_dir, extra_define=extra_define, prepend=prepend)
         elif source.suffix == '.c':
-            compile_c_to_object(source, object_path, workspace_root=workspace_root, include_root=include_root, cc=cc, assembler=assembler, build_dir=build_dir, extra_define=extra_define)
+            compile_c_to_object(source, object_path, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=cc, assembler=assembler, build_dir=build_dir, extra_define=extra_define)
         else:
             raise ValueError(f'unsupported source type: {source}')
         object_paths.append(object_path)
@@ -236,7 +238,8 @@ def main() -> int:
     boot_at386_root = boot_root / 'at386'
     bootlib_root = boot_root / 'bootlib'
     include_root = kernel_root / 'i386'
-    bsymvals = boot_at386_root / 'bsymvals.s'
+    symvals_root = Path(args.symvals_root).resolve() if args.symvals_root else boot_at386_root
+    bsymvals = symvals_root / 'bsymvals.s'
 
     if not bsymvals.exists():
         raise SystemExit(f'error: expected {bsymvals} to exist before building boot')
@@ -245,10 +248,10 @@ def main() -> int:
         shutil.rmtree(build_root)
     build_root.mkdir(parents=True, exist_ok=True)
 
-    fd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, workspace_root=workspace_root, include_root=include_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/fd')
-    hd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, workspace_root=workspace_root, include_root=include_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/hd', extra_define='-DWINI')
-    fd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, workspace_root=workspace_root, include_root=include_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/fd', prepend=bsymvals)
-    hd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, workspace_root=workspace_root, include_root=include_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/hd', extra_define='-DWINI', prepend=bsymvals)
+    fd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/fd')
+    hd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/hd', extra_define='-DWINI')
+    fd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/fd', prepend=bsymvals)
+    hd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/hd', extra_define='-DWINI', prepend=bsymvals)
 
     fdboot_path = build_root / 'fdboot.elf'
     hdboot_path = build_root / 'hdboot'
