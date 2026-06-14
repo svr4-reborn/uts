@@ -343,7 +343,7 @@ newproc(cond, pidp, perror)
 	/*
 	 * The child does not return from procdup() through a normal epilogue:
 	 * procdup() hand-builds the child's TSS so that resume() drops it back
-	 * here with eax==1 (see procdup()/cpreg()).  The child's restored
+	 * here with eax==1 (see procdup()).  The child's restored
 	 * callee-saved registers come from that synthesized context and bear no
 	 * relation to whatever newproc() had live across the call.  In
 	 * particular newproc() must NOT assume any callee-saved register (e.g.
@@ -515,14 +515,6 @@ procdup(cp, pp, isvfork, no_swap)
 
 	extern void 		ev_exit();
 
-	register ebx, edi, esi;		/* ensure registers are saved */
-
-	/*
-	 * We must save all the registers when we
-	 * enter procdup if fork is to work correctly.
-	 */
-	ebx = edi = esi = 1;		/* very machine dependent */
-
 	/*
 	 * Duplicate address space of current process. For
 	 * vfork we just share the address space structure.
@@ -601,21 +593,38 @@ procdup(cp, pp, isvfork, no_swap)
 			(uservad->u_ldtlimit + 1) * sizeof(struct seg_desc) - 1); */
 
 	/*
-	 * this is really machine dependent - 
-	 * set the pc to return to our caller
-	 */
-
- 	/* Set up the child's regs in the tss so that the saved
- 	 * register variables, eip, etc. get restored. The
- 	 * function prolog saves the old frame pointer, allocates
- 	 * space for locals and then saves the previous register
- 	 * variables. This means that we have no way of accessing
- 	 * the saved reg vars off the current frame pointer
- 	 * since we don't know how many locals were allocated.
- 	 * Hence the following - we know that the old
- 	 * reg vars are currently at the top of the stack since
- 	 * we are in the outermost block of the function. Cpreg
- 	 * can now access them off its argument.
+	 * This is really machine dependent: arrange for the child to
+	 * "return" out of the procdup() call inside newproc(), as if
+	 * procdup() had returned 1.  The child does not run a normal
+	 * function epilogue to get here; instead the dispatcher performs a
+	 * hardware task switch into this TSS (loading eip/esp/ebp/eax/...
+	 * from the fields below) and lands at resume(), which eventually
+	 * does a plain "ret" off the reconstructed stack back into
+	 * newproc().
+	 *
+	 * For that "ret" to find newproc()'s frame, we only need to rebuild
+	 * the stack pointer and frame pointer of newproc()'s call to us:
+	 *
+	 *   sp    = &cp - 1   ->  the slot holding our return address (the
+	 *                         instruction after the procdup() call in
+	 *                         newproc()).  This is independent of how
+	 *                         many locals procdup() allocated, since the
+	 *                         incoming arguments always sit just above
+	 *                         the saved frame pointer / return address.
+	 *   sp[-1]            ->  the frame pointer newproc() pushed, i.e.
+	 *                         the value %ebp must have on return.
+	 *
+	 * eax = 1 selects newproc()'s child_return path.  The callee-saved
+	 * registers (ebx/esi/edi) are deliberately *not* reconstructed:
+	 * newproc() must not (and, thanks to the clobber on the procdup()
+	 * call site, does not) assume any callee-saved register survives the
+	 * call, so on the child path it reloads everything it needs from the
+	 * stack.  We zero them only so the child starts from a deterministic
+	 * register state rather than inheriting the parent's stale u-block
+	 * copy.  (Historically this function relied on a cpreg() helper that
+	 * snapshotted procdup()'s prologue-saved reg vars off the stack at
+	 * fixed offsets; that was fragile -- especially under PIC, where ebx
+	 * is the GOT pointer -- and is no longer needed.)
 	 */
 
  	sp = (int *)(&cp - 1);		/* sp points to <ret addr> */
@@ -623,6 +632,9 @@ procdup(cp, pp, isvfork, no_swap)
  	tp->t_eip = (unsigned long) resume;
  	tp->t_eflags = 2;		/* no interrupts */
  	tp->t_eax = 1;			/* child */
+ 	tp->t_ebx = 0;
+ 	tp->t_esi = 0;
+ 	tp->t_edi = 0;
  	tp->t_edx = (unsigned long) UTSSSEL;  /* task for child is UTSSSEL */
  	tp->t_esp = (unsigned long) sp;
  	tp->t_ebp = sp[-1];
@@ -634,8 +646,6 @@ procdup(cp, pp, isvfork, no_swap)
  	tp->t_gs = 0;
  	tp->t_ldt = LDTSEL;
 
- 	cpreg(tp);
- 
 	/*
 	 * Put the child on the run queue.
 	 */
@@ -643,21 +653,6 @@ procdup(cp, pp, isvfork, no_swap)
 	return 0;
 }
 
-/*
- * Save old register variables in tss. Much magic takes
- * place here. Cpreg knows that the reg vars are stored
- * immediately below the argument on the stack. Read the
- * long comment above.
- */
- 
-cpreg(tp)
-struct tss386 *tp;
-{
-	tp->t_ebx = (unsigned long) *(&tp + 1);
- 	tp->t_esi = (unsigned long) *(&tp + 2);
- 	tp->t_edi = (unsigned long) *(&tp + 3);
-}
- 
 /*
  * Setup context of child process.
  */
