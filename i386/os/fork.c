@@ -340,7 +340,21 @@ newproc(cond, pidp, perror)
 	 */
 	procdup_result = procdup(cp, pp, (cond & (NP_VFORK|NP_SHARE|NP_THREAD)),
 				(cond & (NP_SYSPROC | NP_INIT)));
-	asm volatile ("" : "+r" (procdup_result) : : "memory");
+	/*
+	 * The child does not return from procdup() through a normal epilogue:
+	 * procdup() hand-builds the child's TSS so that resume() drops it back
+	 * here with eax==1 (see procdup()/cpreg()).  The child's restored
+	 * callee-saved registers come from that synthesized context and bear no
+	 * relation to whatever newproc() had live across the call.  In
+	 * particular newproc() must NOT assume any callee-saved register (e.g.
+	 * &u == 0xE0000000, which gcc -O2 likes to cache in %edi) survives the
+	 * call -- on the child path it will not, and the child_return block
+	 * below would then dereference garbage.  Tell the compiler those
+	 * registers are dead across the call so it re-materializes addresses
+	 * afterwards.  (%ebp is intentionally excluded: procdup() reconstructs
+	 * the child's frame pointer via tp->t_ebp = sp[-1].)
+	 */
+	asm volatile ("" : "+r" (procdup_result) : : "ebx", "esi", "edi", "memory");
 	switch (procdup_result) {
 	case 0:
 		/*
