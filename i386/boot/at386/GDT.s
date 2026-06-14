@@ -113,6 +113,6 @@ initcode16:			/ offset = 0x38
 
 GDTptr:	
 gdtlimit:
-	.value	GDTSIZE
+	.value	GDTSIZE-1
 gdtbase:
 	.long	GDTstart + 0x1000

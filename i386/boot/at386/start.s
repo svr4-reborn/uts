@@ -650,9 +650,9 @@ secondstage:
 /	start up the C code
 
 /	enter protected mode
+	cli
 	.byte	0x66
 	call	goprot
-	cli
 
 	call	main			/ jump to the C code; shouldn't return
 

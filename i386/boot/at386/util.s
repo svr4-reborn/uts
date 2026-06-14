@@ -214,6 +214,33 @@ getDS:
 	ret
 
 /	----------------------------------------------------
+/	Zero physical memory from protected mode.
+/
+/	physzero(paddr_t addr, ulong count)
+/
+
+	.globl	physzero
+physzero:
+	pushl	%edi
+	push	%es
+
+	cld
+
+	movw	$0x08, %ax		/ flat descriptor for physical addressing
+	movw	%ax, %es
+
+	movl	12(%esp), %edi		/ destination physical address
+	movl	16(%esp), %ecx		/ byte count
+	xorl	%eax, %eax
+	rep
+	stosb
+
+	pop	%es
+	popl	%edi
+
+	ret
+
+/	----------------------------------------------------
 /	read the cmos database, entry from protected mode
 /
 	.globl	prdcmos

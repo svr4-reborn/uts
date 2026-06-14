@@ -44,7 +44,9 @@ BOOTLIB_SOURCES = [
     'bfsfilesys.c',
 ]
 
-CPP_DEFINES = ['-DAT386', '-DDEBUG', '-DWEITEK', '-DWEITEK_EMULATOR']
+CPP_DEFINES = ['-DAT386', '-DWEITEK', '-DWEITEK_EMULATOR']
+if os.environ.get('SVR4_BOOT_DEBUG'):
+    CPP_DEFINES.append('-DDEBUG')
 COMMON_CFLAGS = [
     '-m32',
     '-std=gnu89',

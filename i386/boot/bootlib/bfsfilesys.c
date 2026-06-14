@@ -318,10 +318,6 @@ register char *mem;
 register ushort selector;
 {
 	dread(sector);
-#ifdef AT386
-	if ( kbd_check && ischar() )
-		return( -1 );
-#endif
 	iomove(gbuf, ourDS, mem, selector, BFS_BSIZE);
 	return(0);
 }
@@ -343,12 +339,7 @@ register long nsectors;
 	/* Transfer the stuff */
 
 	while(nsectors-- != 0) {
-		
 		dread(sector);
-#ifdef AT386
-		if ( kbd_check && ischar() )
-			return( -1 );
-#endif
 		iomove(gbuf, ourDS, mem, selector, BFS_BSIZE);
 
 		tcount += BFS_BSIZE;

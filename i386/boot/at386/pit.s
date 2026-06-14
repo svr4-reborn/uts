@@ -34,12 +34,15 @@ wait1s:
 	call	goreal
 	sti
 
-	mov	$0x0f, %ecx
-	mov	$0x4240, %edx
+	.byte	0x66
+	movl	$0x0f, %ecx
+	.byte	0x66
+	movl	$0x4240, %edx
 	movb	$0x86, %ah		/ setup for bios wait
 	int	$0x15			/ BIOS utility function
 
-	mov	$0, %eax
+	.byte	0x66
+	movl	$0, %eax
 
 	cli
 	.byte	0x66

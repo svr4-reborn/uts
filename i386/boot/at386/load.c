@@ -29,6 +29,7 @@ extern struct coffhdrs	coff;
 extern inode_t in;
 extern ushort ourDS;
 extern void BL_file_open(), BL_file_read();
+extern void physzero();
 extern getchar();
 extern off_t disk_file_offset;
 
@@ -40,11 +41,7 @@ zero_load_tail(addr, count)
 paddr_t addr;
 ulong count;
 {
-	char *target;
-
-	target = (char *)(addr - physaddr(0));
-	while (count--)
-		*target++ = 0;
+	physzero(addr, count);
 }
 
 /* standard error message; the 0L is the 'error' return code */
@@ -227,8 +224,9 @@ paddr_t	loadaddr;
 				if (actual != read_size)
 					return (0); /* key pressed ! */
 			}
-			if (zero_size > 0)
+			if (zero_size > 0) {
 				zero_load_tail(loadaddr + read_size, zero_size);
+			}
 
 			debug(printf("loaded segment/section at %lx, extent %lx from x%lx\n", loadaddr, size, bsect.offset)); 
 			/* check if start address in this seg */
