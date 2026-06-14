@@ -89,7 +89,7 @@ struct gate_desc idt[IDTSZ] BOOTDESC = {
 #ifdef VPIX
 			MKKTRPG(ndptrap0),	/* 007 */
 #else
-			MKKTRPG(invaltrap),	/* 007 */
+			MKKTRPG(ndptrap),	/* 007 */
 #endif
 			MKGATE(0, DFTSSSEL, GATE_KACC|GATE_TSS), /* 008 */
 			MKKTRPG(overrun),	/* 009 */
@@ -118,7 +118,7 @@ struct gate_desc idt[IDTSZ] BOOTDESC = {
 #ifdef VPIX
 			MKUTRPG(ndptrap2),	/* 032 */ /* for fp emul */
 #else
-			MKKTRPG(invaltrap),	/* 032 */
+			MKUTRPG(ndptrap),	/* 032 */ /* for fp emul */
 #endif
 			MKKTRPG(invaltrap),	/* 033 */
 			MKKTRPG(invaltrap),	/* 034 */
