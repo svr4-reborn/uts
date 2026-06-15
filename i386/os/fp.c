@@ -62,17 +62,6 @@ int fpsw;             /* status word temporary                        */
 extern char v86procflag;
 #endif
 
-/*
-** This is a workaround.
-**	The interim compiler with the register-model floating point compilation
-** (which requires that the fp stack be initialized)
-** generates an unresolved reference to the following symbol so that user
-** programs will grab a floating point initialization routine out of libc.
-** The kernel doesn't want such user-level support. This define might
-** be removed after the compiler does floating point stack-model computation.
-*/
-long ___Fp_Used;
-
 /* This is a workaround for the 80386 B1 stepping bug errata #21
  * which needs either a special PAL on the motherboard or
  * 0x80000000 set in cr3 to prevent a hang in the kernel
