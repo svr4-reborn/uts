@@ -238,7 +238,17 @@ loop:
 	if ((c = *fmt++) == 'l') c = *fmt++;
 	if (c <= 'Z' && c >= 'A') c += 'a' - 'A';
 	nb = (c == 'b') ? 1 : 4;
-	if (c == 'd' || c == 'u' || c == 'o' || c == 'x' || c == 'b')
+	if (c == 'p') {
+		/*
+		 * %p: print a pointer as 0x followed by 8 zero-filled hex
+		 * digits.  Pointers are 32-bit here, so this is just %x with
+		 * a leading "0x" tacked on.
+		 */
+		output('0');
+		output('x');
+		printn((long)*adx, 16, 4);
+	}
+	else if (c == 'd' || c == 'u' || c == 'o' || c == 'x' || c == 'b')
 	    printn((long)*adx, c=='o'? 8: (c=='x'? 16: (c=='b'? 16:10)), nb);
 	else if (c == 's') {
 		s = (char *)*adx;
