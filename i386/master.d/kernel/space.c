@@ -53,8 +53,8 @@
 #include "sys/emap.h"		/* channel mapping include file from XENIX */
 
 
-#define SYS	"svr4"
-#define XSYS	"svr4"	/* For XENIX; must be <= 8 chars */
+#define SYS	"sysv4"
+#define XSYS	"sysv4"	/* For XENIX; must be <= 8 chars */
 #define NODE	"unix"
 #define REL	"4.0"
 #define VER	"3.0"
