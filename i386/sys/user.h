@@ -76,6 +76,9 @@ typedef struct {		/* kernel syscall set type */
 /* flags for u_sigflag field */
 #define SOMASK 		0x001	/* use u_sigoldmask on return from signal */
 
+/* TODO: this entire thing is a bit hacky, but the biggest issue here is this
+ * struct *will* explode if we ever implement something that is more than 32-bit
+ */
 typedef	struct	user {
 	char	u_stack[KSTKSZ];/* kernel stack */
 	char	u_stack_filler_1[2];
@@ -88,8 +91,10 @@ typedef	struct	user {
 			int     state[27];/* 287/387 saved state           */
 			int     status;   /* status word saved at exception */
 		} u_fpstate;
-		int	u_fpreserved[62];
+		int	u_fpreserved[61]; /* Reserved bits, kept for alignment so I don't 
+							   * have to update any things that care*/
 	} u_fps;
+	void* u_fxsave_area;		/* pointer to fxsave area */
 	long	u_weitek_reg[33];	/* bits needed to save weitek state */
 					/* NOTE: If the WEITEK is actually  */
 					/* present, only 32 longs will be   */

@@ -238,6 +238,12 @@ char	*argv[];
  	for (initptr= &io_start[0]; *initptr; initptr++) 
 		(**initptr)();
 
+	/*
+	 * Setup the floating point unit, if more things are needed than the early
+	 * boot code did.
+	 */
+	fpsetup();
+
 #ifdef AT386	/* > 16 Mb DMA support */
 	if (dma_check_on)
 		setup_dma_strategies();

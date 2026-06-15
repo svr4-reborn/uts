@@ -50,12 +50,15 @@
 #ifdef WEITEK
 #include "sys/weitek.h"
 #endif
+#include "sys/cpuid.h"
+#include "sys/kmem.h"
 
 #include "vm/faultcatch.h"
 
 char fp_kind;         /* kind of floating point hardware              */
 struct proc *fp_proc; /* owner of floating point extension            */
 int finitstate;       /* control word temporary during initialization */
+int mxcsrinit = 0x1f80; /* default SSE control/status word             */
 int fpsw;             /* status word temporary                        */
 
 #ifdef VPIX
@@ -120,11 +123,23 @@ void fpnoextflt(int *r0ptr) {
    * If the current process does not own the processor extension,
    * save the fp state in the owner's user structure,
    * and restore or establish the current process's fp state.
+   * 
+   * TODO: if we ever support multiple processors, this will need to be reworked
    */
   if (fp_proc != u.u_procp) {
+    /* Check if there is a process that actually owns the floating point
+     * unit. If so, save its state.
+     */
     if (fp_proc)
       fpsave();
+    
+    /* Set the current process as the owner of the floating point unit */
     fp_proc = u.u_procp;
+
+    /* TODO: do we need to re-init the floating point unit for the new owner? 
+     * fnsave does reset the unix, fxsave and xsave do not.
+     */
+
     /*
      * If the current process' state is valid, restore
      * it. Otherwise, this is the first time this
@@ -322,6 +337,51 @@ void fpintr(void) {
 #endif
 
 /*
+** fpsetup
+**      do more advanced setup of the floating point unit, mostly for MMX/SSE
+*/
+
+void fpsetup(void) {
+  /* If the early boot code detected nothing, we quite obviously have nothing
+   * to setup.
+   */
+  if (fp_kind == FP_NO)
+    return;
+
+  cmn_err(CE_CONT, "here 1");
+  /* If we don't have CPUID, the CPU will absolutely predate anything other than
+   * x87.
+   */
+  if (!x86_has_cpuid())
+    return;
+  cmn_err(CE_CONT, "here 2");
+  /* We support CPUID, check the highest supported function */
+  unsigned int highest_func;
+  x86_cpuid(CPUID_GETVENDORSTRING, 0, &highest_func, NULL, NULL, NULL);
+  cmn_err(CE_CONT, "here 3");
+  /* Check whether we support the CPUID_GETFEATURES function */
+  if (highest_func >= CPUID_GETFEATURES) {
+    unsigned int features;
+    x86_cpuid(CPUID_GETFEATURES, 0, NULL, NULL, NULL, &features);
+    cmn_err(CE_CONT, "here 4");
+    if (features & CPUID_FEAT_EDX_FXSR) {
+      /* We have fxsave/fxrstor support, so use that instead of fnsave/frstor */
+      fp_kind = FP_FXSAVE;
+
+      /* Actually enable support for fxsave/fxrstor, and sse and stuff while
+       * we're at it.
+       */
+      asm volatile("mov %%cr4,%%eax\n\t"
+                  "or  $0x600,%%eax\n\t"   /* 0x200 OSFXSR | 0x400 OSXMMEXCPT */
+                  "mov %%eax,%%cr4" : : : "eax");
+
+      cmn_err(CE_NOTE, "fpsetup: CPU supports fxsave/fxrstor,"
+        " using those for FP state save/restore");
+    }
+  }
+}
+
+/*
 ** fpinit
 **	initialize the floating point unit for this user
 */
@@ -353,6 +413,18 @@ void fpinit(void) {
 
   asm("  fldcw   finitstate");
 
+  if (fp_kind == FP_FXSAVE) {
+    asm("  ldmxcsr mxcsrinit");
+    asm("  xorps %xmm0, %xmm0");
+    asm("  xorps %xmm1, %xmm1");
+    asm("  xorps %xmm2, %xmm2");
+    asm("  xorps %xmm3, %xmm3");
+    asm("  xorps %xmm4, %xmm4");
+    asm("  xorps %xmm5, %xmm5");
+    asm("  xorps %xmm6, %xmm6");
+    asm("  xorps %xmm7, %xmm7");
+  }
+
   /* to fill FP stack with zeros as before, un-comment the following: */
   /*
   for( i=0; i<8; i++) {
@@ -374,6 +446,9 @@ void fpsave(void) {
   v86_t *v86p;
 #endif
 
+  /* Something has obviously gone very wrong if we try to save the floating
+   * point state and there is no current owner.
+   */
   if (fp_proc == NULL)
     cmn_err(CE_PANIC, "fpsave: no fp_proc");
 
@@ -390,9 +465,30 @@ void fpsave(void) {
 
     CATCH_FAULTS(CATCH_SEGU_FAULT) {
       /* if chip present, save its state */
-      if (fp_kind & FP_HW)
-        savefp(fp_u->u_fps.u_fpstate.state);
-
+      if (fp_kind & FP_HW) {
+        /* If available, save with fxsave */
+        if (fp_kind == FP_FXSAVE) {
+          /* If the fxsave area hasn't been allocated yet, do so now */
+          if (fp_u->u_fxsave_area == NULL) {
+            /* fxsave needs 16 byte alignment, and kmem actually does that,
+             * so we don't need to do anything special here.
+             */
+            fp_u->u_fxsave_area = kmem_alloc(512, KM_NOSLEEP);
+            cmn_err(CE_CONT, "fpsave: allocated fxsave area at %p\n", fp_u->u_fxsave_area);
+            /* TODO: handle this allocation failing properly.
+              * For now, just panic, since this is a pretty serious error.
+             */
+            if (fp_u->u_fxsave_area == NULL) {
+              cmn_err(CE_PANIC, "fpsave: failed to allocate fxsave area");
+            }
+          }
+          fxsave(fp_u->u_fxsave_area);
+        } else {
+          /* We have no fxsave support; just do the old thing. */
+          fnsave(fp_u->u_fps.u_fpstate.state);
+        }
+      }
+        
       /* say that the saved state is valid */
       fp_u->u_fpvalid = 1;
     }
@@ -408,7 +504,7 @@ void fpsave(void) {
 
       /* if chip present, save its state */
       if (fp_kind & FP_HW)
-        savefp(v86p->vp_fpu.vp_fpstate.state);
+        fnsave(v86p->vp_fpu.vp_fpstate.state);
 
       /* say that the saved state is valid */
       v86p->vp_fpvalid = V86FPV_VALID;
@@ -439,9 +535,22 @@ void fprestore(int vmflag) /* Are we returning to a virtual 86 task? */
   if (!v86procflag || !vmflag) {
 #endif
     /* if chip present, restore its state */
-    if (fp_kind & FP_HW)
-      restorefp(u.u_fps.u_fpstate.state);
-
+    if (fp_kind & FP_HW) {
+      /* If available, restore with fxrstor */
+      if (fp_kind == FP_FXSAVE) {
+        /* If the fxsave area hasn't been allocated yet, just reset it. */
+        if (u.u_fxsave_area == NULL) {
+          fpinit();
+        } else {
+          /* We can now restore this. */
+          fxrstor(u.u_fxsave_area);
+        }
+      } else {
+        /* We have no fxsave support; just do the old thing. */
+        frstor(u.u_fps.u_fpstate.state);
+      }
+    }
+      
     /* say that the saved state is not valid */
     u.u_fpvalid = 0;
 #ifdef VPIX
@@ -456,7 +565,7 @@ void fprestore(int vmflag) /* Are we returning to a virtual 86 task? */
 
       /* if chip present, restore its state */
       if (fp_kind & FP_HW)
-        restorefp(v86p->vp_fpu.vp_fpstate.state);
+        frstor(v86p->vp_fpu.vp_fpstate.state);
 
       /* say that the saved state is not valid */
       v86p->vp_fpvalid = V86FPV_NOTVALID;
@@ -488,11 +597,11 @@ void fpkreset(void) {
 }
 
 /*
-** savefp
-**      asm code to actually save the fp state.
-**      called from fpsave()
+** fnsave
+**      old way to save the x87 state. called from fpsave(), for machines not
+**      supporting more modern ways.
 */
-void savefp(int *addr) {
+void fnsave(int *addr) {
   asm volatile("clts\n\t"
                "fnsave (%0)\n\t"
                "fwait"
@@ -502,14 +611,39 @@ void savefp(int *addr) {
 }
 
 /*
-** restorefp
-**      asm code to actually save the fp state.
-**      called from fprestore()
+** frstor
+**      old way to restore the x87 state. called from fprestore(), for machines
+**      not supporting more modern ways.
 */
-void restorefp(int *addr) {
+void frstor(int *addr) {
   asm volatile("clts\n\t"
                "frstor (%0)\n\t"
                "fwait"
+               :
+               : "r"(addr)
+               : "memory");
+}
+
+/*
+** fxsave
+**      save the x87/MMX/SSE state using the FXSAVE instruction.
+*/
+void fxsave(void *addr) {
+  asm volatile("clts\n\t"
+               "fxsave (%0)"
+               :
+               : "r"(addr)
+               : "memory");
+  fpinit();
+}
+
+/*
+** fxrstor
+**      restore the x87/MMX/SSE state using the FXRSTOR instruction.
+*/
+void fxrstor(void *addr) {
+  asm volatile("clts\n\t"
+               "fxrstor (%0)\n\t"
                :
                : "r"(addr)
                : "memory");

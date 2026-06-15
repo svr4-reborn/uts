@@ -18,11 +18,15 @@
 
 /*
  * values that go into fp_kind
+ * These are chosen so that FP_HW can be used as a mask to determine if any
+ * floating point hardware is present.
+ * TODO: can we simplify this?
  */
 #define FP_NO   0       /* no fp chip                                   */
 #define FP_HW   2       /* chip present bit                             */
 #define FP_287  2       /* 80287 chip present                           */
 #define FP_387  3       /* 80387 chip present                           */
+#define FP_FXSAVE 6     /* fxsave/fxrstor support                        */
 
 /*
  * masks for 80387 control word
@@ -61,40 +65,29 @@
 extern char fp_kind;            /* kind of fp support                   */
 extern struct proc *fp_proc;    /* process that owns the fp unit        */
 
-#if defined(__STDC__)
-
 extern void fpnoextflt(int *);
 extern void fpextovrflt(int *);
 extern void fpexterrflt(void);
 #ifdef AT386
 extern void fpintr(void);
 #endif
+/* More advanced setup of the floating point unit, mostly for MMX/SSE */
+extern void fpsetup(void);
+/* Init/reset the floating point unit */
 extern void fpinit(void);
+/* Save and restore the state of the floating point unit for a process. */
 extern void fpsave(void);
 extern void fprestore(int);
 extern void fpksave(void);
 extern void fpkreset(void);
-extern void savefp(int *);
-extern void restorefp(int *);
 extern void setts(void);
 
-#else
+/* Old x87 save/restore functions */
+extern void fnsave(int *);
+extern void frstor(int *);
 
-extern void fpnoextflt();
-extern void fpextovrflt();
-extern void fpexterrflt();
-#ifdef AT386
-extern void fpintr();
-#endif
-extern void fpinit();
-extern void fpsave();
-extern void fprestore();
-extern void fpksave();
-extern void fpkreset();
-extern void savefp();
-extern void restorefp();
-extern void setts();
-
-#endif	/* __STDC__ */
+/* Slightly-newer MMX/early SSE fxsave stuff */
+extern void fxsave(void *);
+extern void fxrstor(void *);
 
 #endif	/* _SYS_FP_H */
