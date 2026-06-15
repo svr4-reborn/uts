@@ -581,7 +581,7 @@ int	flags;		/* flags	*/
 	availsmem -= SMALLCLICKS;
 
 	if ( !(memp = (unchar *)sptalloc(SMALLCLICKS, PG_V, 0,
-	(flags & NOSLEEP))) ) {
+	(flags & NOSLEEP) | KM_NO_DMA)) ) {
 		availrmem += SMALLCLICKS;
 		availsmem += SMALLCLICKS;
 		Km_SmAllocOn = FALSE;
