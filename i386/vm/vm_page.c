@@ -1159,6 +1159,25 @@ try_again:
 		 * Turn the pageout daemon loose to find something.
 		 */
 		trace1(TR_PAGEOUT_CALL, 0);
+		/* 
+		 * We log if we are waiting on DMAable memory.
+		 * From experience, there is a pretty low chance we will actually
+		 * manage to get any DMAable memory, and normally there is something
+		 * else going pretty badly wrong if we end up here, so we want to know
+		 * when it happens.
+		 */
+		if (flags & P_DMA) {
+			cmn_err(CE_NOTE, "^page_get: waiting for DMAable memory.\n");
+			cmn_err(CE_CONT, "^ pid=%d proc=%x bytes=%u flags=%x npages=%d "
+				"reqfree=%d freemem=%d\n",
+			    u.u_procp ? u.u_procp->p_pid : -1, u.u_procp,
+			    bytes, flags, npages, reqfree, freemem);
+			cmn_err(CE_CONT, "^ minpagefree=%d lotsfree=%d desfree=%d "
+				"nscan=%d desscan=%d bclnlist=%x\n",
+			    minpagefree, lotsfree, desfree, nscan, desscan,
+			    bclnlist);
+		}
+
 		outofmem();
 		freemem_wait++;
 		trace4(TR_PAGE_GET_SLEEP, bytes, flags, freemem, 0);
