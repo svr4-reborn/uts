@@ -254,6 +254,12 @@ exece(uap, rvp)
 
 #endif	/* i386 */
 
+	/* If we have a fxsave area, free it. */
+	if (u.u_fxsave_area != NULL) {
+		kmem_free(u.u_fxsave_area, 512);
+		u.u_fxsave_area = NULL;
+	}
+
 done:
 	PREEMPT();
 	pn_free(&pn);

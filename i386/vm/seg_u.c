@@ -788,6 +788,15 @@ segu_release(p)
 
 	ASSERT(p != NULL);
 
+	{
+		/* Free the fxsave area, if it exists. */
+		struct user *up;
+		up = PTOU(p);
+		if (up->u_fxsave_area != NULL) {
+			kmem_free(up->u_fxsave_area, 512);
+		}
+	}
+
 	vaddr = (addr_t)p->p_segu;
 	vbase = segu_mtos(vaddr);
 	p->p_segu = (struct seguser *)NULL;

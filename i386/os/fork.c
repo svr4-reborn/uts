@@ -681,6 +681,15 @@ setuctxt(p, up)
 		cufp = tufp;
 		pufp = pufp->uf_next;
 	}
+
+	/* Create fxsave area for child, if needed
+	 * TODO: We free it on exec anyway, to save memory, so there is probably a
+	 * better way to do this. 
+	 */
+	if (up->u_fxsave_area != NULL) {
+		up->u_fxsave_area = kmem_alloc(512, KM_SLEEP);
+		bcopy(u.u_fxsave_area, up->u_fxsave_area, 512);
+	}
 }
 
 /*
