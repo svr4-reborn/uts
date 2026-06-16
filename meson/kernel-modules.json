@@ -1,0 +1,424 @@
+{
+  "RFS": [
+    "i386/fs/rfs/du.c",
+    "i386/fs/rfs/rf_admin.c",
+    "i386/fs/rfs/rf_auth.c",
+    "i386/fs/rfs/rf_cache.c",
+    "i386/fs/rfs/rf_canon.c",
+    "i386/fs/rfs/rf_cirmgr.c",
+    "i386/fs/rfs/rf_comm.c",
+    "i386/fs/rfs/rf_getsz.c",
+    "i386/fs/rfs/rf_rsrc.c",
+    "i386/fs/rfs/rf_serve.c",
+    "i386/fs/rfs/rf_sys.c",
+    "i386/fs/rfs/rf_vfsops.c",
+    "i386/fs/rfs/rf_vnops.c",
+    "i386/fs/rfs/rfcl_subr.c",
+    "i386/fs/rfs/rfsr_ops.c",
+    "i386/fs/rfs/rfsr_subr.c"
+  ],
+  "ansi": [
+    "i386/io/ansi.c"
+  ],
+  "app": [
+    "i386/netinet/app.c"
+  ],
+  "arp": [
+    "i386/netinet/arp.c"
+  ],
+  "asy": [
+    "arch/at/i386/io/asy.c"
+  ],
+  "async": [],
+  "bfs": [
+    "i386/fs/bfs/bfs_compact.c",
+    "i386/fs/bfs/bfs_subr.c",
+    "i386/fs/bfs/bfs_vfsops.c",
+    "i386/fs/bfs/bfs_vnops.c"
+  ],
+  "char": [
+    "i386/io/char.c"
+  ],
+  "clist": [
+    "i386/io/clist.c"
+  ],
+  "clone": [
+    "i386/io/clone.c"
+  ],
+  "cmux": [
+    "arch/at/i386/io/chanmux.c"
+  ],
+  "coff": [
+    "i386/exec/coff/coff.c"
+  ],
+  "connld": [
+    "i386/io/connld.c"
+  ],
+  "cpyrt": [
+    "i386/io/cpyrt.c"
+  ],
+  "cram": [
+    "arch/at/i386/io/cram.c"
+  ],
+  "des": [
+    "i386/des/intldes_soft.c",
+    "i386/des/intldescrypt.c"
+  ],
+  "dma": [
+    "arch/at/i386/io/dma.c"
+  ],
+  "dosx": [
+    "i386/exec/dosx/dosx.c"
+  ],
+  "elf": [
+    "i386/exec/elf/elf.c"
+  ],
+  "events": [],
+  "fd": [
+    "arch/at/i386/io/fd.c"
+  ],
+  "fdfs": [
+    "i386/fs/fdfs/fdops.c"
+  ],
+  "fifofs": [
+    "i386/fs/fifofs/fifosubr.c",
+    "i386/fs/fifofs/fifovnops.c"
+  ],
+  "fp": [
+    "i386/os/fp.c"
+  ],
+  "gdebugger": [
+    "i386/kdb/gdebugger/dbg.c"
+  ],
+  "gendisp": [],
+  "gentty": [
+    "i386/io/gentty.c"
+  ],
+  "gvid": [
+    "arch/at/i386/io/genvid.c"
+  ],
+  "hd": [
+    "arch/at/i386/io/hd.c"
+  ],
+  "hrt": [
+    "i386/io/hrtimers.c"
+  ],
+  "i286x": [
+    "i386/exec/i286x/i286x.c"
+  ],
+  "icmp": [
+    "i386/netinet/ip_icmp.c"
+  ],
+  "intp": [
+    "i386/exec/intp/intp.c"
+  ],
+  "ip": [
+    "i386/netinet/in.c",
+    "i386/netinet/in_cksum.c",
+    "i386/netinet/in_pcb.c",
+    "i386/netinet/in_switch.c",
+    "i386/netinet/in_transp.c",
+    "i386/netinet/ip_input.c",
+    "i386/netinet/ip_main.c",
+    "i386/netinet/ip_output.c",
+    "i386/netinet/ip_vers.c",
+    "i386/netinet/netlib.c",
+    "i386/netinet/route.c"
+  ],
+  "ipc": [
+    "i386/os/ipc.c"
+  ],
+  "kd": [
+    "arch/at/i386/io/kd/btc.c",
+    "arch/at/i386/io/kd/evc.c",
+    "arch/at/i386/io/kd/evga.c",
+    "arch/at/i386/io/kd/kdkb.c",
+    "arch/at/i386/io/kd/kdstr.c",
+    "arch/at/i386/io/kd/kdv.c",
+    "arch/at/i386/io/kd/kdvt.c",
+    "arch/at/i386/io/kd/vdc.c",
+    "arch/at/i386/io/kd/vtables.c"
+  ],
+  "kdb": [
+    "i386/kdb/kdb/bits.c",
+    "i386/kdb/kdb/db.c",
+    "i386/kdb/kdb/dbcon.c",
+    "i386/kdb/kdb/dbintrp.c",
+    "i386/kdb/kdb/dblex.c",
+    "i386/kdb/kdb/dbshow.c",
+    "i386/kdb/kdb/dbshow2.c",
+    "i386/kdb/kdb/extn.c",
+    "i386/kdb/kdb/opset.c",
+    "i386/kdb/kdb/tbls.c",
+    "i386/kdb/kdb/utls.c"
+  ],
+  "kdb-util": [
+    "i386/kdb/kdb-util/db_as.c",
+    "i386/kdb/kdb-util/kdb.c"
+  ],
+  "kdvm": [
+    "arch/at/i386/io/kdvm/kdvm.c"
+  ],
+  "klm": [
+    "i386/klm/klm_kprot.c",
+    "i386/klm/klm_lkmgr.c"
+  ],
+  "kma": [
+    "i386/os/kma.c"
+  ],
+  "kmacct": [
+    "i386/io/kmacct.c"
+  ],
+  "krpc": [
+    "i386/rpc/auth_des.c",
+    "i386/rpc/auth_kern.c",
+    "i386/rpc/authdesprt.c",
+    "i386/rpc/authdesubr.c",
+    "i386/rpc/authu_prot.c",
+    "i386/rpc/clnt_clts.c",
+    "i386/rpc/clnt_gen.c",
+    "i386/rpc/clnt_perr.c",
+    "i386/rpc/key_call.c",
+    "i386/rpc/key_prot.c",
+    "i386/rpc/rpc_calmsg.c",
+    "i386/rpc/rpc_prot.c",
+    "i386/rpc/rpc_subr.c",
+    "i386/rpc/svc.c",
+    "i386/rpc/svc_auth.c",
+    "i386/rpc/svc_authu.c",
+    "i386/rpc/svc_clts.c",
+    "i386/rpc/svc_gen.c",
+    "i386/rpc/svcauthdes.c",
+    "i386/rpc/xdr.c",
+    "i386/rpc/xdr_array.c",
+    "i386/rpc/xdr_mblk.c",
+    "i386/rpc/xdr_mem.c"
+  ],
+  "ktli": [
+    "i386/ktli/t_kalloc.c",
+    "i386/ktli/t_kbind.c",
+    "i386/ktli/t_kclose.c",
+    "i386/ktli/t_kconnect.c",
+    "i386/ktli/t_kfree.c",
+    "i386/ktli/t_kgtstate.c",
+    "i386/ktli/t_kopen.c",
+    "i386/ktli/t_krcvudat.c",
+    "i386/ktli/t_ksndudat.c",
+    "i386/ktli/t_kspoll.c",
+    "i386/ktli/t_kunbind.c",
+    "i386/ktli/t_kutil.c"
+  ],
+  "ldterm": [
+    "i386/io/ldterm.c"
+  ],
+  "llcloop": [
+    "i386/netinet/llcloop.c"
+  ],
+  "log": [
+    "i386/io/log.c"
+  ],
+  "lp": [
+    "arch/at/i386/io/lp.c"
+  ],
+  "m320": [
+    "arch/at/i386/io/mouse/m320.c",
+    "arch/at/i386/io/mouse/mse_subr.c"
+  ],
+  "mem": [
+    "i386/io/mem.c"
+  ],
+  "merge": [],
+  "msg": [
+    "i386/os/msg.c"
+  ],
+  "namefs": [
+    "i386/fs/namefs/namevfs.c",
+    "i386/fs/namefs/namevno.c"
+  ],
+  "nfa": [],
+  "nfs": [
+    "i386/fs/nfs/nfs_aux.c",
+    "i386/fs/nfs/nfs_client.c",
+    "i386/fs/nfs/nfs_cnvt.c",
+    "i386/fs/nfs/nfs_common.c",
+    "i386/fs/nfs/nfs_export.c",
+    "i386/fs/nfs/nfs_server.c",
+    "i386/fs/nfs/nfs_subr.c",
+    "i386/fs/nfs/nfs_vfsops.c",
+    "i386/fs/nfs/nfs_vnops.c",
+    "i386/fs/nfs/nfs_xdr.c",
+    "i386/fs/nfs/nfssys.c"
+  ],
+  "nmi": [
+    "i386/os/nmi.c"
+  ],
+  "nsxt": [
+    "i386/io/nsxt.c"
+  ],
+  "nxt": [
+    "i386/io/nxt.c"
+  ],
+  "osm": [
+    "i386/io/osm.c"
+  ],
+  "pckt": [
+    "i386/io/pckt.c"
+  ],
+  "pipemod": [
+    "i386/io/pipemod.c"
+  ],
+  "prf": [
+    "i386/io/prf.c"
+  ],
+  "proc": [
+    "i386/fs/proc/prioctl.c",
+    "i386/fs/proc/prmachdep.c",
+    "i386/fs/proc/prsubr.c",
+    "i386/fs/proc/prusrio.c",
+    "i386/fs/proc/prvfsops.c",
+    "i386/fs/proc/prvnops.c"
+  ],
+  "ptem": [
+    "i386/io/ptem.c"
+  ],
+  "ptm": [
+    "i386/io/ptm.c"
+  ],
+  "pts": [
+    "i386/io/pts.c"
+  ],
+  "raio": [
+    "i386/io/raio.c"
+  ],
+  "ramd": [
+    "i386/io/ramd.c"
+  ],
+  "rawip": [
+    "i386/netinet/raw_ip.c",
+    "i386/netinet/raw_ip_cb.c",
+    "i386/netinet/raw_ip_main.c"
+  ],
+  "rmc": [],
+  "rt": [
+    "i386/disp/rt.c"
+  ],
+  "rtc": [
+    "arch/at/i386/io/rtc.c"
+  ],
+  "s5": [
+    "i386/fs/s5/s5alloc.c",
+    "i386/fs/s5/s5blklist.c",
+    "i386/fs/s5/s5bmap.c",
+    "i386/fs/s5/s5dir.c",
+    "i386/fs/s5/s5getsz.c",
+    "i386/fs/s5/s5inode.c",
+    "i386/fs/s5/s5rdwri.c",
+    "i386/fs/s5/s5vfsops.c",
+    "i386/fs/s5/s5vnops.c"
+  ],
+  "sad": [
+    "i386/io/sad.c"
+  ],
+  "sem": [
+    "i386/os/sem.c"
+  ],
+  "shm": [
+    "i386/os/shm.c"
+  ],
+  "sockmod": [
+    "i386/io/sockmod.c"
+  ],
+  "specfs": [
+    "i386/fs/specfs/specgetsz.c",
+    "i386/fs/specfs/specsubr.c",
+    "i386/fs/specfs/specvfsops.c",
+    "i386/fs/specfs/specvnops.c"
+  ],
+  "sxt": [
+    "i386/io/sxt.c"
+  ],
+  "sysmsg": [
+    "i386/io/sysmsg.c"
+  ],
+  "tcp": [
+    "i386/netinet/tcp_debug.c",
+    "i386/netinet/tcp_input.c",
+    "i386/netinet/tcp_main.c",
+    "i386/netinet/tcp_output.c",
+    "i386/netinet/tcp_state.c",
+    "i386/netinet/tcp_subr.c",
+    "i386/netinet/tcp_timer.c"
+  ],
+  "ticlts": [
+    "i386/io/ticlts.c"
+  ],
+  "ticots": [
+    "i386/io/ticots.c"
+  ],
+  "ticotsor": [
+    "i386/io/ticotsord.c"
+  ],
+  "timod": [
+    "i386/io/timod.c"
+  ],
+  "tirdwr": [
+    "i386/io/tirdwr.c"
+  ],
+  "ts": [
+    "i386/disp/ts.c"
+  ],
+  "ttcompat": [
+    "i386/io/ttcompat.c"
+  ],
+  "udp": [
+    "i386/netinet/udp_io.c",
+    "i386/netinet/udp_main.c",
+    "i386/netinet/udp_state.c"
+  ],
+  "ufs": [
+    "i386/fs/ufs/quota.c",
+    "i386/fs/ufs/quota_ufs.c",
+    "i386/fs/ufs/quotacalls.c",
+    "i386/fs/ufs/ufs_alloc.c",
+    "i386/fs/ufs/ufs_blklist.c",
+    "i386/fs/ufs/ufs_bmap.c",
+    "i386/fs/ufs/ufs_dir.c",
+    "i386/fs/ufs/ufs_dsort.c",
+    "i386/fs/ufs/ufs_inode.c",
+    "i386/fs/ufs/ufs_subr.c",
+    "i386/fs/ufs/ufs_tables.c",
+    "i386/fs/ufs/ufs_vfsops.c",
+    "i386/fs/ufs/ufs_vnops.c"
+  ],
+  "vx": [
+    "i386/vx/v86.c",
+    "i386/vx/v86subr.c"
+  ],
+  "weitek": [
+    "i386/io/weitek.c"
+  ],
+  "ws": [
+    "i386/io/ws/ws_8042.c",
+    "i386/io/ws/ws_ansi.c",
+    "i386/io/ws/ws_cmap.c",
+    "i386/io/ws/ws_subr.c",
+    "i386/io/ws/ws_tables.c",
+    "i386/io/ws/ws_tcl.c"
+  ],
+  "xnamfs": [
+    "i386/fs/xnamfs/xnamsubr.c",
+    "i386/fs/xnamfs/xnamvfsops.c",
+    "i386/fs/xnamfs/xnamvnops.c",
+    "i386/fs/xnamfs/xsd.c",
+    "i386/fs/xnamfs/xsem.c"
+  ],
+  "xout": [
+    "i386/exec/xout/xout.c"
+  ],
+  "xque": [
+    "i386/io/xque.c"
+  ],
+  "xt": [
+    "i386/io/xt.c"
+  ]
+}

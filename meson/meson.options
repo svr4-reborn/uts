@@ -1,0 +1,4 @@
+option('kernel_ld', type: 'string', value: '',
+  description: 'Linker for partial Driver.o/kernel.o links (default: cross ld then ld)')
+option('conf_subdir', type: 'string', value: '',
+  description: 'Conf-tree root relative to the install prefix. Empty => prefix IS the conf root (idtools uses --prefix=/etc/conf).')

@@ -100,6 +100,7 @@ STATIC u_int freemem_wait;	/* someone (local) waiting for freemem */
 u_int ext_freemem_wait;		/* someone external waiting for freemem */
 
 extern int minpagefree;		/* minimum memory in reserve */
+const int page_debug = 0;
 
 u_int pages_pp_locked = 0;	/* physical pages actually locked */
 u_int pages_pp_claimed = 0;	/* physical pages reserved */
@@ -1159,6 +1160,17 @@ try_again:
 		 * Turn the pageout daemon loose to find something.
 		 */
 		trace1(TR_PAGEOUT_CALL, 0);
+		if (page_debug)
+			cmn_err(CE_CONT,
+			    "^page_get sleep: pid=%d proc=%x bytes=%u "
+			    "flags=%x npages=%d reqfree=%d freemem=%d "
+			    "minpagefree=%d lotsfree=%d desfree=%d "
+			    "nscan=%d desscan=%d bclnlist=%x\n",
+			    u.u_procp ? u.u_procp->p_pid : -1, u.u_procp,
+			    bytes, flags, npages, reqfree, freemem,
+			    minpagefree, lotsfree, desfree, nscan, desscan,
+			    bclnlist);
+		
 		/* 
 		 * We log if we are waiting on DMAable memory.
 		 * From experience, there is a pretty low chance we will actually
@@ -1182,6 +1194,12 @@ try_again:
 		freemem_wait++;
 		trace4(TR_PAGE_GET_SLEEP, bytes, flags, freemem, 0);
 		(void) sleep((caddr_t)&freemem, PSWP+2);
+		if (page_debug)
+			cmn_err(CE_CONT,
+			    "^page_get woke: pid=%d proc=%x bytes=%u "
+			    "flags=%x npages=%d reqfree=%d freemem=%d\n",
+			    u.u_procp ? u.u_procp->p_pid : -1, u.u_procp,
+			    bytes, flags, npages, reqfree, freemem);
 		trace4(TR_PAGE_GET_SLEEP, bytes, flags, freemem, 1);
 	}
 
@@ -1530,10 +1548,26 @@ try_again:
 		 * Turn the pageout daemon loose to find something.
 		 */
 		trace1(TR_PAGEOUT_CALL, 0);
+		if (page_debug)
+			cmn_err(CE_CONT,
+			    "^page_get_aligned sleep: pid=%d proc=%x bytes=%u "
+			    "flags=%x npages=%d reqfree=%d freemem=%d "
+			    "minpagefree=%d lotsfree=%d desfree=%d "
+			    "nscan=%d desscan=%d bclnlist=%x\n",
+			    u.u_procp ? u.u_procp->p_pid : -1, u.u_procp,
+			    bytes, flags, npages, reqfree, freemem,
+			    minpagefree, lotsfree, desfree, nscan, desscan,
+			    bclnlist);
 		outofmem();
 		freemem_wait++;
 		trace3(TR_PAGE_GET_SLEEP, flags, freemem, 0);
 		(void) sleep((caddr_t)&freemem, PSWP+2);
+		if (page_debug)
+			cmn_err(CE_CONT,
+			    "^page_get_aligned woke: pid=%d proc=%x bytes=%u "
+			    "flags=%x npages=%d reqfree=%d freemem=%d\n",
+			    u.u_procp ? u.u_procp->p_pid : -1, u.u_procp,
+			    bytes, flags, npages, reqfree, freemem);
 		trace3(TR_PAGE_GET_SLEEP, flags, freemem, 1);
 	}
 

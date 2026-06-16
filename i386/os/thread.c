@@ -16,6 +16,7 @@
 #include "sys/time.h"
 #include "sys/kmem.h"
 #include "sys/fp.h"
+#include "sys/cmn_err.h"
 
 #ifdef WEITEK
 #include "sys/weitek.h"
@@ -54,11 +55,13 @@ struct futex_waiter {
 	struct futex_waiter *next;
 	struct as *as;
 	int *uaddr;
+	proc_t *procp;
 	int woken;
 	int timed_out;
 	int timeout_id;
 };
 
+int futex_debug = 0;
 static struct futex_waiter *futex_waiters;
 
 static void futex_remove(struct futex_waiter *waiter);
@@ -99,6 +102,14 @@ futex_timeout(arg)
 	s = splhi();
 	if (!waiter->woken) {
 		waiter->timed_out = 1;
+		if (futex_debug)
+			cmn_err(CE_CONT,
+			    "^futex timeout: waiter=%x pid=%d proc=%x "
+			    "uaddr=%x p_stat=%x p_wchan=%x\n",
+			    waiter, waiter->procp ? waiter->procp->p_pid : -1,
+			    waiter->procp, waiter->uaddr,
+			    waiter->procp ? waiter->procp->p_stat : -1,
+			    waiter->procp ? waiter->procp->p_wchan : 0);
 		wakeprocs((caddr_t)waiter, PRMPT);
 	}
 	splx(s);
@@ -141,6 +152,14 @@ do_futex_wait(uaddr, expected, timeoutp)
 	    sizeof(struct futex_waiter), KM_SLEEP);
 	waiter->as = u.u_procp->p_as;
 	waiter->uaddr = uaddr;
+	waiter->procp = u.u_procp;
+
+	if (futex_debug)
+		cmn_err(CE_CONT,
+		    "^futex wait enter: pid=%d proc=%x as=%x uaddr=%x "
+		    "expected=%x timeoutp=%x ticks=%x waiter=%x\n",
+		    u.u_procp->p_pid, u.u_procp, waiter->as, uaddr,
+		    expected, timeoutp, ticks, waiter);
 
 	/*
 	 * Check the user word and enqueue atomically with respect to futex_wake().
@@ -151,11 +170,22 @@ do_futex_wait(uaddr, expected, timeoutp)
 	value = fuword(uaddr);
 	if (value == -1 && fubyte((caddr_t)uaddr) == -1) {
 		splx(s);
+		if (futex_debug)
+			cmn_err(CE_CONT,
+			    "^futex wait fault: pid=%d proc=%x uaddr=%x "
+			    "waiter=%x\n",
+			    u.u_procp->p_pid, u.u_procp, uaddr, waiter);
 		kmem_free((caddr_t)waiter, sizeof(struct futex_waiter));
 		return EFAULT;
 	}
 	if (value != expected) {
 		splx(s);
+		if (futex_debug)
+			cmn_err(CE_CONT,
+			    "^futex wait again: pid=%d proc=%x uaddr=%x "
+			    "expected=%x value=%x waiter=%x\n",
+			    u.u_procp->p_pid, u.u_procp, uaddr, expected,
+			    value, waiter);
 		kmem_free((caddr_t)waiter, sizeof(struct futex_waiter));
 		return EAGAIN;
 	}
@@ -164,13 +194,39 @@ do_futex_wait(uaddr, expected, timeoutp)
 	futex_waiters = waiter;
 	if (ticks > 0)
 		waiter->timeout_id = timeout(futex_timeout, (caddr_t)waiter, ticks);
+	if (futex_debug)
+		cmn_err(CE_CONT,
+		    "^futex wait queued: pid=%d proc=%x as=%x uaddr=%x "
+		    "value=%x waiter=%x timeout_id=%x\n",
+		    u.u_procp->p_pid, u.u_procp, waiter->as, uaddr,
+		    value, waiter, waiter->timeout_id);
 	splx(s);
 
 	while (!waiter->woken && !waiter->timed_out) {
+		if (futex_debug)
+			cmn_err(CE_CONT,
+			    "^futex wait sleep: pid=%d proc=%x waiter=%x "
+			    "woken=%d timed_out=%d p_stat=%x p_wchan=%x\n",
+			    u.u_procp->p_pid, u.u_procp, waiter,
+			    waiter->woken, waiter->timed_out,
+			    u.u_procp->p_stat, u.u_procp->p_wchan);
 		if (sleep((caddr_t)waiter, PZERO | PCATCH)) {
 			error = EINTR;
+			if (futex_debug)
+				cmn_err(CE_CONT,
+				    "^futex wait intr: pid=%d proc=%x "
+				    "waiter=%x woken=%d timed_out=%d\n",
+				    u.u_procp->p_pid, u.u_procp, waiter,
+				    waiter->woken, waiter->timed_out);
 			break;
 		}
+		if (futex_debug)
+			cmn_err(CE_CONT,
+			    "^futex wait woke: pid=%d proc=%x waiter=%x "
+			    "woken=%d timed_out=%d p_stat=%x p_wchan=%x\n",
+			    u.u_procp->p_pid, u.u_procp, waiter,
+			    waiter->woken, waiter->timed_out,
+			    u.u_procp->p_stat, u.u_procp->p_wchan);
 	}
 
 	/*
@@ -184,6 +240,12 @@ do_futex_wait(uaddr, expected, timeoutp)
 	futex_remove(waiter);
 	if (!error && waiter->timed_out)
 		error = ETIMEDOUT;
+	if (futex_debug)
+		cmn_err(CE_CONT,
+		    "^futex wait exit: pid=%d proc=%x waiter=%x error=%d "
+		    "woken=%d timed_out=%d\n",
+		    u.u_procp->p_pid, u.u_procp, waiter, error,
+		    waiter->woken, waiter->timed_out);
 	splx(s);
 
 	kmem_free((caddr_t)waiter, sizeof(struct futex_waiter));
@@ -205,10 +267,25 @@ do_futex_wake(uaddr, all, rvp)
 		return EINVAL;
 
 	/* Futex keys are process-local: same address-space plus same user VA. */
+	if (futex_debug)
+		cmn_err(CE_CONT,
+		    "^futex wake enter: pid=%d proc=%x as=%x uaddr=%x all=%d\n",
+		    u.u_procp->p_pid, u.u_procp, as, uaddr, all);
 	s = splhi();
 	for (waiter = futex_waiters; waiter; waiter = waiter->next) {
 		if (waiter->as != as || waiter->uaddr != uaddr || waiter->woken)
 			continue;
+		if (futex_debug)
+			cmn_err(CE_CONT,
+			    "^futex wake match: pid=%d proc=%x target_pid=%d "
+			    "target_proc=%x waiter=%x target_stat=%x "
+			    "target_wchan=%x woken=%d timed_out=%d\n",
+			    u.u_procp->p_pid, u.u_procp,
+			    waiter->procp ? waiter->procp->p_pid : -1,
+			    waiter->procp, waiter,
+			    waiter->procp ? waiter->procp->p_stat : -1,
+			    waiter->procp ? waiter->procp->p_wchan : 0,
+			    waiter->woken, waiter->timed_out);
 		waiter->woken = 1;
 		count++;
 		wakeprocs((caddr_t)waiter, PRMPT);
@@ -216,6 +293,12 @@ do_futex_wake(uaddr, all, rvp)
 			break;
 	}
 	splx(s);
+
+	if (futex_debug)
+		cmn_err(CE_CONT,
+		    "^futex wake exit: pid=%d proc=%x as=%x uaddr=%x "
+		    "all=%d count=%d\n",
+		    u.u_procp->p_pid, u.u_procp, as, uaddr, all, count);
 
 	rvp->r_val1 = count;
 	rvp->r_val2 = 0;

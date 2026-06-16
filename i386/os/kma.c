@@ -45,6 +45,8 @@
 #include	"sys/stream.h"
 #include	"sys/strsubr.h"
 #include	"sys/systm.h"
+#include	"sys/proc.h"
+#include	"sys/disp.h"
 #ifdef DEBUG
 #include	"sys/kmacct.h"
 #endif /* DEBUG */
@@ -432,6 +434,12 @@ int	Km_allocspool;		/* # of calls to kmem_allocspool */
 int	Km_allocbpool;		/* # of calls to kmem_allocbpool */
 int	Km_freepool;		/* # of calls to kmem_freepool */
 
+const int	kmem_debug = 0;
+static int kmem_debug_seq;
+static proc_t *Km_BgAllocProcp;
+static size_t Km_BgAllocSize;
+static int Km_BgAllocSeq;
+
 /*
  *	To prevent thrashing under light traffic, we allocate "golden"
  *	buffers, one from the most recently allocated pool in each class.
@@ -734,9 +742,25 @@ int	flags;		/* flags	*/
 	/*
 	 * if are already allocating a pool -- don't start a new one
 	 */
-	if ( Km_BgAllocOn == TRUE )
+	if ( Km_BgAllocOn == TRUE ) {
+		if (kmem_debug)
+			cmn_err(CE_CONT,
+			    "^kmem bpool busy: pid=%d proc=%x holder_pid=%d "
+			    "holder_proc=%x holder_size=%u holder_seq=%x\n",
+			    curproc ? curproc->p_pid : -1, curproc,
+			    Km_BgAllocProcp ? Km_BgAllocProcp->p_pid : -1,
+			    Km_BgAllocProcp, Km_BgAllocSize, Km_BgAllocSeq);
 		 return(TRYAGAIN);
+	}
 	Km_BgAllocOn = TRUE;
+	Km_BgAllocProcp = curproc;
+	Km_BgAllocSeq = ++kmem_debug_seq;
+	if (kmem_debug)
+		cmn_err(CE_CONT,
+		    "^kmem bpool begin: seq=%x pid=%d proc=%x flags=%x "
+		    "freemem=%d availrmem=%d availsmem=%d\n",
+		    Km_BgAllocSeq, curproc ? curproc->p_pid : -1,
+		    curproc, flags, freemem, availrmem, availsmem);
 
 	/*
 	 *	Set up the buffer pool and "free" the memory
@@ -745,18 +769,41 @@ int	flags;		/* flags	*/
 
 	if ( ((availrmem - BIGCLICKS) < tune.t_minarmem) ||
 	     ((availsmem - BIGCLICKS) < tune.t_minasmem) ) {
+		if (kmem_debug)
+			cmn_err(CE_CONT,
+			    "^kmem bpool no-rmem: seq=%x pid=%d "
+			    "availrmem=%d availsmem=%d minarmem=%d minasmem=%d\n",
+			    Km_BgAllocSeq, curproc ? curproc->p_pid : -1,
+			    availrmem, availsmem, tune.t_minarmem,
+			    tune.t_minasmem);
 		Km_BgAllocOn = FALSE;
+		Km_BgAllocProcp = NULL;
+		Km_BgAllocSize = 0;
 		wakeprocs((caddr_t)&Km_BgAllocOn, PRMPT);
 		return(FAILURE);
 	}
 	availrmem -= BIGCLICKS;
 	availsmem -= BIGCLICKS;
 
+	if (kmem_debug)
+		cmn_err(CE_CONT,
+		    "^kmem bpool sptalloc: seq=%x pid=%d clicks=%d "
+		    "freemem=%d availrmem=%d availsmem=%d\n",
+		    Km_BgAllocSeq, curproc ? curproc->p_pid : -1,
+		    BIGCLICKS, freemem, availrmem, availsmem);
 	if ( !(memp = (unchar *)sptalloc(BIGCLICKS, PG_V, 0,
-	(flags & NOSLEEP))) ) {
+	(flags & NOSLEEP) | KM_NO_DMA)) ) {
+		if (kmem_debug)
+			cmn_err(CE_CONT,
+			    "^kmem bpool sptalloc-fail: seq=%x pid=%d "
+			    "freemem=%d availrmem=%d availsmem=%d\n",
+			    Km_BgAllocSeq, curproc ? curproc->p_pid : -1,
+			    freemem, availrmem, availsmem);
 		availrmem += BIGCLICKS;
 		availsmem += BIGCLICKS;
 		Km_BgAllocOn = FALSE;
+		Km_BgAllocProcp = NULL;
+		Km_BgAllocSize = 0;
 		wakeprocs((caddr_t)&Km_BgAllocOn, PRMPT);
 		return(FAILURE);
 	}
@@ -776,13 +823,29 @@ int	flags;		/* flags	*/
 	/*
 	 * Get space for bufpool struct and bitmap from kmem_alloc().
 	 */
+	Km_BgAllocSize = (sizeof(bufpool) + (2 * sizeof(hashpool)) +
+	    (BIGBYTES/(MINBIG*8)));
+	if (kmem_debug)
+		cmn_err(CE_CONT,
+		    "^kmem bpool meta-alloc: seq=%x pid=%d size=%u "
+		    "freemem=%d\n",
+		    Km_BgAllocSeq, curproc ? curproc->p_pid : -1,
+		    Km_BgAllocSize, freemem);
 	if ( (poolp = (bufpool *)kmem_alloc( (sizeof(bufpool) +
 	(2 * sizeof(hashpool)) + (BIGBYTES/(MINBIG*8))), flags))
 	   == (bufpool *)NULL ) {
+		if (kmem_debug)
+			cmn_err(CE_CONT,
+			    "^kmem bpool meta-fail: seq=%x pid=%d "
+			    "freemem=%d\n",
+			    Km_BgAllocSeq, curproc ? curproc->p_pid : -1,
+			    freemem);
 		sptfree((caddr_t)memp, BIGCLICKS,1);
 		availrmem += BIGCLICKS;
 		availsmem += BIGCLICKS;
 		Km_BgAllocOn = FALSE;
+		Km_BgAllocProcp = NULL;
+		Km_BgAllocSize = 0;
 		wakeprocs((caddr_t)&Km_BgAllocOn, PRMPT);
 		return(FAILURE);
 	}
@@ -850,6 +913,15 @@ int	flags;		/* flags	*/
 	Km_NewBig = poolp;
 
 	Km_BgAllocOn = FALSE;
+	if (kmem_debug)
+		cmn_err(CE_CONT,
+		    "^kmem bpool success: seq=%x pid=%d pool=%x "
+		    "freemem=%d availrmem=%d availsmem=%d pools=%d\n",
+		    Km_BgAllocSeq, curproc ? curproc->p_pid : -1,
+		    poolp, freemem, availrmem, availsmem,
+		    Km_pools[KMEM_LARGE]);
+	Km_BgAllocProcp = NULL;
+	Km_BgAllocSize = 0;
 	wakeprocs((caddr_t)&Km_BgAllocOn, PRMPT);
 	return(SUCCESS);
 }
@@ -931,8 +1003,8 @@ int	flags;		/* flags				*/
 		availrmem -= clicks;
 		availsmem -= clicks;
 
-		if ( !(bufp = (freebuf *)sptalloc((int)clicks, PG_V, 0, 
-		(flags & NOSLEEP))) ) {
+		if ( !(bufp = (freebuf *)sptalloc((int)clicks, PG_V, 0,
+		(flags & NOSLEEP) | KM_NO_DMA)) ) {
 			availrmem += clicks;
 			availsmem += clicks;
 			if ( !(flags & KM_NOSLEEP) ) {
@@ -1104,13 +1176,36 @@ int	flags;		/* flags				*/
 		++kmeminfo.km_fail[KMEM_SMALL];
 	} else {
  newbpool:
+		if (kmem_debug)
+			cmn_err(CE_CONT,
+			    "^kmem need bpool: pid=%d proc=%x size=%u "
+			    "flags=%x freemem=%d availrmem=%d availsmem=%d\n",
+			    curproc ? curproc->p_pid : -1, curproc,
+			    size, flags, freemem, availrmem, availsmem);
 		if ( (poolrtn = kmem_allocbpool(flags)) == TRYAGAIN
 		&& !(flags & KM_NOSLEEP) ) {
 			/*
 			 * were in the middle of allocating a pool -- hang out
 			 * for a bit, then try again
 			 */
+			if (kmem_debug)
+				cmn_err(CE_CONT,
+				    "^kmem sleep bpool: pid=%d proc=%x "
+				    "size=%u holder_pid=%d holder_proc=%x "
+				    "holder_size=%u holder_seq=%x\n",
+				    curproc ? curproc->p_pid : -1,
+				    curproc, size,
+				    Km_BgAllocProcp ?
+				    Km_BgAllocProcp->p_pid : -1,
+				    Km_BgAllocProcp, Km_BgAllocSize,
+				    Km_BgAllocSeq);
 			(void) sleep((caddr_t)&Km_BgAllocOn, PZERO);
+			if (kmem_debug)
+				cmn_err(CE_CONT,
+				    "^kmem wake bpool: pid=%d proc=%x "
+				    "size=%u bgon=%d\n",
+				    curproc ? curproc->p_pid : -1,
+				    curproc, size, Km_BgAllocOn);
 			goto newbpool;
 		}
 		if ( poolrtn == SUCCESS ) {
@@ -1771,4 +1866,3 @@ kmem_avail()
 		+ (kmeminfo.km_mem[KMEM_SMALL] - kmeminfo.km_alloc[KMEM_SMALL])
 		+ (kmeminfo.km_mem[KMEM_LARGE] - kmeminfo.km_alloc[KMEM_LARGE]) ));
 }
-

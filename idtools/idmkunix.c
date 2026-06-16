@@ -21,11 +21,21 @@
  *                    (kernel.o) plus the special start.o/locore.o/syms.o and
  *                    the vuifile link map.
  *
- * The link line mirrors the one the YAML build used previously:
+ * The link line is:
  *   ld -m elf_i386 -dn -o unix -e _start -T <cf.d>/vuifile \
  *      <core objs> <module objs> conf.o fsconf.o vector.o
  * start.o and locore.o are pulled in by the vuifile linker script and so are
  * deliberately omitted from the object list.
+ *
+ * Config file:
+ *   The variable parts of the compile/link -- the codegen ABI flags (CFLAGS),
+ *   the extra kernel defines (DEFINES), the kernel header include dirs
+ *   (INCDIRS) and the default compiler/link-editor (CC/LD) -- are read from a
+ *   config file (default <root>/etc/conf/cf.d/idmkunix.conf, override with -f)
+ *   rather than baked into every call site.  The same file is installed into
+ *   the conf tree by the kernel build, so both the build-time relink and the
+ *   on-system `idbuild` reconfigure drive an identical compile/link.  Explicit
+ *   command-line flags still override the config (the config is parsed first).
  */
 
 #include <stdio.h>
@@ -42,12 +52,18 @@
 #endif
 
 #define MAXOBJ	512		/* max objects on the kernel link line */
-#define MAXDEF	16		/* max extra -D/-U passed through to cc */
-#define MAXINC	16		/* max extra -I include dirs */
-#define MAXXTRA	32		/* max extra -Y cc flags (codegen ABI etc.) */
+/*
+ * These bounds cover both CLI flags and the config-file lists.  The codegen
+ * ABI flag list alone (CFLAGS=) runs to a dozen-odd tokens, so MAXXTRA is sized
+ * generously; DEFINES/INCDIRS likewise carry the config plus any CLI extras.
+ */
+#define MAXDEF	32		/* max extra -D/-U passed through to cc */
+#define MAXINC	32		/* max extra -I include dirs */
+#define MAXXTRA	64		/* max extra -Y cc flags (codegen ABI etc.) */
+#define MAXLINE	4096		/* max config-file line length */
 
 /* error message formats */
-#define USAGE	"Usage: idmkunix [-#] [-i dir] [-o dir] [-p pack.d] [-r dir] [-c cc] [-l ld] [-Idir] [-Yccflag] [-Ddefine] [-Udefine]\n"
+#define USAGE	"Usage: idmkunix [-#] [-i dir] [-o dir] [-p pack.d] [-r dir] [-f conf] [-c cc] [-l ld] [-Idir] [-Yccflag] [-Ddefine] [-Udefine]\n"
 #define EXISTF	"Directory '%s' does not exist\n"
 #define FOPENF	"Cannot open '%s' for mode '%s'\n"
 #define EFILE	"Cannot find Driver.o in driver package '%s'\n"
@@ -63,8 +79,10 @@ static char input[PATH_MAX];	/* -i: dir holding direct + generated glue */
 static char output[PATH_MAX];	/* -o: dir receiving unix + .o glue */
 static char confdir[PATH_MAX];	/* <root>/etc/conf */
 static char packdir[PATH_MAX];	/* <root>/etc/conf/pack.d */
+static char conffile[PATH_MAX];	/* -f: config file (default cf.d/idmkunix.conf) */
+static char conftree[PATH_MAX];	/* conf-tree root: relative INCDIRS hang off this */
 
-static int rflag, iflag, oflag, pflag, debug;
+static int rflag, iflag, oflag, pflag, fflag, debug;
 
 static char *predef[MAXDEF];	/* extra -D/-U flags passed through to cc */
 static int npredef;
@@ -110,6 +128,48 @@ char *path;
 {
 	struct stat st;
 	return (stat(path, &st) == 0);
+}
+
+/*
+ * Split a whitespace-separated flag list (a -Y argument or a config CFLAGS=
+ * value) into individual cc flags, appended to xtracc[].  The tokens are kept
+ * (strtok writes into the passed buffer), so callers pass storage that lives
+ * for the rest of the run.
+ */
+static void
+add_ccflags(s)
+char *s;
+{
+	char *tok = strtok(s, " \t");
+	while (tok != NULL) {
+		if (nxtra < MAXXTRA)
+			xtracc[nxtra++] = tok;
+		else
+			fprintf(stderr, "too many cc flags; '%s' ignored\n", tok);
+		tok = strtok(NULL, " \t");
+	}
+}
+
+/* push a single -D/-U define (already including the leading -D/-U) */
+static void
+add_predef(flag)
+char *flag;
+{
+	if (npredef < MAXDEF)
+		predef[npredef++] = xstrdup(flag);
+	else
+		fprintf(stderr, "too many -D/-U; '%s' ignored\n", flag);
+}
+
+/* push a single include dir (the bare path; the -I prefix is added at compile) */
+static void
+add_incdir(dir)
+char *dir;
+{
+	if (ninc < MAXINC)
+		incdir[ninc++] = xstrdup(dir);
+	else
+		fprintf(stderr, "too many -I dirs; '%s' ignored\n", dir);
 }
 
 /*
@@ -186,10 +246,16 @@ char *src, *obj;
 	sprintf(incbuf, "-I%s", output);
 	argv[n++] = xstrdup(incbuf);
 
-	/* caller-supplied include dirs (kernel headers); on-target the historical
-	 * <root>/usr/include is added automatically below. */
+	/* caller-supplied include dirs (kernel headers).  A relative dir (the
+	 * usual case from the config's INCDIRS=, e.g. "inc") is resolved against
+	 * the conf-tree root, so the same value works for the build-tree conf-root
+	 * and the on-target /etc/conf.  An absolute dir is used verbatim.  When no
+	 * include dirs are configured, fall back to the historical <root>/usr/include. */
 	for (i = 0; i < ninc; i++) {
-		sprintf(incbuf, "-I%s", incdir[i]);
+		if (incdir[i][0] == '/')
+			sprintf(incbuf, "-I%s", incdir[i]);
+		else
+			sprintf(incbuf, "-I%s/%s", conftree, incdir[i]);
 		argv[n++] = xstrdup(incbuf);
 	}
 	if (ninc == 0) {
@@ -374,32 +440,119 @@ char *buf, *sub;
 		sprintf(buf, "%s/%s", confdir, sub);
 }
 
+/* strip a trailing newline and leading/trailing blanks from a line, in place */
+static char *
+trim(s)
+char *s;
+{
+	char *end;
+	while (*s == ' ' || *s == '\t')
+		s++;
+	end = s + strlen(s);
+	while (end > s && (end[-1] == '\n' || end[-1] == '\r' ||
+	    end[-1] == ' ' || end[-1] == '\t'))
+		*--end = '\0';
+	return (s);
+}
+
+/*
+ * Read the config file -- the data-driven home of the variable compile/link
+ * settings, so the build-time relink and the on-system `idbuild` reconfigure
+ * stay identical.  Recognised KEY=value lines ('#' comments, blanks ignored):
+ *
+ *   CFLAGS=...   whitespace-separated cc codegen flags  (-> xtracc, like -Y)
+ *   DEFINES=...  whitespace-separated -D/-U defines      (-> predef, like -D)
+ *   INCDIRS=...  whitespace-separated include dirs        (-> incdir, like -I)
+ *                A relative dir hangs off the conf-tree root (so "inc" means
+ *                <conf>/inc both in the build tree and on-target); an absolute
+ *                dir is used verbatim.
+ *   CC=prog      default compiler                         (overridable by -c)
+ *   LD=prog      default link-editor                      (overridable by -l)
+ *
+ * Parsed before the command line so explicit flags still win.  A missing file
+ * is only an error when it was named explicitly with -f; the default path is
+ * optional (a bare `idmkunix` with all flags on the command line still works).
+ */
+static void
+read_conf(path, required)
+char *path;
+int required;
+{
+	char line[MAXLINE];
+	FILE *fp;
+
+	fp = fopen(path, "r");
+	if (fp == NULL) {
+		if (required) {
+			sprintf(errbuf, FOPENF, path, "r");
+			fatal();
+		}
+		return;
+	}
+
+	while (fgets(line, sizeof(line), fp) != NULL) {
+		char *s = trim(line);
+		char *eq;
+
+		if (*s == '\0' || *s == '#')
+			continue;
+		eq = strchr(s, '=');
+		if (eq == NULL)
+			continue;
+		*eq = '\0';
+		s = trim(s);			/* key */
+		eq = trim(eq + 1);		/* value */
+
+		if (strcmp(s, "CFLAGS") == 0) {
+			add_ccflags(xstrdup(eq));
+		} else if (strcmp(s, "DEFINES") == 0) {
+			char *tok = strtok(xstrdup(eq), " \t");
+			while (tok != NULL) {
+				add_predef(tok);
+				tok = strtok(NULL, " \t");
+			}
+		} else if (strcmp(s, "INCDIRS") == 0) {
+			char *tok = strtok(xstrdup(eq), " \t");
+			while (tok != NULL) {
+				add_incdir(tok);
+				tok = strtok(NULL, " \t");
+			}
+		} else if (strcmp(s, "CC") == 0) {
+			cc = xstrdup(eq);
+		} else if (strcmp(s, "LD") == 0) {
+			ld = xstrdup(eq);
+		}
+		/* unknown keys ignored for forward compatibility */
+	}
+	fclose(fp);
+}
+
 int
 main(argc, argv)
 int argc;
 char *argv[];
 {
 	int m;
+	/*
+	 * -c/-l on the command line must win over a CC=/LD= in the config, but
+	 * the config is read after the option scan (it needs -r/-f first).  Stash
+	 * any explicit -c/-l and re-apply them once the config has been read.
+	 */
+	char *cli_cc = NULL, *cli_ld = NULL;
 
-	while ((m = getopt(argc, argv, "?#i:o:p:c:l:r:D:U:I:Y:")) != EOF) {
+	while ((m = getopt(argc, argv, "?#i:o:p:c:l:r:f:D:U:I:Y:")) != EOF) {
 		switch (m) {
 		case '#':
 			debug++;
 			break;
 		case 'I':
-			if (ninc < MAXINC)
-				incdir[ninc++] = optarg;
+			add_incdir(optarg);
 			break;
-		case 'Y': {
+		case 'Y':
 			/* -Y may carry several space-separated cc flags at once,
-			 * so the YAML can pass the whole codegen flag list in one go. */
-			char *tok = strtok(optarg, " \t");
-			while (tok != NULL && nxtra < MAXXTRA) {
-				xtracc[nxtra++] = tok;
-				tok = strtok(NULL, " \t");
-			}
+			 * so a caller can pass a whole codegen flag list in one go. */
+			add_ccflags(optarg);
 			break;
-		}
 		case 'i':
 			strcpy(input, optarg);
 			iflag++;
@@ -413,25 +566,26 @@ char *argv[];
 			pflag++;
 			break;
 		case 'c':
-			cc = optarg;
+			cli_cc = optarg;
 			break;
 		case 'l':
-			ld = optarg;
+			cli_ld = optarg;
 			break;
 		case 'r':
 			strcpy(root, optarg);
 			rflag++;
 			break;
-		case 'D':
-		case 'U':
-			if (npredef < MAXDEF) {
-				char buf[PATH_MAX];
-				sprintf(buf, "-%c%s", m, optarg);
-				predef[npredef++] = xstrdup(buf);
-			} else
-				fprintf(stderr,
-				    "too many -D/-U; '%s' ignored\n", optarg);
+		case 'f':
+			strcpy(conffile, optarg);
+			fflag++;
 			break;
+		case 'D':
+		case 'U': {
+			char buf[PATH_MAX];
+			sprintf(buf, "-%c%s", m, optarg);
+			add_predef(buf);
+			break;
+		}
 		case '?':
 		default:
 			fprintf(stderr, USAGE);
@@ -466,6 +620,31 @@ char *argv[];
 		else
 			sprintf(packdir, "%s/pack.d", confdir);
 	}
+
+	/*
+	 * Conf-tree root: the default config path and any relative INCDIRS hang
+	 * off this.  Mirrors the pack.d precedence: when an input dir is given it
+	 * is <conf>/cf.d, so the tree is its parent (covers the build tree's
+	 * conf-root); otherwise <root>/etc/conf (the on-target tree).
+	 */
+	if (iflag)
+		sprintf(conftree, "%s/..", input);
+	else
+		strcpy(conftree, confdir);
+
+	/*
+	 * Read the config (CFLAGS/DEFINES/INCDIRS/CC/LD) from <conftree>/cf.d/
+	 * idmkunix.conf unless -f overrode the path.  An explicit -f is required to
+	 * exist; the default is optional (a fully-flagged command line still works).
+	 * Read before applying an explicit -c/-l so those still win over CC=/LD=.
+	 */
+	if (!fflag)
+		sprintf(conffile, "%s/cf.d/idmkunix.conf", conftree);
+	read_conf(conffile, fflag);
+	if (cli_cc != NULL)
+		cc = cli_cc;
+	if (cli_ld != NULL)
+		ld = cli_ld;
 
 	if (!exists(input)) {
 		sprintf(errbuf, EXISTF, input);

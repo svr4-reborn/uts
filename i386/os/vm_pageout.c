@@ -247,6 +247,7 @@ int pageout_asleep = 0;
 #define	BACK	2
 
 int dopageout = 1;	/* must be non-zero to turn page stealing on */
+const int pageout_debug = 0;
 
 /*
  * The page out daemon, which runs as process 2.
@@ -297,11 +298,23 @@ loop:
 	 */
 	(void) spl6();
 	if (bclnlist != NULL) {
+		if (pageout_debug)
+			cmn_err(CE_CONT,
+			    "^pageout cleanup-before-sleep: freemem=%d "
+			    "bclnlist=%x nscan=%d desscan=%d\n",
+			    freemem, bclnlist, nscan, desscan);
 		(void) spl0();
 		cleanup();
 		goto loop;
 	}
 	pageout_asleep = 1;
+	if (pageout_debug)
+		cmn_err(CE_CONT,
+		    "^pageout sleep: proc=%x freemem=%d lotsfree=%d "
+		    "desfree=%d minfree=%d nscan=%d desscan=%d "
+		    "bclnlist=%x dopageout=%d\n",
+		    proc_pageout, freemem, lotsfree, desfree, minfree,
+		    nscan, desscan, bclnlist, dopageout);
 	(void) sleep((caddr_t)proc_pageout, PSWP+1);
 	pageout_asleep = 0;
 	(void) spl0();
@@ -309,6 +322,12 @@ loop:
 	count = 0;
 	pushes = 0;
 
+	if (pageout_debug)
+		cmn_err(CE_CONT,
+		    "^pageout woke: proc=%x freemem=%d lotsfree=%d "
+		    "nscan=%d desscan=%d bclnlist=%x\n",
+		    proc_pageout, freemem, lotsfree, nscan, desscan,
+		    bclnlist);
 	trace5(TR_PAGEOUT, 0, nscan, desscan, freemem, lotsfree);
 	while (nscan < desscan && freemem < lotsfree) {
 		register int rvfront, rvback;
@@ -347,6 +366,11 @@ loop:
 			count++;
 		}
 	}
+	if (pageout_debug)
+		cmn_err(CE_CONT,
+		    "^pageout done: freemem=%d lotsfree=%d nscan=%d "
+		    "desscan=%d pushes=%d bclnlist=%x\n",
+		    freemem, lotsfree, nscan, desscan, pushes, bclnlist);
 	trace5(TR_PAGEOUT, 1, nscan, desscan, freemem, lotsfree);
 	goto loop;
 }

@@ -108,6 +108,7 @@
 #include "sys/time.h"
 #include "sys/unistd.h"
 #include "sys/conf.h"
+#include "sys/cmn_err.h"
 
 /* XENIX Support */
 
@@ -2264,6 +2265,10 @@ struct ppolla {
 	sigset_t *sigmask;
 };
 
+const int poll_debug = 0;
+const int poll_debug_fds = 8;
+static int poll_debug_seq;
+
 int
 ppoll(uap, rvp)
 	register struct ppolla *uap;
@@ -2281,6 +2286,13 @@ ppoll(uap, rvp)
 	poll_args.nfds = uap->nfds;
 	poll_args.timo = -1;
 
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^ppoll enter: pid=%d proc=%x fdp=%x nfds=%d "
+		    "tsp=%x sigmask=%x hold=%x\n",
+		    u.u_procp->p_pid, u.u_procp, uap->fdp, uap->nfds,
+		    uap->tsp, uap->sigmask, u.u_procp->p_hold);
+
 	if (uap->tsp) {
 		if (copyin((caddr_t)uap->tsp, (caddr_t)&timeout, sizeof(timeout)))
 			return EFAULT;
@@ -2296,6 +2308,12 @@ ppoll(uap, rvp)
 			else
 				poll_args.timo = timeout.tv_sec * 1000 + timeout_ms;
 		}
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^ppoll timeout: pid=%d sec=%x nsec=%x "
+			    "timo_ms=%x\n",
+			    u.u_procp->p_pid, timeout.tv_sec,
+			    timeout.tv_nsec, poll_args.timo);
 	}
 
 	if (uap->sigmask) {
@@ -2307,6 +2325,10 @@ ppoll(uap, rvp)
 		old_mask = u.u_procp->p_hold;
 		u.u_procp->p_hold = new_mask;
 		have_mask = 1;
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^ppoll mask: pid=%d old_hold=%x new_hold=%x\n",
+			    u.u_procp->p_pid, old_mask, new_mask);
 	}
 
 	saveq = u.u_qsav;
@@ -2325,6 +2347,12 @@ ppoll(uap, rvp)
 	if (have_mask)
 		u.u_procp->p_hold = old_mask;
 	u.u_qsav = saveq;
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^ppoll exit: pid=%d proc=%x error=%d rval1=%d "
+		    "hold=%x\n",
+		    u.u_procp->p_pid, u.u_procp, error, rvp->r_val1,
+		    u.u_procp->p_hold);
 	return error;
 }
 
@@ -2351,10 +2379,21 @@ poll(uap, rvp)
 	int error = 0;
 	proc_t *p = u.u_procp;
 	extern time_t lbolt;
+	int trace_id;
+	int trace_slept = 0;
+	int trace_retries = 0;
+	int trace_fdlimit;
 
 	if (uap->nfds < 0 || uap->nfds > u.u_rlimit[RLIMIT_NOFILE].rlim_cur)
 		return EINVAL;
 	t = lbolt;
+	trace_id = ++poll_debug_seq;
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^poll enter: id=%x pid=%d proc=%x fdp=%x nfds=%d "
+		    "timo=%x nofiles=%d lbolt=%x\n",
+		    trace_id, p->p_pid, p, uap->fdp, uap->nfds,
+		    uap->timo, u.u_nofiles, t);
 
 	/*
 	 * Allocate space for the pollfd array and space for the
@@ -2377,6 +2416,17 @@ poll(uap, rvp)
 			error = EFAULT;
 			goto pollout;
 		}
+		if (poll_debug) {
+			trace_fdlimit = uap->nfds;
+			if (trace_fdlimit > poll_debug_fds)
+				trace_fdlimit = poll_debug_fds;
+			for (i = 0; i < trace_fdlimit; i++)
+				cmn_err(CE_CONT,
+				    "^poll fd: id=%x pid=%d idx=%d fd=%d "
+				    "events=%x revents=%x\n",
+				    trace_id, p->p_pid, i, pollp[i].fd,
+				    pollp[i].events, pollp[i].revents);
+		}
 
 		/*
 		 * Chain the polldat array together.
@@ -2398,6 +2448,7 @@ poll(uap, rvp)
 	 * timeout is reached.
 	 */
 retry:		
+	trace_retries++;
 
 	/*
 	 * Polling the fds is a relatively long process.  Set up the
@@ -2429,14 +2480,26 @@ retry:
 		if (pollp[i].revents)
 			fdcnt++;
 		else if (fdcnt == 0 && php) {
+			if (poll_debug)
+				cmn_err(CE_CONT,
+				    "^poll add: id=%x pid=%d idx=%d fd=%d "
+				    "events=%x php=%x curdat=%x\n",
+				    trace_id, p->p_pid, i, pollp[i].fd,
+				    pollp[i].events, php, curdat);
 			polladd(php, pollp[i].events, pollrun,
 			  (long)p, curdat++);
 			savehp = php;
 		}
 		splx(s);
 	}
-	if (fdcnt) 
+	if (fdcnt) {
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^poll ready: id=%x pid=%d fdcnt=%d "
+			    "retries=%d\n",
+			    trace_id, p->p_pid, fdcnt, trace_retries);
 		goto pollout;
+	}
 
 	/*
 	 * If you get here, the poll of fds was unsuccessful.
@@ -2445,8 +2508,14 @@ retry:
 	 * readable, writeable, or gets an exception.
 	 */
 	rem = uap->timo < 0 ? 1 : uap->timo - ((lbolt - t)*1000)/HZ;
-	if (rem <= 0)
+	if (rem <= 0) {
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^poll expired-before-sleep: id=%x pid=%d "
+			    "timo=%x rem=%x lbolt=%x start=%x\n",
+			    trace_id, p->p_pid, uap->timo, rem, lbolt, t);
 		goto pollout;
+	}
 
 	s = splhi();
 
@@ -2455,6 +2524,12 @@ retry:
 	 * have turned off SINPOLL.  Check this and rescan if so.
 	 */
 	if (!(p->p_pollflag & SINPOLL)) {
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^poll retry-sinpoll: id=%x pid=%d "
+			    "pollflag=%x p_stat=%x p_wchan=%x\n",
+			    trace_id, p->p_pid, p->p_pollflag,
+			    p->p_stat, p->p_wchan);
 		splx(s);
 		goto retry;
 	}
@@ -2467,6 +2542,11 @@ retry:
 		rem = ((rem/1000) * HZ) + ((((rem%1000) * HZ) + 999) / 1000);
 		p->p_pollflag |= SPOLLTIME;
 		id = timeout((void(*)())polltime, (caddr_t)p, rem);
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^poll timeout-arm: id=%x pid=%d ticks=%x "
+			    "timeout_id=%x pollflag=%x\n",
+			    trace_id, p->p_pid, rem, id, p->p_pollflag);
 	}
 
 	/*
@@ -2474,7 +2554,22 @@ retry:
 	 * (which will have cleared SPOLLTIME), or by the pollwakeup function 
 	 * called from either the VFS, the driver, or the stream head.
 	 */
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^poll sleep: id=%x pid=%d proc=%x nfds=%d "
+		    "timo=%x rem=%x pollflag=%x p_stat=%x p_wchan=%x "
+		    "savehp=%x retries=%d\n",
+		    trace_id, p->p_pid, p, uap->nfds, uap->timo, rem,
+		    p->p_pollflag, p->p_stat, p->p_wchan, savehp,
+		    trace_retries);
+	trace_slept = 1;
 	if (sleep((caddr_t)&pollwait, (PZERO+1)|PCATCH)) {
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^poll sleep-intr: id=%x pid=%d proc=%x "
+			    "pollflag=%x p_stat=%x p_wchan=%x\n",
+			    trace_id, p->p_pid, p, p->p_pollflag,
+			    p->p_stat, p->p_wchan);
 		if (uap->timo > 0)
 			untimeout(id);
 		splx(s);
@@ -2482,6 +2577,12 @@ retry:
 		goto pollout;
 	}
 	splx(s);
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^poll woke: id=%x pid=%d proc=%x pollflag=%x "
+		    "p_stat=%x p_wchan=%x\n",
+		    trace_id, p->p_pid, p, p->p_pollflag, p->p_stat,
+		    p->p_wchan);
 
 	/*
 	 * If SPOLLTIME is still set, you were awakened because an event
@@ -2491,11 +2592,21 @@ retry:
 	 */
 	if (uap->timo > 0) {
 		if (p->p_pollflag & SPOLLTIME) {
+			if (poll_debug)
+				cmn_err(CE_CONT,
+				    "^poll retry-event: id=%x pid=%d "
+				    "pollflag=%x\n",
+				    trace_id, p->p_pid, p->p_pollflag);
 			untimeout(id);
 			goto retry;
 		}
-	} else
+	} else {
+		if (poll_debug)
+			cmn_err(CE_CONT,
+			    "^poll retry-indef: id=%x pid=%d pollflag=%x\n",
+			    trace_id, p->p_pid, p->p_pollflag);
 		goto retry;
+	}
 
 pollout:
 
@@ -2519,6 +2630,12 @@ pollout:
 		if (pollp != parray)
 			kmem_free((caddr_t)pollp, psize);
 	}
+	if (poll_debug && (trace_slept || error || fdcnt || trace_retries > 1))
+		cmn_err(CE_CONT,
+		    "^poll exit: id=%x pid=%d proc=%x error=%d fdcnt=%d "
+		    "slept=%d retries=%d pollflag=%x p_stat=%x p_wchan=%x\n",
+		    trace_id, p->p_pid, p, error, fdcnt, trace_slept,
+		    trace_retries, p->p_pollflag, p->p_stat, p->p_wchan);
 	return error;
 }
 
@@ -2532,6 +2649,11 @@ void
 polltime(p)
 	register proc_t *p;
 {
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^poll timeout-fire: pid=%d proc=%x p_stat=%x "
+		    "p_wchan=%x pollflag=%x\n",
+		    p->p_pid, p, p->p_stat, p->p_wchan, p->p_pollflag);
 	if (p->p_wchan == (caddr_t)&pollwait) {
 		setrun(p);
 		p->p_pollflag &= ~SPOLLTIME;
@@ -2549,6 +2671,11 @@ pollrun(p)
 	register int s;
 
 	s = splhi();
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^poll run: pid=%d proc=%x p_stat=%x p_wchan=%x "
+		    "pollflag=%x\n",
+		    p->p_pid, p, p->p_stat, p->p_wchan, p->p_pollflag);
 	if (p->p_wchan == (caddr_t)&pollwait) {
 		if (p->p_stat == SSLEEP)
 			setrun(p);
@@ -2556,6 +2683,11 @@ pollrun(p)
 			unsleep(p);
 	}
 	p->p_pollflag &= ~SINPOLL;
+	if (poll_debug)
+		cmn_err(CE_CONT,
+		    "^poll run done: pid=%d proc=%x p_stat=%x "
+		    "p_wchan=%x pollflag=%x\n",
+		    p->p_pid, p, p->p_stat, p->p_wchan, p->p_pollflag);
 	splx(s);
 }
 

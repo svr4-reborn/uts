@@ -79,6 +79,42 @@ extern long	timedelta;
 extern int	doresettodr;
 extern int	idleswtch;	/* flag set while idle in pswtch() */
 
+const int idle_proc_debug = 0;
+const int idle_proc_debug_secs = 3;
+static int idle_proc_idle_ticks;
+static int idle_proc_idle_secs;
+static int idle_proc_dumped;
+
+static void idle_proc_dump();
+
+static void
+idle_proc_dump()
+{
+	register proc_t *p;
+	struct user *up;
+	char *comm;
+	int pid;
+	int ppid;
+
+	cmn_err(CE_CONT, "^idle proc dump begin\n");
+	for (p = practive; p != NULL; p = p->p_next) {
+		pid = p->p_pidp ? p->p_pid : -1;
+		ppid = p->p_ppid;
+		comm = "?";
+		if ((p->p_flag & SULOAD) && p->p_segu) {
+			up = PTOU(p);
+			if (up->u_comm[0])
+				comm = up->u_comm;
+		}
+		cmn_err(CE_CONT,
+		    "^idle proc: pid=%d ppid=%d proc=%x stat=%x pri=%d "
+		    "flag=%x wchan=%x pollflag=%x sig=%x hold=%x comm=%s\n",
+		    pid, ppid, p, p->p_stat, p->p_pri, p->p_flag,
+		    p->p_wchan, p->p_pollflag, p->p_sig, p->p_hold, comm);
+	}
+	cmn_err(CE_CONT, "^idle proc dump end\n");
+}
+
 extern int (*io_poll[])();	/* driver entry points to poll every tick */
 
 time_t	time;		/* time in seconds since 1970 */
@@ -183,6 +219,8 @@ int oldipl;
 			psignal(pp, SIGXCPU);
 	} else {
 		if (pc == waitloc) {
+			if (idle_proc_debug)
+				idle_proc_idle_ticks++;
 			if (syswait.iowait+syswait.swap+syswait.physio) {
 				sysinfo.cpu[CPU_WAIT]++;
 				if (syswait.iowait)
@@ -195,6 +233,8 @@ int oldipl;
 				sysinfo.cpu[CPU_IDLE]++;
 			}
 		} else {
+			if (idle_proc_debug && !USERMODE(cs))
+				idle_proc_idle_ticks = 0;
 			sysinfo.cpu[CPU_KERNEL]++;
 			pp->p_stime++;
 			if (rfsi_servep && RF_SERVER())
@@ -317,6 +357,19 @@ int oldipl;
             	if (idlemsg && --idlecntdown == 0)
                         cmn_err(CE_WARN, "System is idle\n");
 #endif
+
+		if (idle_proc_debug) {
+			if (idle_proc_idle_ticks > HZ / 2)
+				idle_proc_idle_secs++;
+			else
+				idle_proc_idle_secs = 0;
+			idle_proc_idle_ticks = 0;
+			if (!idle_proc_dumped &&
+			  idle_proc_idle_secs >= idle_proc_debug_secs) {
+				idle_proc_dumped = 1;
+				idle_proc_dump();
+			}
+		}
 
 		minfo.freeswap = anoninfo.ani_free;
 

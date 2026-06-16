@@ -6,8 +6,13 @@
 # running system.  Driven by idconfig (generate config glue) + idmkunix
 # (compile glue, relink against the prebuilt pack.d objects).
 #
+# idmkunix reads its toolchain (CC/LD), codegen flags, kernel defines and the
+# isolated kernel-header include dirs from cf.d/idmkunix.conf -- the same file
+# the kernel build's relink uses -- so a reconfigure here is identical to it.
+#
 # Usage: idbuild [-r root]     (default root "/")
-# Extra args are passed through to idmkunix.
+# Extra args are passed through to idmkunix.  Set CC/LD in the environment to
+# override the compiler/link-editor named in idmkunix.conf.
 
 ROOT=/
 case "$1" in
@@ -18,10 +23,13 @@ esac
 ID="$ROOT/etc/conf"
 BIN="$ID/bin"
 
-# Target toolchain used to recompile the generated glue and relink.  Plain
-# cc/ld off PATH on the installed system; override via CC/LD in the environment.
-CC=${CC:-cc}
-LD=${LD:-ld}
+# Target toolchain used to recompile the generated glue and relink.  By default
+# idmkunix takes CC/LD (and the codegen/define/include settings) from
+# cf.d/idmkunix.conf, so we pass nothing.  Setting CC/LD in the environment
+# overrides the config via idmkunix's -c/-l.
+TOOLARGS=
+[ -n "${CC:-}" ] && TOOLARGS="$TOOLARGS -c $CC"
+[ -n "${LD:-}" ] && TOOLARGS="$TOOLARGS -l $LD"
 
 echo
 echo "	The UNIX Operating System will now be rebuilt."
@@ -45,8 +53,9 @@ if [ $? != 0 ]; then
 	exit 1
 fi
 
-# Compile the glue and relink the kernel.
-"$BIN/idmkunix" -r "$ROOT" -c "$CC" -l "$LD" "$@"
+# Compile the glue and relink the kernel.  idmkunix reads the toolchain,
+# codegen, defines and kernel-header include dirs from cf.d/idmkunix.conf.
+"$BIN/idmkunix" -r "$ROOT" $TOOLARGS "$@"
 if [ $? != 0 ]; then
 	rm -f conf.o fsconf.o vector.o
 	rm -f "$ID"/pack.d/*/space.o "$ID"/pack.d/*/stubs.o
