@@ -76,6 +76,17 @@ extern ivctM7S4(), ivctM7S5(), ivctM7S6(), ivctM7S7();
 
 extern struct tss386 ktss, ltss, dftss;
 
+/*
+ * Boot-time descriptor tables (IDT, GDT, the boot TSSes and the call/return
+ * gates) live in the kernel data segment, in their own .data.bootdesc section.
+ * The munge code in uprt.s rewrites them in place during startup; their data-
+ * segment placement is what that code (and the boot mapping) expects. The monitor
+ * IDT (monidt) is the exception: it goes in .text (see below). Historically the
+ * build placed monidt in .text by post-processing the compiler's assembly
+ * (rewriting the one bare `.data` directive to `.text`/`.align 8`) while leaving
+ * the .data.bootdesc tables in data; we express both placements directly via
+ * section attributes instead.
+ */
 #define BOOTDESC __attribute__((section(".data.bootdesc")))
 
 struct gate_desc idt[IDTSZ] BOOTDESC = {
@@ -702,7 +713,11 @@ asm(".globl gdt\n"
     ".set gdtend, gdt_storage + (" STRINGIFY(GDTSZ) " * 8)\n");
 #undef STRINGIFY
 #undef STRINGIFY1
-struct gate_desc monidt[MONIDTSZ] = {
+/*
+ * monidt is the one descriptor table the historical build moved into .text
+ * (it was the lone bare `.data` the post-process rewrote to `.text`/`.align 8`).
+ */
+struct gate_desc monidt[MONIDTSZ] __attribute__((section(".text.monidt"), aligned(8))) = {
 			MKKTRPG(0L),	/* 000 */
 			MKKTRPG(0L),	/* 001 */
 			MKKTRPG(0L),	/* 002 */

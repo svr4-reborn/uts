@@ -44,12 +44,12 @@
 	.set	PROTBIT, 0x0001
 	.set	PAGEBIT, 0x80000000
 	.set    DFSTKSIZ,0x0FFE
-	.set	IDTLIM, [8*256-1]
-	.set	MONIDTLIM, [8*16-1]
+	.set	IDTLIM, (8*256-1)
+	.set	MONIDTLIM, (8*16-1)
 	.set	JBTLOC, 0x0400
 	.set	BM_BASE, 0
 	.set	BM_EXTENT, 4
-	.set	KPD_LOC, [KPTBL_LOC+0x1000]
+	.set	KPD_LOC, (KPTBL_LOC+0x1000)
 
 	.text
 /*  */
@@ -446,7 +446,7 @@ Rusermon:
 
 	.align	8	# This is for ease of looking at memory.
 Rgdtdscr:
-	.short  [8*GDTSZ-1]       # We will re-compute this, but just in case...
+	.short  (8*GDTSZ-1)       # We will re-compute this, but just in case...
 	.long	gdt
 
 	.align	8
@@ -457,7 +457,7 @@ Ridtdscr:
 
 	.align	8
 RIgdtdscr:			# This and the next entry are used to
-	.value  [8*GDTSZ-1]       # initialize DMON
+	.value  (8*GDTSZ-1)       # initialize DMON
 	.long	gdt
 
 	.align	8
@@ -674,14 +674,14 @@ _start_gdt:
 	orl		$PG_RW, %eax         # Make the page writable
 	movl	%eax, %fs:KPD_LOC   # Store full 32-bit PD entry
 	DBG_PRINT_REG32 "PD[0] entry:", %eax
-	movl	%eax, %fs:[KPD_LOC+3072]
+	movl	%eax, %fs:(KPD_LOC+3072)
 	DBG_PRINT_REG32 "PD[768] entry:", %eax
 
 				# Also, kernel address page table
 	movl	$KPTBL_LOC+1, %eax	#   (with present bit set)
 	orl		$PG_P, %eax          # set present
 	orl		$PG_RW, %eax         # set writable
-	movl	%eax, %fs:[KPD_LOC+3328]
+	movl	%eax, %fs:(KPD_LOC+3328)
 	DBG_PRINT_REG32 "PD[832] entry (KVS):", %eax
 
 	movl	$kptn, %eax		# Now, the last Page table
@@ -689,7 +689,7 @@ _start_gdt:
 	andl	$0xfffff000, %eax    # ensure page-aligned PFN
 	orl		$PG_P, %eax          # Set present bit
 	orl		$PG_RW, %eax         # Make the page writable
-	movl	%eax, %fs:[KPD_LOC+4092]
+	movl	%eax, %fs:(KPD_LOC+4092)
 	DBG_PRINT_REG32 "PD[last] entry:", %eax
 
 

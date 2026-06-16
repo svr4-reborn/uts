@@ -5,13 +5,14 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
-import subprocess
 from pathlib import Path
 
 try:
     from .pathing import resolve_kernel_root
+    from .uts_boot_common import preprocess_and_assemble, resolve_linker, run
 except ImportError:
     from pathing import resolve_kernel_root
+    from uts_boot_common import preprocess_and_assemble, resolve_linker, run
 
 
 PROGRAM_SOURCES: dict[str, list[str]] = {
@@ -36,54 +37,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--as', dest='assembler', default='as')
     parser.add_argument('--ld', default='ld')
     return parser.parse_args()
-
-
-def run(command: list[str], cwd: Path | None = None) -> None:
-    rendered = ' '.join(command)
-    print(rendered)
-    subprocess.run(command, cwd=cwd, check=True)
-
-
-def resolve_linker(linker: str) -> str:
-    if Path(linker).name == 'ld':
-        bfd_linker = shutil.which('ld.bfd')
-        if bfd_linker:
-            return bfd_linker
-    return linker
-
-
-def rewrite_legacy_comment_syntax(source_text: str) -> str:
-    rewritten: list[str] = []
-    for line in source_text.splitlines():
-        comment_index = find_comment_index(line)
-        if comment_index == -1:
-            rewritten.append(line)
-            continue
-        rewritten.append(f'{line[:comment_index]}#{line[comment_index + 1:]}')
-    return '\n'.join(rewritten) + '\n'
-
-
-def find_comment_index(line: str) -> int:
-    quote: str | None = None
-    for index, char in enumerate(line):
-        if char in {'"', "'"}:
-            if quote is None:
-                quote = char
-            elif quote == char:
-                quote = None
-            continue
-        if char == '/' and quote is None:
-            if index == 0 or line[:index].strip() == '' or line[index - 1].isspace():
-                return index
-    return -1
-
-
-def compile_assembly(source: Path, output: Path, *, cpp: str, assembler: str, include_root: Path, symvals_root: Path, build_dir: Path) -> None:
-    preprocessed = build_dir / f'{source.stem}.i'
-    sanitized = build_dir / f'{source.stem}.s'
-    run([cpp, '-P', *CPP_DEFINES, f'-I{symvals_root}', f'-I{include_root}', str(source), '-o', str(preprocessed)])
-    sanitized.write_text(rewrite_legacy_comment_syntax(preprocessed.read_text()), encoding='utf-8')
-    run([assembler, '--32', '-o', str(output), str(sanitized)])
 
 
 def compile_c(source: Path, output: Path, *, cc: str, include_root: Path, symvals_root: Path) -> None:
@@ -129,11 +82,12 @@ def write_linker_script(build_dir: Path) -> Path:
 
 def build_program(name: str, sources: list[str], *, source_dir: Path, build_dir: Path, include_root: Path, symvals_root: Path, cc: str, cpp: str, assembler: str, ld: str) -> Path:
     object_paths: list[Path] = []
+    asm_cpp_flags = [*CPP_DEFINES, f'-I{symvals_root}', f'-I{include_root}']
     for source_name in sources:
         source = source_dir / source_name
         object_path = build_dir / f'{Path(source_name).stem}.o'
         if source.suffix == '.s':
-            compile_assembly(source, object_path, cpp=cpp, assembler=assembler, include_root=include_root, symvals_root=symvals_root, build_dir=build_dir)
+            preprocess_and_assemble(source, object_path, cpp_flags=asm_cpp_flags, cpp=cpp, assembler=assembler, build_dir=build_dir)
         elif source.suffix == '.c':
             compile_c(source, object_path, cc=cc, include_root=include_root, symvals_root=symvals_root)
         else:

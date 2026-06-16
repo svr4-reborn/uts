@@ -137,36 +137,91 @@ targets:
       - io-mouse-at386
 
   ml-at386:
-    description: Build the low-level machine-layer objects, including the generated locore/start/syms kernel inputs.
+    description: Build the low-level machine-layer objects (locore/start/syms) from the modernized ml sources.
     depends_on:
       - prepare-layout
     steps:
+      # (1) Generate symvals.s (.set offset table) and symvals.h (#define table)
+      #     into {obj_root}/ml. The locore/start stubs #include symvals.s and the
+      #     ttrap/uprt fragments #include symvals.h, so both must be on the include
+      #     path for the assembly steps below.
       - kind: command
         argv:
           - python3
-          - "{kernel_root}/tools/uts_ml_build.py"
+          - "{kernel_root}/tools/uts_symvals.py"
           - --workspace-root
           - "{workspace_root}"
-          - --obj-root
+          - --out-dir
           - "{obj_root}/ml"
-          - --pack-root
-          - "{pack_root}/kernel"
           - --cc
           - "{cc}"
-          - --cpp
-          - "{cpp}"
-          - --ld
-          - "{ld}"
           - --cflags
           - "{kernel_recompile_cflags}"
-          - --cflag=-I..
-          - --cpp-flag=-P
-          - --cpp-flag=-I..
-          - --cpp-flag=-D_KERNEL
-          - --cpp-flag=-DLOCORE
-          - --cpp-flag=-DAT386
-          - --cpp-flag=-DWEITEK
-          - --cpp-flag=-DWEITEK_EMULATOR
+
+      # (2) Compile the ml C sources. These use kernel_recompile_cflags (NOT the
+      #     hardened toolchain.cflags: the legacy ml sources are not -Werror /
+      #     -nostdinc clean), so they are explicit cc invocations rather than the
+      #     stock `compile` step. tables2.c places its descriptor tables directly
+      #     in .text via the BOOTDESC section attribute - no post-process needed.
+      - kind: command
+        cwd: i386/ml
+        argv:
+          - sh
+          - -eu
+          - -c
+          - |
+              cflags="{kernel_recompile_cflags} -I.. -I{obj_root}/ml"
+              for src in tables1 pit pic tables2; do
+                "{cc}" $cflags -c "$src.c" -o "{obj_root}/ml/$src.o"
+              done
+
+      # (3) Assemble the combined locore/start units and syms via cc's
+      #     assembler-with-cpp driver. The stubs #include symvals.s + the
+      #     fragments; cpp resolves "sys/..."/"vm/..." via -I.. and symvals via
+      #     -I{obj_root}/ml.
+      - kind: command
+        cwd: i386/ml
+        argv:
+          - sh
+          - -eu
+          - -c
+          - |
+              cflags="{kernel_recompile_cflags} -I.. -I{obj_root}/ml"
+              cppdefs="-D_KERNEL -DLOCORE -DAT386 -DWEITEK -DWEITEK_EMULATOR"
+              for unit in locore start syms; do
+                "{cc}" -x assembler-with-cpp $cflags $cppdefs -c "$unit.s" -o "{obj_root}/ml/$unit.o"
+              done
+
+      # (4) locore.o (final) = partial-link of the ml C tables + the locore unit
+      #     start.o (final) = partial-link of the start unit with tables2.o
+      #     syms.o is a single object; just stage it.
+      #
+      #     NOTE: the input order below matters - the early boot code depends on
+      #     it (tables1.o must lead locore.o). Keep it as written.
+      #
+      #     Input order and linker flags mirror the historical build exactly:
+      #     the link is a plain `-r` with the cross ld (bfd). (The old build
+      #     only added `-m elf_i386 -d` when the toolchain ld was mold, which
+      #     does not allocate COMMONs during `-r`; the default cross ld is bfd,
+      #     so a plain `-r` matches.)
+      - kind: link
+        linker: "{ld_bfd}"
+        output: "{pack_root}/kernel/locore.o"
+        flags: [-r]
+        inputs:
+          - "{obj_root}/ml/tables1.o"
+          - "{obj_root}/ml/locore.o"
+          - "{obj_root}/ml/pit.o"
+          - "{obj_root}/ml/pic.o"
+      - kind: link
+        linker: "{ld_bfd}"
+        output: "{pack_root}/kernel/start.o"
+        flags: [-r]
+        inputs:
+          - "{obj_root}/ml/start.o"
+          - "{obj_root}/ml/tables2.o"
+      - kind: command
+        argv: [cp, "{obj_root}/ml/syms.o", "{pack_root}/kernel/syms.o"]
 
   fs-at386:
     description: Compile the full filesystem stack, including nested filesystem types, under uts/i386/fs.

@@ -721,12 +721,12 @@ vstart:
 /* The detection is done by looking for the presence of the Errata 5 bug, */
 /* which causes a single step of REP MOVS to go through 2 iterations, not 1. */
 /* */
-	pushl	[idt+8+4]		# save current debug trap
-	pushl	[idt+8]
+	pushl	(idt+8+4)		# save current debug trap
+	pushl	(idt+8)
 	movl	$b1_ss_trap,%eax
-	movw	%ax,[idt+8]		# set debug trap to b1_ss_trap
+	movw	%ax,(idt+8)		# set debug trap to b1_ss_trap
 	shrl	$16,%eax
-	movw	%ax,[idt+8+6]
+	movw	%ax,(idt+8+6)
 	pushfl				# save flags register
 	movl	$2,%ecx			# set up for a REP MOVS w#count of 2
 	movl	$u,%esi			#   (to and from an arbitrary addr)
@@ -740,8 +740,8 @@ b1_ss_trap:
 	xorl	$1,%ecx			# ECX has 1 if no bug, else 0 -
 	movl	%ecx,do386b1		#   store 0 or 1, resp., in d0386b1
 	popfl				# restore flags
-	popl	[idt+8]			# restore debug trap
-	popl	[idt+8+4]
+	popl	(idt+8)			# restore debug trap
+	popl	(idt+8+4)
 skip_b1_detect:
 /* */
 /* Set up for floating point.  Check for any chip at all by tring to */
@@ -773,7 +773,7 @@ is287:
 /* We have either a 287 or 387. */
 /* */
 mathchip:
-	andl    $-1![CR0_TS|CR0_EM],%edx	# clear emulate math chip bit
+	andl    $~(CR0_TS|CR0_EM),%edx	# clear emulate math chip bit
 	orl     $CR0_MP,%edx            # set math chip present bit
 	movl    %edx,%cr0               # in machine status word
 	movl	do386b1,%eax
@@ -793,7 +793,7 @@ b1_enabled:
 	movl	$0,do387cr3		# clear do387cr3 for now
 	pushl	kspt0			# save current pte (for D0000000)
 /* set pte to 2G alias for kpd0 */
-	movl	$0x80000001+[KPTBL_LOC+0x1000],kspt0
+	movl	$0x80000001+(KPTBL_LOC+0x1000),kspt0
 	movl	%cr3,%eax		# flush tlb
 	movl	%eax,%cr3
 	movl	kpd0,%eax		# read the first kpd0 entry
@@ -822,7 +822,7 @@ skip_cr3_detect:
 /* */
 nofp:
 	movl    %cr0,%edx
-	andl    $-1!CR0_MP,%edx         # clear math chip present
+	andl    $~CR0_MP,%edx         # clear math chip present
 	orl     $CR0_EM,%edx            # set emulate math bit
 	movl    %edx,%cr0               # in machine status word
 	movb    $FP_NO,fp_kind
@@ -1315,7 +1315,7 @@ swnocallgate:
 	movl	p_ubptbl(%eax), %edi
 rmcopy_loop:
 	slodl
-	andl	$[PG_REF+PG_M], %eax
+	andl	$(PG_REF+PG_M), %eax
 	orl	(%edi), %eax
 	sstol
 	loop	rmcopy_loop
@@ -1355,7 +1355,7 @@ resume:
 /* kernel stack and the floating-point state. */
 
 	movl	usertable, %eax
-	orl	$[PG_US+PG_RW], (%eax)
+	orl	$(PG_US+PG_RW), (%eax)
 
 	call	restorepd		# set up curproc's page directory
 
@@ -1363,7 +1363,7 @@ resume:
 /* now running on new ublock */
 /* */
 
-	leal	gdt+[JTSSSEL!0x7], %esi	# esi = &gdt[JTSSSEL]
+	leal	gdt+(JTSSSEL & ~0x7), %esi	# esi = &gdt[JTSSSEL]
 	movb	7(%esi), %bh
 	movb	4(%esi), %bl
 	shl	$16, %ebx
@@ -1373,7 +1373,7 @@ resume:
 	ltr	t_edx(%ebx)
 
 /* XENIX Support */
-	leal	idt+[0xf0*8], %edi	# if necessary,
+	leal	idt+(0xf0*8), %edi	# if necessary,
 	movl	u_fpintgate, %eax	# customize idt[0xf0 .. 0xff]
 	movl	u_fpintgate+4, %esi	# for this process
 	cmpl	%eax, (%edi)
@@ -1381,7 +1381,7 @@ resume:
 	cmpl	%esi, 4(%edi)
 	je	idtok
 idtchg:
-	movl	$[2*0x10], %ecx	
+	movl	$(2*0x10), %ecx
 idtfill:
 	sstol				# copy u_fpintgate to the idt[]
 	xchgl	%eax, %esi
@@ -1813,10 +1813,10 @@ prele:
 	pushl	%ebp
 	movl	%esp, %ebp		# establish stack frame
 	movl	8(%ebp), %edx		# get ip off the stack
-	andw	$-1!ILOCK, i_flag(%edx)	# clear locked bit
+	andw	$~ILOCK, i_flag(%edx)	# clear locked bit
 	testw	$IWANT, i_flag(%edx)	# check wanted bit
 	jz	prlret			# not wanted, return
-	andw	$-1!IWANT, i_flag(%edx)	# clear wanted bit
+	andw	$~IWANT, i_flag(%edx)	# clear wanted bit
 	pushl	%edx			# push ip
 	call	wakeup			# rise and shine!
 	addl	$4, %esp		# cleanup stack

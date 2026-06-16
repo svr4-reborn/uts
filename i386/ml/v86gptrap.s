@@ -211,7 +211,7 @@ op_pushf:
 	movzwl  OLDESP(%ebp),%ebx
 	leal    (%ebx, %eax, 8), %eax   # Compute %eax = ss * 16 + sp
 	movw    OLDEFL(%ebp),%bx
-	andw    $-1!IFLAG,%bx           #  Prepare to set correct IF bit
+	andw    $~IFLAG,%bx           #  Prepare to set correct IF bit
 	movl	$pushf_done1,u_fault_catch+fc_func
 	orw	(%edx),%bx		#  Include IF bit in 8086 virtual flags
 pushf_done1:
@@ -241,7 +241,7 @@ op_popf:
 	movl	$popf_done,u_fault_catch+fc_func
 	movw	%ax,(%edx)		#  Save the interrupt flag status
 popf_done:
-	andw    $-1!CLNFLAGS,%bx        #  Make sure IOPL=0, NT=0
+	andw    $~CLNFLAGS,%bx        #  Make sure IOPL=0, NT=0
 	orw     $IFLAG,%bx              #  Don't let real I bit be off
 	movw    %bx,OLDEFL(%ebp)        #  Replace flags plus I-bit
 
@@ -280,7 +280,7 @@ op_iret:
 	movw    %bx,OLDCS(%ebp)         #  Fix up CS on curr stack
 	movl    $iret_done,u_fault_catch+fc_func
 	movw    4(%eax),%bx             #  Get flags
-	andw    $-1!CLNFLAGS,%bx        #  Set IOPL=0, NT=0
+	andw    $~CLNFLAGS,%bx        #  Set IOPL=0, NT=0
 	movw    %bx,%ax
 	andw    $IFLAG,%ax
 	movl	$iret_done1,u_fault_catch+fc_func
@@ -328,7 +328,7 @@ all_ints:
 	movl    $int_done,u_fault_catch+fc_func
 	movl    %ebx,(%eax)             #  Put new CS & IP on user stack
 	movw    OLDEFL(%ebp),%bx        #  Get current flags
-	andw    $-1![IFLAG|TFLAG],%bx   #  Prepare to set correct IF,TF bits
+	andw    $~(IFLAG|TFLAG),%bx   #  Prepare to set correct IF,TF bits
 	movl	$int_done1,u_fault_catch+fc_func
 	orw	(%edx),%bx		#  Include virtual flags I-bit
 int_done1:

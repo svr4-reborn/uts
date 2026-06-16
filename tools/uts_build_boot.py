@@ -11,8 +11,10 @@ from pathlib import Path
 
 try:
     from .pathing import resolve_kernel_root
+    from .uts_boot_common import preprocess_and_assemble, run
 except ImportError:
     from pathing import resolve_kernel_root
+    from uts_boot_common import preprocess_and_assemble, run
 
 
 BOOT_SOURCES = [
@@ -86,37 +88,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def run(command: list[str], cwd: Path | None = None) -> None:
-    print(' '.join(command))
-    subprocess.run(command, cwd=cwd, check=True)
-
-
-def rewrite_legacy_comment_syntax(source_text: str) -> str:
-    rewritten: list[str] = []
-    for line in source_text.splitlines():
-        comment_index = find_comment_index(line)
-        if comment_index == -1:
-            rewritten.append(line.replace('\\*', '*'))
-            continue
-        rewritten.append(f'{line[:comment_index]}#{line[comment_index + 1:]}'.replace('\\*', '*'))
-    return '\n'.join(rewritten) + '\n'
-
-
-def find_comment_index(line: str) -> int:
-    quote: str | None = None
-    for index, char in enumerate(line):
-        if char in {'"', "'"}:
-            if quote is None:
-                quote = char
-            elif quote == char:
-                quote = None
-            continue
-        if char == '/' and quote is None:
-            if index == 0 or line[:index].strip() == '' or line[index - 1].isspace():
-                return index
-    return -1
-
-
 def apply_boot_sed(source_text: str) -> str:
     output: list[str] = []
     for line in source_text.splitlines():
@@ -129,7 +100,7 @@ def apply_boot_sed(source_text: str) -> str:
     return '\n'.join(output) + '\n'
 
 
-def common_cpp_flags(workspace_root: Path, include_root: Path, symvals_root: Path, extra_define: str | None = None) -> list[str]:
+def common_cpp_flags(include_root: Path, symvals_root: Path, extra_define: str | None = None) -> list[str]:
     flags = [
         *CPP_DEFINES,
         f'-I{symvals_root}',
@@ -140,37 +111,13 @@ def common_cpp_flags(workspace_root: Path, include_root: Path, symvals_root: Pat
     return flags
 
 
-def assemble_with_cpp(source: Path, output: Path, *, workspace_root: Path, include_root: Path, symvals_root: Path, cpp: str, assembler: str, build_dir: Path, extra_define: str | None = None, prepend: Path | None = None) -> None:
-    combined = build_dir / f'{source.stem}.combined.s'
-    try:
-        with combined.open('w', encoding='utf-8') as handle:
-            if prepend is not None:
-                handle.write(prepend.read_text(encoding='utf-8'))
-            handle.write(source.read_text(encoding='utf-8'))
-
-        preprocessed = build_dir / f'{source.stem}.i'
-        sanitized = build_dir / f'{source.stem}.s'
-        run([
-            cpp,
-            *common_cpp_flags(workspace_root, include_root, symvals_root, extra_define),
-            '-P',
-            str(combined),
-            '-o',
-            str(preprocessed),
-        ])
-        sanitized.write_text(rewrite_legacy_comment_syntax(preprocessed.read_text(encoding='utf-8')), encoding='utf-8')
-        run([assembler, '--32', '-o', str(output), str(sanitized)])
-    finally:
-        combined.unlink(missing_ok=True)
-
-
-def compile_c_to_object(source: Path, output: Path, *, workspace_root: Path, include_root: Path, symvals_root: Path, cc: str, assembler: str, build_dir: Path, extra_define: str | None = None) -> None:
+def compile_c_to_object(source: Path, output: Path, *, include_root: Path, symvals_root: Path, cc: str, assembler: str, build_dir: Path, extra_define: str | None = None) -> None:
     assembly = build_dir / f'{source.stem}.gen.s'
     filtered = build_dir / f'{source.stem}.i'
     run([
         cc,
         *COMMON_CFLAGS,
-        *common_cpp_flags(workspace_root, include_root, symvals_root, extra_define),
+        *common_cpp_flags(include_root, symvals_root, extra_define),
         '-S',
         '-c',
         str(source),
@@ -181,17 +128,16 @@ def compile_c_to_object(source: Path, output: Path, *, workspace_root: Path, inc
     run([assembler, '--32', '-o', str(output), str(filtered)])
 
 
-def compile_variant_objects(source_dir: Path, source_names: list[str], *, workspace_root: Path, include_root: Path, symvals_root: Path, cc: str, cpp: str, assembler: str, build_dir: Path, extra_define: str | None = None, prepend: Path | None = None) -> list[Path]:
+def compile_variant_objects(source_dir: Path, source_names: list[str], *, include_root: Path, symvals_root: Path, cc: str, cpp: str, assembler: str, build_dir: Path, extra_define: str | None = None, prepend: Path | None = None) -> list[Path]:
     build_dir.mkdir(parents=True, exist_ok=True)
     object_paths: list[Path] = []
     for source_name in source_names:
         source = source_dir / source_name
-        suffix = 'o'
-        object_path = build_dir / f'{source.stem}.{suffix}'
+        object_path = build_dir / f'{source.stem}.o'
         if source.suffix == '.s':
-            assemble_with_cpp(source, object_path, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cpp=cpp, assembler=assembler, build_dir=build_dir, extra_define=extra_define, prepend=prepend)
+            preprocess_and_assemble(source, object_path, cpp_flags=common_cpp_flags(include_root, symvals_root, extra_define), cpp=cpp, assembler=assembler, build_dir=build_dir, prepend=prepend)
         elif source.suffix == '.c':
-            compile_c_to_object(source, object_path, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=cc, assembler=assembler, build_dir=build_dir, extra_define=extra_define)
+            compile_c_to_object(source, object_path, include_root=include_root, symvals_root=symvals_root, cc=cc, assembler=assembler, build_dir=build_dir, extra_define=extra_define)
         else:
             raise ValueError(f'unsupported source type: {source}')
         object_paths.append(object_path)
@@ -246,10 +192,10 @@ def main() -> int:
         shutil.rmtree(build_root)
     build_root.mkdir(parents=True, exist_ok=True)
 
-    fd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/fd')
-    hd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/hd', extra_define='-DWINI')
-    fd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/fd', prepend=bsymvals)
-    hd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, workspace_root=workspace_root, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/hd', extra_define='-DWINI', prepend=bsymvals)
+    fd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/fd')
+    hd_bootlib = compile_variant_objects(bootlib_root, BOOTLIB_SOURCES, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'bootlib/hd', extra_define='-DWINI')
+    fd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/fd', prepend=bsymvals)
+    hd_boot = compile_variant_objects(boot_at386_root, BOOT_SOURCES, include_root=include_root, symvals_root=symvals_root, cc=args.cc, cpp=args.cpp, assembler=args.assembler, build_dir=build_root / 'at386/hd', extra_define='-DWINI', prepend=bsymvals)
 
     fdboot_path = build_root / 'fdboot.elf'
     hdboot_path = build_root / 'hdboot'

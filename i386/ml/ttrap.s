@@ -115,11 +115,11 @@ save_kernel_db7:	.long	0
 	.globl  idt2
 	.align	8
 idtdsc1:
-	.value	[8*256-1]
+	.value	(8*256-1)
 	.long	idt
 	.align	8
 idtdsc2:
-	.value	[8*256-1]
+	.value	(8*256-1)
 	.long   idt2
 	.align  8
 #endif
@@ -243,13 +243,13 @@ cmntrap:
 
 	call	kentry_check	# check for kernel entry hooks
 
-	testl	$IE, [EFL*4](%ebp)	# enable interrupts only if they were
+	testl	$IE, (EFL*4)(%ebp)	# enable interrupts only if they were
 	jz	trap_no_sti		#   enabled at the time of the trap
 	sti
 trap_no_sti:
 
 /* check for nmi trap */
-	cmpl	$2,[TRAPNO*4](%ebp)
+	cmpl	$2,(TRAPNO*4)(%ebp)
 	jne	not_nmi
 
 	pushl	%esp		# argument to trap handler
@@ -265,7 +265,7 @@ not_nmi:
 #ifdef	MERGE386
 	cmpl	$0, merge386enable
 	je	notvm86trap
-	testl	$VMFLAG, [EFL*4](%ebp)	# have we come from a V86 process ?
+	testl	$VMFLAG, (EFL*4)(%ebp)	# have we come from a V86 process ?
 	jz	notvm86trap		# if not, continue with the unix
 	call	vm86_trap		# call the vm86 trap handler
 	or	%eax, %eax		# if error is returned,
@@ -274,9 +274,9 @@ not_nmi:
 	jmp	ret_user		# return
 notvm86trap:
 #endif	/* MERGE386 */
-	movl    [CS*4](%ebp), %eax
+	movl    (CS*4)(%ebp), %eax
 #if defined(VPIX) || defined(MERGE386)
-	testl   $VMFLAG, [EFL*4](%ebp)  # if he was in V86 mode, the coming
+	testl   $VMFLAG, (EFL*4)(%ebp)  # if he was in V86 mode, the coming
 	jnz     user_trap              # IS_LDT_SEL test is meaningless
 #endif
 	testw	$IS_LDT_SEL, %ax
@@ -315,7 +315,7 @@ sys_call:
 
 	pushf
 	popl	%eax
-	movl    %eax, [EFL*4](%esp)
+	movl    %eax, (EFL*4)(%esp)
 
 	movw	$KDSSEL, %ax
 	movw	%ax, %ds
@@ -391,7 +391,7 @@ cmnint:
 	movb	$0, u_sigfault    # don't catch signal processing GP faults
 
 /* raise interrupt priority level */
-	movl    [TRAPNO*4](%ebp), %edi # keep i#o interrupt number in %edi
+	movl    (TRAPNO*4)(%ebp), %edi # keep i#o interrupt number in %edi
 
 	call    splint                  # raise interrupt priority level
 
@@ -435,10 +435,10 @@ cmnint:
 clock:
 /* push args to clock() and call it with interrupts still disabled. */
 /* old ipl is already on stack */
-	movl    [EFL*4](%ebp), %eax
+	movl    (EFL*4)(%ebp), %eax
 	pushl	%eax
 #ifdef VPIX
-	testl   $VMFLAG, [EFL*4](%ebp)
+	testl   $VMFLAG, (EFL*4)(%ebp)
 	jz      real_cs
 	pushl   $USER_CS    # User CS ... don't push a v86 mode CS
 	jmp     push_ip
@@ -446,10 +446,10 @@ clock:
 	.align	4
 real_cs:
 #endif
-	movl    [CS*4](%ebp), %eax
+	movl    (CS*4)(%ebp), %eax
 	pushl	%eax
 push_ip:
-	movl    [EIP*4](%ebp), %eax
+	movl    (EIP*4)(%ebp), %eax
 	pushl	%eax
 	call    clock_int       # clock(ip, cs, flags, oldipl)
 /* clock_int is in hrtimers.c */
@@ -481,7 +481,7 @@ novm86_clock:
 
 	sti                     # enable interrupts
 	pushl	$1		# one tick
-	pushl	[EIP*4](%ebp)
+	pushl	(EIP*4)(%ebp)
 	call	addupc		# addupc(userip, 1)
 	addl	$8, %esp	# pop 2 args
 	cli                     # disable interrupts for consistency below
@@ -499,10 +499,10 @@ notimein:
 
 ret_intr:
 #if defined(VPIX) || defined(MERGE386)
-	testl   $VMFLAG, [EFL*4](%ebp) # if we interrupted V86 mode,
+	testl   $VMFLAG, (EFL*4)(%ebp) # if we interrupted V86 mode,
 	jnz     ret_user
 #endif
-	movl    [CS*4](%ebp), %eax
+	movl    (CS*4)(%ebp), %eax
 	testw	$IS_LDT_SEL, %ax
 	jz      do_ret          # if interrupt was in kernel mode, return
 
@@ -546,7 +546,7 @@ do_s_trap:
 #ifdef	MERGE386
 	cmpl	$0, merge386enable
 	je	dst_000
-	testl	$VMFLAG, [EFL*4](%ebp)	# if we came from a vm86 process...
+	testl	$VMFLAG, (EFL*4)(%ebp)	# if we came from a vm86 process...
 	jz	dst_000		
 	pushl	%esp
 	call	chkvm86ints		# check for pending virtual interrupts
@@ -625,17 +625,17 @@ common_iret:
 	.align	4
 itis_v86:
 	mov     $1, %eax                # Assume V86 mode and not 386 mode
-	testl   $VMFLAG, [EFL*4](%ebp) # if we interrupted V86 mode,
+	testl   $VMFLAG, (EFL*4)(%ebp) # if we interrupted V86 mode,
 	jnz     was_v86                 # we must be returning to user mode now
-	testw   $IS_LDT_SEL, [CS*4](%ebp) # Did we interrupt user mode?
+	testw   $IS_LDT_SEL, (CS*4)(%ebp) # Did we interrupt user mode?
 	jz      not_v86                 # lidt only if entering user mode now
 /* in a dual-mode process */
 /* If dual-mode task in 386 mode, then the NT bit is expected to be on. */
 /* Force it on, because the system call has a race condition by which */
 /* an interrupt before the "pushf" instruction in "sys_call" can reset */
 /* the NT bit. */
-	orl     $NT_BIT, [EFL*4](%ebp) # Set the NT bit of 386 mode task
-	orl     $IOPL, [EFL*4](%ebp)   # Set IOPL = 0 (nop)
+	orl     $NT_BIT, (EFL*4)(%ebp) # Set the NT bit of 386 mode task
+	orl     $IOPL, (EFL*4)(%ebp)   # Set IOPL = 0 (nop)
 /* The previous line should be */
 /* removed, as it does nothing. */
 /* It is left in case it */
@@ -692,7 +692,7 @@ sig_clean:
 
 	pushfl
 	popl	%eax
-	movl    %eax, [EFL*4](%esp)
+	movl    %eax, (EFL*4)(%esp)
 
 	movw	$KDSSEL, %ax
 	movw	%ax, %ds

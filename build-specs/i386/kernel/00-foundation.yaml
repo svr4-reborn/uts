@@ -45,6 +45,13 @@ variables:
   # vary these per directory). SVR40 here is intentional and specific to this stage.
   kernel_defines: "-D_KERNEL -DAT386 -DWEITEK -DWEITEK_EMULATOR -DSYSV -DSVR40"
   kernel_recompile_cflags: "{kernel_codegen} {kernel_defines}"
+  # Linker used for the ml partial (`-r`) links of locore.o/start.o. These links
+  # must keep COMMON symbols allocated so that `symbol+offset` references in the
+  # assembly do not collapse to absolutes; GNU ld.bfd does this with `-d`. The
+  # default cross `ld` is bfd-compatible, so {ld} works directly. If the toolchain
+  # ld is ever mold (which does not allocate COMMONs during `-r`), override this to
+  # an explicit ld.bfd path.
+  ld_bfd: "{ld}"
   system_root: "{builddir}/uts/i386/system-root"
   conf_root: "{builddir}/uts/i386/conf"
   cf_dir: "{conf_root}/cf.d"
@@ -164,11 +171,3 @@ profiles:
       - -I../..
       - -D_KERNEL
       - -DAT386
-
-  ml-at386:
-    flags:
-      - -I..
-      - -D_KERNEL
-      - -DAT386
-      - -DWEITEK
-      - -DWEITEK_EMULATOR
