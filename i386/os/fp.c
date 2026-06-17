@@ -474,7 +474,6 @@ void fpsave(void) {
              * so we don't need to do anything special here.
              */
             fp_u->u_fxsave_area = kmem_alloc(512, KM_NOSLEEP);
-            cmn_err(CE_CONT, "fpsave: allocated fxsave area at %p\n", fp_u->u_fxsave_area);
             /* TODO: handle this allocation failing properly.
               * For now, just panic, since this is a pretty serious error.
              */
