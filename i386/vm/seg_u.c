@@ -794,6 +794,7 @@ segu_release(p)
 		up = PTOU(p);
 		if (up->u_fxsave_area != NULL) {
 			kmem_free(up->u_fxsave_area, 512);
+			up->u_fxsave_area = NULL;
 		}
 	}
 
