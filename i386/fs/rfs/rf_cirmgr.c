@@ -499,9 +499,6 @@ asm(".GDPPMC:");
 			/* FALLTHROUGH */
 
 		case GDPSTGR:
-
-asm(".globl .GDPGR");
-asm(".GDPGR:");
 			/* gathering rf_request_t or rf_response_t header */
 
 			ASSERT(bp && bp != (mblk_t *)1 && gp->hlen > 0);
@@ -529,9 +526,6 @@ asm(".GDPGR:");
 			/* FALLTHROUGH */
 
 		case GDPSTPR:
-
-asm(".globl .GDPPR");
-asm(".GDPPR:");
 			/*
 			 * Pulling up rf_request_t or rf_response_t header
 			 * with rf_message_t and rf_common_t header
@@ -589,10 +583,6 @@ asm(".GDPPR:");
 			/* FALLTHROUGH */
 
 		case GDPSTGD:
-
-asm(".globl .GDPGD");
-asm(".GDPGD:");
-
 			/* Gathering data portion of RFS message. */
 
 			ASSERT(bp && bp != (mblk_t *)1 && gp->dlen >= 0);

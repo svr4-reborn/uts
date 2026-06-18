@@ -29,10 +29,11 @@ view_inc = ['-I' + i386, '-I' + arch]
 # Kernel is compiled with a lot of flags, but they can be summarized as:
 #  "make this stuff run on a 386" lol
 kernel_codegen = [
-  '-std=gnu89', '-fcommon', '-fno-builtin', '-fno-tree-vectorize', '-O2',
+  '-std=gnu89', '-fcommon', '-fno-builtin', '-fno-tree-vectorize', '-O3',
   '-m32', '-mno-mmx', '-mno-sse', '-mno-sse2', '-fno-PIC', '-fno-PIE',
   '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
-  '-mgeneral-regs-only', '-nostdinc', '-nostdlib',
+  
+  '-falign-functions=1', '-falign-jumps=1', '-falign-loops=1', '-falign-labels=1',
 
 # Kernel release/version is set here. The source code dump I got identifies
 # itself as Release 4, Version 3, but from looking through it, and the stuff
