@@ -257,8 +257,12 @@ loop:
 	else
 		sysinfo.ufsinopage++;
 	iq = ip->i_freef;
+
 	if (iq)
 		iq->i_freeb = &ifreeh;
+	else
+		ifreet = &ifreeh;
+
 	ifreeh = iq;
 	ip->i_freef = NULL;
 	ip->i_freeb = NULL;
