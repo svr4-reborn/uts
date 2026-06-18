@@ -303,23 +303,18 @@ loop:
 		idrop(ip);
 		goto loop;
 	}
-	for (iq = ih->ih_chain[0]; iq != (struct inode *)ih; iq = iq->i_forw) {
-		if (ino == iq->i_number && vfsp->vfs_dev == iq->i_dev) {
-			VN_HOLD(ITOV(ip));
-			idrop(ip);
-			goto loop;
-		}
-	}
 
 	vp = ITOV(ip);
 	ASSERT(vp->v_pages == NULL);
 	ASSERT(vp->v_count == 0);
 
 	/*
-	 * Move the inode on the chain for its new (ino, dev) pair
+	 * Detach ip from whatever old hash chain it was on.
+	 * We put it back on the new chain a little bit later; doing it now
+	 * (like the original SVr4 code did) causes bucket corruption during heavy
+	 * FS load, as bread has a preemption point and thus can preempt/sleep.
 	 */
 	_remque(ip);
-	_insque(ip, ih);
 
 	if (ip->i_map) {
 		ufs_freemap(ip);
@@ -338,6 +333,27 @@ loop:
 #endif
 	bp = bread(ip->i_dev, (daddr_t)fragstoblks(fs, itod(fs, ino)),
 	    (int)fs->fs_bsize);
+
+	/*
+	 * bread() can preempt, so there is a non-zero chance that another process
+	 * got (ino, dev) while we were sleeping. If so, discard ip and restart the
+	 * loop. (This is safe since ip hasn't touched the hash chain yet)
+	 */
+	for (iq = ih->ih_chain[0]; iq != (struct inode *)ih; iq = iq->i_forw) {
+		if (ino == iq->i_number && vfsp->vfs_dev == iq->i_dev) {
+			brelse(bp);
+			VN_HOLD(ITOV(ip));
+			idrop(ip);
+			goto loop;
+		}
+	}
+
+	/* 
+	 * If we are here now, we know the inode has no duplicates. Shove it into 
+	 * its bucket.
+	 */
+	_insque(ip, ih);
+
 	/*
 	 * Check I/O errors and get vcode
 	 */
