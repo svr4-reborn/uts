@@ -98,8 +98,6 @@ u_tss
 u_procp
 u_callgatep
 u_callgate
-u_weitek
-u_weitek_reg
 u_fpintgate
 u_ldtlimit
 u_debugreg
@@ -145,8 +143,6 @@ u_tss
 u_procp
 u_callgatep
 u_callgate
-u_weitek
-u_weitek_reg
 u_fpintgate
 u_ldtlimit
 u_debugreg
@@ -267,14 +263,11 @@ USER_SCALL
 UB_XSDSWTCH
 UVBASE
 UVTEXT
-WEITEK_HW
-WEITEK_SW
-WEITEK_NO
 XMEM_BIT
 XTSSSEL
 #if
 #e
-' ${INCRT:-..}/sys/bootinfo.h ${INCRT:-..}/sys/fp.h ${INCRT:-..}/sys/immu.h ${INCRT:-..}/sys/fs/s5inode.h ${INCRT:-..}/sys/param.h ${INCRT:-..}/sys/seg.h ${INCRT:-..}/sys/user.h ${INCRT:-..}/sys/weitek.h >$$.3.h
+' ${INCRT:-..}/sys/bootinfo.h ${INCRT:-..}/sys/fp.h ${INCRT:-..}/sys/immu.h ${INCRT:-..}/sys/fs/s5inode.h ${INCRT:-..}/sys/param.h ${INCRT:-..}/sys/seg.h ${INCRT:-..}/sys/user.h >$$.3.h
 
 case $? in
   0)    : ;;

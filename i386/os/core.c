@@ -45,9 +45,6 @@
 extern int	v86procflag;
 #endif
 
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 
 /*
  * Create a core image on the file "core".
@@ -101,19 +98,6 @@ core(fp, pp, credp, rlimit, sig)
 	else {
 			if (fp_proc == pp)
 				fpsave();
-#ifdef WEITEK
-		/*
-		 * Unfortuantely, Unlike floating point saving the weitek
-		 * state can only be performed in the context of the
-		 * current process on the processor.
-		 */
-		if (pp == u.u_procp) {
-			if (pp == weitek_proc) {
-				weitek_save();
-				weitek_proc = NULL;
-			}
-		}
-#endif
 		vattr.va_size = 0;
 		vattr.va_mask = AT_SIZE;
 		(void) VOP_SETATTR(vp, &vattr, 0, credp);

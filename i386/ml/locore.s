@@ -21,6 +21,5 @@
 #ifdef VPIX
 #include "v86gptrap.s"
 #endif
-#include "weitek.s"
 #include "oemsup.s"
 #include "string.s"

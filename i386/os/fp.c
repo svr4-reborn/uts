@@ -47,9 +47,6 @@
 #ifdef VPIX
 #include "sys/v86.h"
 #endif
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #include "sys/cpuid.h"
 #include "sys/kmem.h"
 
@@ -307,31 +304,6 @@ void fpexterrflt(void) {
 void fpintr(void) {
   oem_fclex(); /* Clear NDP BUSY latch */
 
-#ifdef WEITEK
-  if (weitek_kind != WEITEK_NO) {
-    /*
-     * wtl 1167 and 80387 errors are or'd and the result
-     * is sent to the PIC.  therefore, we
-     * need to check whether this interrupt is from
-     * weitek or 387
-     * we'll do this by looking at the 387 status reg.
-     */
-    int stat387;
-
-    if (fp_kind == FP_NO) {
-      /* with no 387 support, assume weitek */
-      weitek_reset_intr();
-      weitintr(0);
-      return;
-    }
-    stat387 = get87();
-    if ((stat387 & FPS_ES) == 0) { /* no 387 error */
-      weitek_reset_intr();
-      weitintr(0);
-      return;
-    }
-  }
-#endif
   fpexterrflt();
 }
 #endif
@@ -576,7 +548,7 @@ void fprestore(int vmflag) /* Are we returning to a virtual 86 task? */
 ** fpksave
 **      Save the floating point state into fp_proc's user structure,
 **      and re-initialize for kernel use.  Process must not sleep
-**      before calling fpkreset().  Called by Weitek emulator.
+**      before calling fpkreset().
 */
 void fpksave(void) {
   if (fp_proc)
@@ -588,7 +560,6 @@ void fpksave(void) {
 /*
 ** fpkreset
 **      Reset after a fpksave().
-**      Called by Weitek emulator.
 */
 void fpkreset(void) {
   fp_proc = 0;

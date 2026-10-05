@@ -50,9 +50,6 @@
 #include "vm/as.h"
 #include "vm/seg.h"
 
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 
 #ifdef	i386		/* Unfortunate: x.out.h is needed for Xenix support */
 #include "sys/x.out.h"
@@ -628,10 +625,6 @@ elfcore(vp, pp, credp, rlimit, sig)
 #ifdef i386
 	if (PTOU(pp)->u_fpvalid)
 		ehdr.e_flags |= EF_I386_FP;
-#ifdef WEITEK
-	if (PTOU(pp)->u_weitek == WEITEK_HW)	/* iff process used Weitek board */
-		ehdr.e_flags |= EF_I386_WEITEK;
-#endif
 
 #else
 	if (mau_present)
@@ -657,11 +650,7 @@ elfcore(vp, pp, credp, rlimit, sig)
 	  + roundup(sizeof(prpsinfo_t), sizeof(Elf32_Word));
 
 #ifdef i386
-	if (PTOU(pp)->u_fpvalid
-#ifdef WEITEK
-		|| PTOU(pp)->u_weitek == WEITEK_HW
-#endif
-	)
+	if (PTOU(pp)->u_fpvalid)
 #else
 	if (mau_present)
 #endif
@@ -713,11 +702,7 @@ elfcore(vp, pp, credp, rlimit, sig)
 		goto done;
 
 #ifdef i386
-	if (PTOU(pp)->u_fpvalid
-#ifdef WEITEK
-		|| PTOU(pp)->u_weitek == WEITEK_HW
-#endif
-	) {
+	if (PTOU(pp)->u_fpvalid) {
 #else
 	if (mau_present) {
 #endif

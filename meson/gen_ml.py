@@ -28,7 +28,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-CPPDEFS = ['-D_KERNEL', '-DLOCORE', '-DAT386', '-DWEITEK', '-DWEITEK_EMULATOR']
+CPPDEFS = ['-D_KERNEL', '-DLOCORE', '-DAT386']
 
 
 def main() -> int:

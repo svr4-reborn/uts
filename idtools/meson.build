@@ -13,7 +13,6 @@ cc = meson.get_compiler('c')
 add_project_arguments(
   '-fcommon',
   '-DAT386',
-  '-DWEITEK',
   '-DVPIX',
   '-DMERGE',
   cc.get_supported_arguments(

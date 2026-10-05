@@ -26,7 +26,7 @@ from pathlib import Path
 
 # Module lists, verbatim from uts_stage_master_at386.py.
 COMMODS = [
-    "nfs", "fp", "gentty", "kernel", "weitek", "mem", "merge", "osm", "async",
+    "nfs", "fp", "gentty", "kernel", "mem", "merge", "osm", "async",
     "ldterm", "ansi", "char", "sad", "events", "nmi", "shm", "sem", "ipc", "msg",
     "pic", "specfs", "fifofs", "fdfs", "kma", "kmacct", "hrt", "nfa", "prf",
     "sxt", "nsxt", "xt", "nxt", "cpyrt", "pipemod", "ttcompat", "s5", "ufs",

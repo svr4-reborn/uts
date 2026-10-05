@@ -55,8 +55,6 @@ SYMVAL_MEMBER_EXPRESSIONS: list[tuple[str, str]] = [
     ('u_procp', '(UVUBLK + __builtin_offsetof(struct user, u_procp))'),
     ('u_callgatep', '(UVUBLK + __builtin_offsetof(struct user, u_callgatep))'),
     ('u_callgate', '(UVUBLK + __builtin_offsetof(struct user, u_callgate))'),
-    ('u_weitek', '(UVUBLK + __builtin_offsetof(struct user, u_weitek))'),
-    ('u_weitek_reg', '(UVUBLK + __builtin_offsetof(struct user, u_weitek_reg))'),
     ('u_fpintgate', '(UVUBLK + __builtin_offsetof(struct user, u_fpintgate))'),
     ('u_ldtlimit', '(UVUBLK + __builtin_offsetof(struct user, u_ldtlimit))'),
     ('u_debugreg', '(UVUBLK + __builtin_offsetof(struct user, u_debugreg))'),
@@ -88,7 +86,7 @@ SYMVAL_HEADER_NAMES: list[str] = [
     'KVSBASE', 'LDTSEL', 'MAXUSIZE', 'MAXUVADR', 'MINUVADR', 'MONIDTSZ', 'NCPPT', 'PF_RDONLY',
     'PG_ADDR', 'PG_P', 'PG_V', 'PG_M', 'PG_REF', 'PG_RW', 'PG_US', 'PINOD', 'PNUMSHFT', 'PT_STACK',
     'PTNUMSHFT', 'PTOFFMASK', 'USER_CS', 'USER_DS', 'USER_SCALL', 'UB_XSDSWTCH', 'UVBASE',
-    'UVTEXT', 'WEITEK_HW', 'WEITEK_SW', 'WEITEK_NO', 'XMEM_BIT', 'XTSSSEL',
+    'UVTEXT', 'XMEM_BIT', 'XTSSSEL',
 ]
 
 SYMVAL_HEADER_PATHS: list[str] = [
@@ -99,7 +97,6 @@ SYMVAL_HEADER_PATHS: list[str] = [
     'uts/i386/sys/param.h',
     'uts/i386/sys/seg.h',
     'uts/i386/sys/user.h',
-    'uts/i386/sys/weitek.h',
 ]
 
 SET_PATTERN = re.compile(r'^\s*\.set\s+([A-Za-z0-9_]+),\s*(.+)$')

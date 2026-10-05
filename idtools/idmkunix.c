@@ -232,9 +232,6 @@ char *src, *obj;
 #ifdef VPIX
 	argv[n++] = "-DVPIX";
 #endif
-#ifdef WEITEK
-	argv[n++] = "-DWEITEK";
-#endif
 	for (i = 0; i < npredef; i++)
 		argv[n++] = predef[i];
 

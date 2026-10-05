@@ -18,9 +18,6 @@
 #include "sys/fp.h"
 #include "sys/cmn_err.h"
 
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 
 /*
  * User threads are represented as normal proc_t entries that share the
@@ -389,11 +386,6 @@ thread_exit_current(void)
 
 	if (p == fp_proc)
 		fp_proc = NULL;
-#ifdef WEITEK
-	u.u_weitek = WEITEK_NO;
-	if (p == weitek_proc)
-		weitek_proc = NULL;
-#endif
 
 	if (p->p_exec) {
 		VN_RELE(p->p_exec);

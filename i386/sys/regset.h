@@ -69,7 +69,7 @@ typedef struct fpregset {
         } fpchip_state;
         int f_fpregs[62];       /* union of the above */
     } fp_reg_set;
-    long    f_wregs[33];            /* saved weitek state */
+    long    f_reserved[33];     /* preserve the historical regset size */
 } fpregset_t;
 
 #define NDEBUGREG	8

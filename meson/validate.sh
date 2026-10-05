@@ -60,7 +60,7 @@ fi
 
 echo '== 3. include resolution + partial-link mechanics =='
 for f in i386/io/clist.c i386/fs/ufs/ufs_alloc.c arch/at/i386/io/asy.c; do
-  gcc -nostdinc -E -I i386 -I arch/at/i386 -D_KERNEL -DAT386 -DSYSV -DSVR40 -DWEITEK -DQUOTA -Di386 "$f" -o /dev/null
+  gcc -nostdinc -E -I i386 -I arch/at/i386 -D_KERNEL -DAT386 -DSYSV -DSVR40 -DQUOTA -Di386 "$f" -o /dev/null
 done
 echo '   OK real driver headers resolve from the two view roots'
 

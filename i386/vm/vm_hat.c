@@ -70,9 +70,6 @@
 #include "sys/kmem.h"
 
 #include "sys/disp.h"	/* added for preemption point PREEMPT() */
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 
 #ifdef DEBUG
 
@@ -2983,10 +2980,6 @@ unsigned long vaddr;
  * and rewritten.
  */
 
-#ifdef WEITEK
-extern int map_weitek_pt();
-extern int unmap_weitek_pt();
-#endif
 
 void
 restorepd()
@@ -3005,23 +2998,6 @@ restorepd()
 		}
 	}
 	if (curproc->p_as != (struct as *)NULL) {
-#ifdef WEITEK
-		/*	No way to know right now whether the process being switched
- 		 *	in is "weitek_proc" or not. We are not even running in
-		 *	the context of the new ublock - we are actually but a
-		 *	flushtlb() was not done - hence the reference is still
-		 *	in the context of the old process's ublock. So we look
-		 *	at the u_weitek field through floating u block address
-		 *	space.
- 		 */
- 
- 		if (PTOU(curproc)->u_weitek == WEITEK_HW) {
- 			ASSERT(weitek_pt > 0);
- 			/* if (old_curpoc != weitek_proc) */
- 			map_weitek_pt();
- 		}
-		else	unmap_weitek_pt();
-#endif
 		hatp = &(curproc->p_as->a_hat);
 		ptap = eptap = hatp->hat_pts;
 		if (ptap != (hatpt_t *)NULL) {

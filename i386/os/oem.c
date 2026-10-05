@@ -36,9 +36,6 @@
 #include "sys/utsname.h"
 #include "sys/conf.h"
 #include "sys/inline.h"
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #include "sys/fp.h"
 #endif /* MB1 */
 #include "sys/cram.h"

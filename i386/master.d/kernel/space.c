@@ -40,7 +40,6 @@
 #include "sys/sema.h"
 #include "sys/acct.h"
 #include "sys/pfdat.h"
-#include "sys/weitek.h"
 #include "sys/stream.h"
 #include "sys/sysmacros.h"
 #include "sys/resource.h"

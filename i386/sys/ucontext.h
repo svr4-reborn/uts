@@ -45,23 +45,9 @@ typedef struct ucontext {
 #define	UC_STACK	002
 #define	UC_CPU		004
 #define	UC_FP		010
-
-#ifdef WEITEK
-#define UC_WEITEK	020
-#endif /* WEITEK */
-
-
-#ifdef WEITEK
-#define UC_MCONTEXT (UC_CPU|UC_FP|UC_WEITEK)
-#else
 #define UC_MCONTEXT (UC_CPU|UC_FP)
-#endif /* WEITEK */
 
-
-
-/* 
- * UC_ALL specifies the default context
- */
+/* UC_ALL specifies the default context. */
 
 #define UC_ALL		(UC_SIGMASK|UC_STACK|UC_MCONTEXT)
 

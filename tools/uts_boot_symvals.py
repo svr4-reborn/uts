@@ -159,8 +159,6 @@ def main() -> int:
         '-S',
         '-D_KERNEL',
         '-DAT386',
-        '-DWEITEK',
-        '-DWEITEK_EMULATOR',
         f'-I{kernel_root / "i386"}',
         str(program_source),
         '-o',

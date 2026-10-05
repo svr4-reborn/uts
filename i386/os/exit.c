@@ -56,9 +56,6 @@
 int exitflg;
 #endif /* KPERF */
 
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 
 #ifdef VPIX
 extern int vpixenable;		/* Is VP/ix enabled or disabled */
@@ -233,12 +230,6 @@ int what;
 		fp_proc = NULL;
 	}
 
-#ifdef WEITEK
-	u.u_weitek = WEITEK_NO;
-	if (p == weitek_proc) {
-		weitek_proc = NULL;
-	}
-#endif
 
 	/*
 	 * Insert calls to "exitfunc" functions.

@@ -56,10 +56,6 @@
 #include "vm/seg.h"
 #include "vm/page.h"
 #include "vm/pvn.h"
-#ifdef WEITEK
-#include "sys/debug.h"
-#include "sys/weitek.h"
-#endif
 
 #if defined(__STDC__)
 STATIC int checkpage (page_t *, int);
@@ -403,9 +399,6 @@ checkpage (pp, whichhand)
 	    pp->p_lckcnt > 0 || pp->p_cowcnt > 0 || pp->p_keepcnt > 0)
 		return (-1);
 
-#ifdef WEITEK
-	ASSERT((weitek_pt < 0) || (pp != page_numtopp(weitek_pt)));
-#endif
 
 	/*
 	 * XXX - Where do we simulate reference bits for

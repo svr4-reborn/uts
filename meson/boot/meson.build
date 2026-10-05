@@ -58,7 +58,7 @@ initprog_progs = {
 }
 
 # Compile flags (from uts_build_boot.py COMMON_CFLAGS/CPP_DEFINES).
-boot_cpp_defs = ['-DAT386', '-DWEITEK', '-DWEITEK_EMULATOR']
+boot_cpp_defs = ['-DAT386']
 boot_cflags = [
   '-m32', '-std=gnu89', '-fcommon', '-fno-builtin', '-fno-stack-protector',
   '-fomit-frame-pointer', '-fno-unwind-tables', '-fno-asynchronous-unwind-tables',
@@ -170,7 +170,7 @@ fboot = custom_target('fboot',
 # Linked at base 0 with ENTRY(initprog) via initprog.ld. Installed to /stand;
 # the recipe's collect step mirrors them into /etc/initprog.
 # --------------------------------------------------------------------------
-initprog_cpp_defs = ['-D_KERNEL', '-DAT386', '-DWEITEK', '-DWEITEK_EMULATOR']
+initprog_cpp_defs = ['-D_KERNEL', '-DAT386']
 initprog_cflags = ['-m32', '-std=gnu89', '-fcommon', '-fno-builtin', '-O']
 initprog_inc = ['-I' + bsymvals_dir, '-I' + i386]
 types_h = i386 / 'sys/types.h'

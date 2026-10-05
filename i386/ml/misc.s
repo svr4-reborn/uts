@@ -24,13 +24,6 @@
 	.set    CR0_PE, 0x01            # protection enable
 	.set	PS_T, 0x100		# trace flag
 
-#ifdef WEITEK
-	.set	WEITEK_LDCTX,	0xffc0c000	# load context register
-	.set	WEITEK_STCTX,	0xffc0c400	# store context register
-	.globl	weitek_kind
-	.globl	weitek_map
-	.globl	weitek_unmap
-#endif
 
 	.text
 
@@ -828,80 +821,6 @@ nofp:
 	movb    $FP_NO,fp_kind
 cont:
 
-#ifdef WEITEK
-/* */
-/* test for presence of weitek chip */
-#ifdef AT386
-/* test for presence of weitek chip */
-/* we're going to commandeer a page of kernel virtual space to map in */
-/* the correct physical addresses.  then we're going to play with what */
-/* we hope to be weitek addresses.  finally, we'll put things back the */
-/* way they belong. */
-/* */
-/* extern unsigned long weitek_paddr;	 chip physical address */
-/* */
-	cmpl	$0, weitek_paddr	# if (weitek_paddr == 0)
-	jz	weitek_skip		#	goto weitek_skip;
-	pushl	%ebx
-	pushl	kspt0
-	movl	$0xc0000003, kspt0	# pfn c0000, sup, writeable, present
-	movl	%cr3, %eax		# flush tlb
-	movl	%eax, %cr3
-	movl	$KVSBASE, %ebx		# base address for weitek area
-	movb	$WEITEK_HW, weitek_kind	# first assume that there is a chip
-	movl	$0x3b3b3b3b, 0x404(%ebx) # store a value into weitek register.
-	movl	0xc04(%ebx), %eax	# and read it back out.
-	cmpl	$0x3b3b3b3b, %eax
-	jnz	noweitek		# no chip
-/* clear weitek exceptions so that floating point exceptions */
-/* are reported correctly from here out */
-/* initialize the 1167 timers */
-	movl    $0xc000c003, kspt0      # pfn c000c, sup, writeable, present
-	movl	%cr3, %eax		# flush tlb
-	movl	%eax, %cr3
-	movl	$0xB8000000, 0x000(%ebx)
-	movl	0x400(%ebx), %eax	# Check for 20 MHz 1163
-	andl	$WEITEK_20MHZ_FLAG, %eax
-	jnz	w_init_20MHz
-	movl 	$0x16000000, 0x000(%ebx)	# 16 MHz 1164#1165 flowthrough
-/* timer */
-	jmp	w_init_wt1
-
-w_init_20MHz:
-	movl	$0x56000000, 0x000(%ebx)	# 20 MHz 1164#1165 flowthrough
-	movl	$0x98000000, 0x000(%ebx)	# timer
-	
-w_init_wt1:
-	movl 	$0x64000000, 0x000(%ebx)	# 1164 accumulate timer
-	movl 	$0xA0000000, 0x000(%ebx)	# 1165 accumulate timer
-	movl 	$0x30000000, 0x000(%ebx)	# Reserved mode bits (set to 0).
-	movl 	weitek_cfg, %eax	# Rounding modes and Exception
-	movl 	%eax, 0x000(%ebx)	# enables.
-	movw	$0xF0, %dx		# clear the fp error flip-flop
-	movb	$0, %al
-	outb	(%dx)
-/* */
-	jmp	weitek_done
-noweitek:
-	movb	$WEITEK_NO, weitek_kind		# no. no weitek
-#endif /* AT386 */
-
-#if defined(MB1) || defined(MB2)
-/* test for presence of weitek chip for MB */
-	inb	$0xe4			# Read the Weitek present I#O port
-	testb	$1,%al			# Is the Weitek there?
-	jz	weitek_done		# No.
-	movb	$WEITEK_HW, weitek_kind	# Yes.
-#endif /* MB1 || MB2 */
-
-weitek_done:
-	popl	kspt0			# get the old kpt0[0] back
-	movl	%cr3, %eax		# flush tlb
-	movl	%eax, %cr3
-	popl	%ebx
-weitek_skip:
-
-#endif /* WEITEK */
 
 /* */
 /* extern int	margc; */
@@ -1255,9 +1174,6 @@ upc_scale:
 	.globl	oldproc
 	.globl	segu_release
 	.globl	curproc
-#ifdef WEITEK
-	.globl  weitek_save
-#endif
 	.align	4
 #ifdef	KPERF
 	.globl	KPswtch
@@ -1275,19 +1191,6 @@ swtch:
 	cmpl	%eax, curproc		# the new one?
 	je	noswtch			# If so skip the context switch
 
-#ifdef WEITEK
-/* "call	weitek_save" equivalent */
-/* however we still call weitek_save to do the WEITEK_HW testing! */
-	movl	weitek_proc, %ecx
-	jcxz	donothing
-	cmpl	%ecx, u_procp
-	jne	donothing
-	pushl	$u_weitek_reg
-	call	weitek_save
-	popl	%ecx
-	movl	u_procp, %eax		# reload %eax with u.u_procp
-donothing:
-#endif
 
 /* clear 286 system call gate if used by this process */
 	movl    u_callgatep, %ecx     # addr of call gate in gdt
@@ -1399,21 +1302,6 @@ idtok:
 novm86_swtch:
 #endif	/* MERGE386 */
 
-#ifdef WEITEK
-/* "call	weitek_restore" */
-	cmpb	$0, u_weitek
-	je	skipit
-	movl	weitek_proc, %eax
-	cmpl	%eax, u_procp
-	je	skipit
-	call	init_weitek
-	pushl	$u_weitek_reg
-	call	weitek_restore
-	popl	%ecx
-	movl	u_procp, %eax
-	movl	%eax, weitek_proc
-skipit:
-#endif
 
 /* We need to free the ublock for the previous */
 /* process if it did an exit. */

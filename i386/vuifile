@@ -89,10 +89,6 @@ SECTIONS {
 		../pack.d/kernel/locore.o(.data)
 		*(.data)
 		*(.data.*)
-#ifdef WEITEK_EMULATOR
-		__fltused = .;
-		. += 4;
-#endif /* WEITEK_EMULATOR */
 		edata = .;
 		} > kv_loadsite :data
 	

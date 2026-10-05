@@ -54,9 +54,6 @@
 #include "vm/as.h"
 
 #include "sys/xdebug.h"
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 
 #ifdef KPERF
 #include "sys/file.h"
@@ -275,15 +272,10 @@ struct bcd_tm {
 	/*
 	**      Tell a user what kind of Floating Point support we have.
 	**      fp_kind (defined in fp.h) is returned in the low-order byte.
-	**      If Weitek support is included, weitek_type (defined in
-	**      weitek.h) is returned in the second byte.
 	*/
 
 	case SI86FPHW:
 		c = fp_kind & 0xFF;
-#ifdef WEITEK
-		c |= ((weitek_kind & 0xFF) << 8);
-#endif
 		if ( suword( uap->arg.iparg, c )  == -1)
 			error = EFAULT;
 		break;

@@ -18,9 +18,6 @@
 #include "sys/kmem.h"
 #include "sys/proc.h"
 #include "sys/fp.h"
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #include "sys/reg.h"
 #include "sys/sysmacros.h"
 #include "sys/systm.h"
@@ -131,13 +128,7 @@ int
 prhasfp()
 {
 	extern char fp_kind;
-#ifdef WEITEK
-	extern char weitek_kind;
-
-	return (fp_kind != FP_NO) || (weitek_kind != WEITEK_NO);
-#else
 	return (fp_kind != FP_NO);
-#endif
 }
 
 /*
@@ -150,6 +141,7 @@ prgetfpregs(p, fp)
 	register fpregset_t *fp;
 {
 	user_t *up = prumap(p);
+	bzero((caddr_t)fp->f_reserved, sizeof fp->f_reserved);
 
 	/*
 	 * If already dumped core, then state is already saved in the ublock.
@@ -164,13 +156,6 @@ prgetfpregs(p, fp)
 			      (caddr_t) &fp->fp_reg_set,
 			      sizeof fp->fp_reg_set);
 		}
-#ifdef WEITEK
-		if (weitek_kind != WEITEK_NO) {
-			bcopy((caddr_t) up->u_weitek_reg,
-			      (caddr_t) fp->f_wregs,
-			      sizeof fp->f_wregs);
-		}
-#endif
 	}
 
 	prunmap(p);
@@ -195,13 +180,6 @@ prsetfpregs(p, fp)
 			      (caddr_t) &up->u_fps.u_fpstate,
 			      sizeof fp->fp_reg_set);
 		}
-#ifdef WEITEK
-		if (weitek_kind & WEITEK_HW) {
-			bcopy((caddr_t) fp->f_wregs,
-			      (caddr_t) up->u_weitek_reg,
-			      sizeof fp->f_wregs);
-		}
-#endif
 	}
 
 	prunmap(p);

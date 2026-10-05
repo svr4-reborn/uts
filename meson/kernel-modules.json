@@ -394,9 +394,6 @@
     "i386/vx/v86.c",
     "i386/vx/v86subr.c"
   ],
-  "weitek": [
-    "i386/io/weitek.c"
-  ],
   "ws": [
     "i386/io/ws/ws_8042.c",
     "i386/io/ws/ws_ansi.c",

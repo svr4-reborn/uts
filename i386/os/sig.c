@@ -53,9 +53,6 @@
 #include "sys/hrtcntl.h"
 #include "sys/events.h"
 #include "sys/evsys.h"
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #ifdef VPIX
 #include "sys/v86.h"
 
@@ -352,11 +349,6 @@ stop(p, why, what, firststop)
 		 */
 		if (p == fp_proc)
 			fpsave();
-#ifdef WEITEK
-		if (p == weitek_proc) {
-			weitek_save();
-		}
-#endif
 	}
 
 	/*

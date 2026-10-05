@@ -13,7 +13,6 @@
 #ident	"@(#)head.sys:sys/elf_386.h	1.2.3.1"
 #define	EF_I386_NONE		0
 #define	EF_I386_FP		1	/* Floating point chip saved state */
-#define	EF_I386_WEITEK		2	/* Weitek chip saved state */
 
 #define R_386_NONE		0	/* relocation type */
 #define R_386_32		1

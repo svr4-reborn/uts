@@ -45,15 +45,15 @@ kernel_codegen = [
 
 # TODO: make the subsystems take a single set of defines
 # I did this back when I originally got it running for the first time.
-# I'm pretty sure that I could probably get away with ['-D_KERNEL', '-DAT386',
-# 'i386, '-DWEITEK'] for everything except FS, but given that FS itself is kinda
+# I'm pretty sure that I could probably get away with ['-D_KERNEL', '-DAT386']
+# for everything except FS, but given that FS itself is kinda
 # evidence that having per-subsytem defines *could* maybe be a good idea to,
 # since it has its own 'QUOATE' define, I'm leaving it as-is for now.
 subsystem_defines = {
-  'os'     : ['-D_KERNEL', '-DAT386', '-DWEITEK'],
+  'os'     : ['-D_KERNEL', '-DAT386'],
   'vm'     : ['-D_KERNEL', '-Dnotnow', '-DAT386'],
   'exec'   : ['-D_KERNEL', '-DAT386'],
-  'io'     : ['-D_KERNEL', '-DSYSV', '-DSVR40', '-DWEITEK', '-DAT386'],
+  'io'     : ['-D_KERNEL', '-DSYSV', '-DSVR40', '-DAT386'],
   'fs'     : ['-D_KERNEL', '-DQUOTA', '-DAT386'],
   'disp'   : ['-D_KERNEL', '-DAT386'],
   'vx'     : ['-D_KERNEL', '-DAT386'],
@@ -85,7 +85,7 @@ pack_d = conf_root != '' ? conf_root / 'pack.d' : 'pack.d'
 kernel_recompile_cflags = ' '.join([
   '-std=gnu89', '-fcommon', '-fno-builtin', '-fno-tree-vectorize', '-O2',
   '-m32', '-mno-mmx', '-mno-sse', '-mno-sse2',
-  '-D_KERNEL', '-DAT386', '-DWEITEK', '-DWEITEK_EMULATOR', '-DSYSV', '-DSVR40',
+  '-D_KERNEL', '-DAT386', '-DSYSV', '-DSVR40',
 ])
 
 # --------------------------------------------------------------------------
@@ -109,7 +109,7 @@ idmkunix_cflags = ' '.join([
   '-std=gnu89', '-fcommon', '-fno-builtin', '-fno-tree-vectorize', '-O2',
   '-m32', '-mno-mmx', '-mno-sse', '-mno-sse2', '-nostdinc',
 ])
-idmkunix_defines = '-DWEITEK_EMULATOR -DSVR40 -DRAMD_BOOT'
+idmkunix_defines = '-DSVR40 -DRAMD_BOOT'
 idmkunix_incdirs = 'inc inc/arch'
 idmkunix_cc = 'i686-pc-sysv4-mlibc-gcc'
 idmkunix_ld = 'i686-pc-sysv4-mlibc-ld'
@@ -271,7 +271,7 @@ stage_aggregate = files('stage_aggregate.py')
 # fragment.py adds -E -P -x c). cc.cmd_array() may be multi-element; join to one
 # shell-splittable string for --cpp.
 frag_cpp = ' '.join(cc.cmd_array())
-frag_cpp_flags = ['-DAT386', '-DWEITEK', '-DWEITEK_EMULATOR']
+frag_cpp_flags = ['-DAT386']
 frag_cpp_args = []
 foreach f : frag_cpp_flags
   frag_cpp_args += '--cpp-flag=' + f
@@ -346,7 +346,7 @@ foreach name : ['kernmap', 'vuifile']
     input: i386 / name,
     output: 'cfd__' + name,
     command: [cc.cmd_array(), '-E', '-P', '-x', 'c', '-I' + i386, '-D_KERNEL',
-              '-DAT386', '-DWEITEK', '-DWEITEK_EMULATOR', '@INPUT@', '-o', '@OUTPUT@'],
+              '-DAT386', '@INPUT@', '-o', '@OUTPUT@'],
     install: true,
     install_dir: conf_root / 'cf.d',
     install_tag: 'meta',

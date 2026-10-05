@@ -63,9 +63,6 @@
 #ifdef  VPIX
 #include "sys/v86.h"
 #endif
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #include "sys/xdebug.h"
 /* #ifdef XXX - MS_EMULATOR */
 #include "sys/fp.h"
@@ -1156,10 +1153,6 @@ register k_siginfo_t	*infop;
 	}
 }
 
-#ifdef WEITEK
-extern int init_weitek_pt();
-extern int map_weitek_pt();
-#endif
 
 STATIC int
 usrxmemflt(errcode, faultadr, infop)
@@ -1222,23 +1215,6 @@ usrxmemflt(errcode, faultadr, infop)
 		    } else
 #endif
 
-#ifdef WEITEK
-		    if (((unsigned long) faultadr & WEITEK_ADDRS) 
-				== WEITEK_VADDR) { /* Weitek Address? */
-			if (weitek_kind & WEITEK_HW) {	/* chip present */
-
-				if (weitek_pt < 0)
-					init_weitek_pt();
-
-				map_weitek_pt();
-				flushtlb();
-				u.u_weitek = WEITEK_HW;
-				init_weitek();
-				weitek_proc = u.u_procp;
-				return(0);
-			}
-		    } else
-#endif
 
 		    if (faultadr <= (u.u_procp->p_stkbase - u.u_procp->p_stksize) &&
 					!grow((int *)(_VOID *)faultadr)) {

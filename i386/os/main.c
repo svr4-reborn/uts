@@ -48,9 +48,6 @@
 #include "sys/sysi86.h"
 #include "sys/inline.h"
 #include "sys/x.out.h"
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #include "sys/fp.h"
 #include "vm/as.h"
 #include "vm/seg_vn.h"
@@ -393,10 +390,6 @@ char	*argv[];
 		ldta += seltoi(USER_DS);
 		*ldta = *ldt;
 		ldta->a_acc0007 = UDATA_ACC1;
-#ifdef WEITEK
-		ldta->a_lim0015 = (ushort)btoct(WEITEK_MAXADDR);
-		ldta->a_lim1619 = ((unsigned char)(btoct(WEITEK_MAXADDR) >> 16)) & 0x0F;
-#endif
  		return UVTEXT;
 	}
 

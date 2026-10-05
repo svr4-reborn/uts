@@ -36,9 +36,6 @@
 #include "sys/proc.h"
 #include "sys/reg.h"
 #include "sys/fp.h"
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #include "sys/debug.h"
 #include "sys/cmn_err.h"
 #include "sys/acct.h"
@@ -329,11 +326,6 @@ newproc(cond, pidp, perror)
 	 */
 	if (pp == fp_proc)
 		fpsave();
-#ifdef WEITEK
-	if (pp == weitek_proc) {
-		weitek_save();
-	}
-#endif
 
 	/*
 	 * Copy process.

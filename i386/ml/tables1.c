@@ -1065,13 +1065,6 @@ kpte_t	kptn[NPGPT] = {
 			mkpte(PG_V, 0xFFC09L),
 			mkpte(PG_V, 0xFFC0AL),
 			mkpte(PG_V, 0xFFC0BL),
-#ifdef WEITEK
-/* 
-	the following entry will be temporarily changed so that the Weitek
-	chip may be detected;  it will be restored.  See the code in ml/misc.s
-	that detects the Weitek chip and sets the "weitek_kind" variable.
-*/
-#endif
 			mkpte(PG_V, 0xFFC0CL),
 			mkpte(PG_V, 0xFFC0DL),
 			mkpte(PG_V, 0xFFC0EL),

@@ -10,7 +10,7 @@ out so Meson can drive it once per fragment via custom_target. Two modes:
                 comment lines are protected across cpp by a +/# swap, then cpp,
                 then blanks dropped.
 
-cpp flags mirror the build: -P -DAT386 -DWEITEK -DWEITEK_EMULATOR (passed in).
+cpp flags mirror the build (passed in).
 Byte-for-byte equivalent to the old tool (verified against its output tree).
 """
 from __future__ import annotations

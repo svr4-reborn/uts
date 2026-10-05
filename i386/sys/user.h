@@ -81,10 +81,9 @@ typedef struct {		/* kernel syscall set type */
  */
 typedef	struct	user {
 	char	u_stack[KSTKSZ];/* kernel stack */
-	char	u_stack_filler_1[2];
+	char	u_stack_filler_1[3];
 	/* floating point support variables */
 	char    u_fpvalid;              /* flag if saved state is valid     */
-	char    u_weitek;               /* flag if process uses weitek chip */
 	union {
 		struct  fpstate         /* floating point extension state   */
 		{
@@ -95,11 +94,7 @@ typedef	struct	user {
 							   * have to update any things that care*/
 	} u_fps;
 	void* u_fxsave_area;		/* pointer to fxsave area */
-	long	u_weitek_reg[33];	/* bits needed to save weitek state */
-					/* NOTE: If the WEITEK is actually  */
-					/* present, only 32 longs will be   */
-					/* used.                            */
-
+	char	u_fpstate_pad[132];	/* keep u_tss at the start of the second page */
 	/* NOTE: The second page of the uarea must begin here.
 	   That is, the offset at this point must be NBPP. */
 
@@ -384,11 +379,6 @@ struct seguser {
 #define	U_RUD	1
 #define	U_WKD	2
 #define	U_RKD	3
-
-/* defines for Weitek */
-
-#define	WEITEK_CONTEXT	0
-#define	WEITEK_CAE	0xFFFFFF00	/* clear accum. exception byte	*/
 
 /* XENIX SUPPORT */
 

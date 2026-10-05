@@ -42,9 +42,6 @@
 #endif
 #include "sys/user.h"
 #include "sys/fp.h"
-#ifdef WEITEK
-#include "sys/weitek.h"
-#endif
 #include "sys/debug.h"
 #include "sys/var.h"
 #include "sys/conf.h"
@@ -342,10 +339,6 @@ k_sigset_t mask;
  		fpsave();
  		setts();
  	}
-#ifdef WEITEK
- 	if (u.u_procp == weitek_proc)
- 		weitek_save();
-#endif
 
 	/* 
 	 * Save machine context 
@@ -362,10 +355,6 @@ k_sigset_t mask;
 	else
 		ucp->uc_flags &= ~UC_FP;
 
-#ifdef WEITEK
- 	if (u.u_procp != weitek_proc)
-		ucp->uc_flags &= ~UC_WEITEK;
-#endif
 
 	/* save signal mask */
 	sigktou(&mask,&ucp->uc_sigmask);
@@ -388,7 +377,7 @@ struct compat_frame {
 	u_int		signo;
 	gregset_t	gregs;
 	char		*fpsp;
-	char		*wsp;
+	char		*reserved;	/* preserve the legacy signal-frame layout */
 };
 
 /*
@@ -490,10 +479,6 @@ sendsig(sig, sip, hdlr)
 
 	savecontext(&uc, u.u_sigoldmask);
 
-#ifdef WEITEK
-	if (sig == SIGFPE)
-		weitek_reset_intr();
-#endif /* WEITEK */
 
 	sp -= sizeof(ucontext_t);
 	if (copyout((caddr_t)&uc, (caddr_t)sp, sizeof(ucontext_t)) < 0) 
@@ -508,7 +493,7 @@ sendsig(sig, sip, hdlr)
 		bcopy((caddr_t)uc.uc_mcontext.gregs, (caddr_t)cframe.gregs,
 				sizeof(gregset_t));
 		cframe.fpsp = (char *)&argpframe.ucp->uc_mcontext.fpregs.fp_reg_set;
-		cframe.wsp = (char *)&argpframe.ucp->uc_mcontext.fpregs.f_wregs[0];
+		cframe.reserved = NULL;
 
 		sp -= sizeof(struct compat_frame);
 		if (copyout((caddr_t)&cframe, (caddr_t)sp,
@@ -899,19 +884,12 @@ restorecontext(ucp)
 	if (ucp->uc_flags & UC_CPU)
 		prsetregs(PTOU(pp), ucp->uc_mcontext.gregs);
 
-#ifdef WEITEK
-	if (ucp->uc_flags & (UC_FP|UC_WEITEK)) {
-#else
 	if (ucp->uc_flags & UC_FP) {
-#endif
 		prsetfpregs(pp, &ucp->uc_mcontext.fpregs);
-#ifdef WEITEK
-		if (ucp->uc_flags & UC_FP)
-#endif
-			u.u_fpvalid = 1;
+		u.u_fpvalid = 1;
+	} else {
+		u.u_fpvalid = 0;
 	}
- 	else
- 		u.u_fpvalid = 0;
  
  	/* If this process owns the floating point unit,                */
  	/* give up ownership,                                           */
@@ -922,15 +900,6 @@ restorecontext(ucp)
  		setts();
 	}
 
-#ifdef WEITEK
-	/* Were we using the Weitek before the signal? */
-	if (ucp->uc_flags & UC_WEITEK) {
- 		init_weitek();
- 		/* clear AE byte of context register */
- 		clear_weitek_ae ();
- 		weitek_restore(u.u_weitek_reg);
- 	} 
-#endif
 
 	if (ucp->uc_flags & UC_SIGMASK) {
 		sigutok(&ucp->uc_sigmask,&u.u_procp->p_hold);
